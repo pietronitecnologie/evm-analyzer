@@ -1,0 +1,12 @@
+[package]
+name = "evm-db"
+version = "0.1.0"
+description = "Accesso SQLite e migrazioni versionate per l'analizzatore EVM (nessuna dipendenza da Tauri/UI)."
+license = "GPL-3.0-or-later"
+edition = "2021"
+
+[dependencies]
+rusqlite = { version = "0.37", features = ["bundled"] }
+
+[dev-dependencies]
+tempfile = "3"

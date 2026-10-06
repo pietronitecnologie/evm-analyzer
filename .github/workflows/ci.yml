@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "evm-analyzer/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "evm-analyzer/**"
+      - ".github/workflows/ci.yml"
+
+defaults:
+  run:
+    working-directory: evm-analyzer
+
+jobs:
+  frontend:
+    name: Frontend (TypeScript, motore EVM, Storybook)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: evm-analyzer/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Controllo dei tipi
+        run: npx tsc --noEmit
+
+      - name: Test del motore EVM (Vitest)
+        run: npm run test:engine
+
+      - name: Build di produzione del frontend
+        run: npm run build
+
+      - name: Build di Storybook
+        run: npm run build-storybook
+
+  rust:
+    name: Rust (evm-db + app Tauri)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installa i prerequisiti Linux di Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            libssl-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: evm-analyzer -> target
+
+      - name: Formattazione (rustfmt)
+        run: cargo fmt --all -- --check
+
+      - name: evm-db (nessuna dipendenza grafica)
+        run: cargo test -p evm-db
+
+      - name: Clippy sull'intero workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test dell'intero workspace (incluso src-tauri)
+        run: cargo test --workspace
