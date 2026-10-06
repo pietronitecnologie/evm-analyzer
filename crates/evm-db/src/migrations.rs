@@ -25,6 +25,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0002_workbook",
         sql: include_str!("../migrations/0002_workbook.sql"),
     },
+    Migration {
+        version: 3,
+        name: "0003_controllo_costi",
+        sql: include_str!("../migrations/0003_controllo_costi.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

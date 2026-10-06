@@ -77,6 +77,8 @@ export const MENUS: MenuDef[] = [
     entries: [
       cmd("progetto.nuovo-task"),
       cmd("progetto.calendari"),
+      cmd("progetto.monitoraggio"),
+      cmd("progetto.governance"),
       sep,
       cmd("progetto.parametri"),
       cmd("progetto.base-ev"),

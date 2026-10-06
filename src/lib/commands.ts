@@ -106,6 +106,18 @@ const progettoCommands: Command[] = [
   { id: "file.importa-workbook", label: "Importa workbook Excel…", group: "File", run: () => void importaWorkbook() },
   { id: "file.esporta-workbook", label: "Esporta workbook Excel…", group: "File", run: () => void esportaWorkbook() },
   {
+    id: "progetto.monitoraggio",
+    label: "Monitoraggio EVM…",
+    group: "Progetto",
+    run: () => useLayoutStore.getState().openScreen("monitoraggio", "Monitoraggio EVM"),
+  },
+  {
+    id: "progetto.governance",
+    label: "Governance costi…",
+    group: "Progetto",
+    run: () => useLayoutStore.getState().openScreen("governance-costi", "Governance costi"),
+  },
+  {
     id: "progetto.calendari",
     label: "Calendari di lavoro…",
     group: "Progetto",

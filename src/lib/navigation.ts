@@ -9,6 +9,8 @@ import {
   Database,
   FileText,
   Gauge,
+  Activity,
+  Wallet,
   GitBranch,
   GitCompare,
   type LucideIcon,
@@ -58,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: "filoni", label: "Filoni e programma", icon: GitBranch },
       { id: "agile-flow", label: "Agile/Flow", icon: Waves },
       { id: "buffer-riserve", label: "Buffer e riserve", icon: Database },
+      { id: "monitoraggio", label: "Monitoraggio EVM", icon: Activity },
     ],
   },
   {
@@ -65,6 +68,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Governo",
     items: [
       { id: "baseline-cr", label: "Baseline e change request", icon: GitCompare },
+      { id: "governance-costi", label: "Governance costi", icon: Wallet },
       { id: "qualita-dati", label: "Qualità dati", icon: AlertTriangle },
       { id: "report", label: "Report", icon: FileText },
     ],

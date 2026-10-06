@@ -50,6 +50,7 @@ export function ApprovazioniScreen() {
             <th className={`${TESTA_TABELLA} text-right`}>Proposto %</th>
             <th className={TESTA_TABELLA}>Inizio effettivo</th>
             <th className={TESTA_TABELLA}>Fine effettiva</th>
+            <th className={`${TESTA_TABELLA} text-right`}>AC (€)</th>
             <th className={TESTA_TABELLA}>Inviato il</th>
             <th className={TESTA_TABELLA}>Decisione</th>
           </tr>
@@ -62,6 +63,7 @@ export function ApprovazioniScreen() {
               <td className={`${CELLA} tabular-num text-right`}>{Math.round(v.pct)} %</td>
               <td className={`${CELLA} tabular-num`}>{v.inizioEffettivo ?? "—"}</td>
               <td className={`${CELLA} tabular-num`}>{v.fineEffettiva ?? "—"}</td>
+              <td className={`${CELLA} tabular-num text-right`}>{v.ac === null ? "—" : v.ac.toLocaleString("it-IT", { maximumFractionDigits: 2 })}</td>
               <td className={`${CELLA} text-xs text-muted-foreground`}>{v.inviatoIl}</td>
               <td className={CELLA}>
                 <div className="flex items-center gap-2">

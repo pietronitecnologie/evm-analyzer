@@ -3,6 +3,7 @@
 
 import { type Dashboard } from "@/lib/api";
 import { Vuoto } from "./comuni";
+import { EvmWorkbookSezione } from "./EvmWorkbookSezione";
 import { CELLA, TESTA_TABELLA, usePercorso, useDati } from "@/lib/schermate";
 
 function Indicatore({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
@@ -26,6 +27,7 @@ export function DashboardScreen() {
 
   return (
     <div className="flex flex-col gap-6 p-4">
+      <EvmWorkbookSezione percorso={percorso} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Indicatore etichetta="Task di lavoro" valore={String(d.taskTotali)} />
         <Indicatore etichetta="Task critici" valore={String(d.taskCritici)} />

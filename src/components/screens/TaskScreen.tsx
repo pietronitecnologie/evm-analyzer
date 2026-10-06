@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { RisorseSezione } from "@/components/screens/RisorseSezione";
 import { useProjectContextStore } from "@/stores/project-context-store";
 import { useToastStore } from "@/stores/toast-store";
 
@@ -203,6 +204,7 @@ export function TaskScreen() {
       </form>
 
       <div className="flex-1 overflow-auto">
+        <RisorseSezione />
         {task.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
             Nessun task. Compila il modulo qui sopra o importa un piano.

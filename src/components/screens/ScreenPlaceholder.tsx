@@ -18,6 +18,8 @@ import { PerimetriUtentiScreen } from "@/components/screens/PerimetriUtentiScree
 import { RiserveScreen } from "@/components/screens/RiserveScreen";
 import { WbsScreen } from "@/components/screens/WbsScreen";
 import { CalendariScreen } from "@/components/screens/CalendariScreen";
+import { MonitoraggioScreen } from "@/components/screens/MonitoraggioScreen";
+import { GovernanceScreen } from "@/components/screens/GovernanceScreen";
 import { NAV_ITEMS_BY_ID } from "@/lib/navigation";
 import { runCommand } from "@/lib/commands";
 
@@ -82,6 +84,8 @@ export function ScreenPlaceholder({ screenId, title }: { screenId: string; title
   if (screenId === "perimetri-utenti") return <PerimetriUtentiScreen />;
   if (screenId === "buffer-riserve") return <RiserveScreen />;
   if (screenId === "calendari") return <CalendariScreen />;
+  if (screenId === "monitoraggio") return <MonitoraggioScreen />;
+  if (screenId === "governance-costi") return <GovernanceScreen />;
 
   const Icon = NAV_ITEMS_BY_ID[screenId]?.icon;
 

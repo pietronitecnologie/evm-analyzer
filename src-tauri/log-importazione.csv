@@ -1,0 +1,6 @@
+﻿Gravità,Foglio,Cella,Codice,Messaggio,Suggerimento
+"info","_meta","","XL_NO_META","Foglio _meta assente: file trattato come template manuale","Esporta il progetto dall'app per avere il foglio _meta"
+"info","Agile - Velocity","","AGILE_COSTO_SP","Costo per SP di baseline assente: derivato come costo team ÷ SP pianificati, non dalla velocity reale","Fissa il costo per SP in Parametri (§6-bis.2)"
+"critico","Parametri","B6","XL_DATE_MISMATCH","Inizio progetto 2027-01-01 diverso dalla prima data della WBS 2026-01-01: PctTempo negativo","Allinea la data di inizio di Parametri alla WBS"
+"avviso","Monitoraggio EVM","A","XL_CHECKPOINT_RANGE","Checkpoint 2026-01-01 fuori dall'intervallo di progetto","Verifica la data del checkpoint"
+"avviso","Buffer e Contingency","D14","XL_CONT_MISMATCH","Contingency a budget 7295.72 € diversa dalla somma stanziata per rischio 15000.00 €","Allinea la contingency di Parametri ai rischi, o accetta lo scarto"

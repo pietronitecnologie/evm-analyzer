@@ -84,7 +84,7 @@ fn ultimo_snapshot(conn: &Connection, pid: i64) -> Esito<Option<i64>> {
 }
 
 /// Avanzamento vigente per task: (frazione, inizio effettivo, fine effettiva).
-type Vigente = HashMap<i64, (f64, Option<String>, Option<String>)>;
+type Vigente = HashMap<i64, (f64, Option<String>, Option<String>, f64)>;
 
 fn avanzamento_vigente(conn: &Connection, pid: i64) -> Esito<Vigente> {
     let Some(snap) = ultimo_snapshot(conn, pid)? else {
@@ -92,7 +92,7 @@ fn avanzamento_vigente(conn: &Connection, pid: i64) -> Esito<Vigente> {
     };
     let mut stmt = conn
         .prepare(
-            "SELECT task_id, COALESCE(pct_complete, 0), actual_start, actual_finish
+            "SELECT task_id, COALESCE(pct_complete, 0), actual_start, actual_finish, COALESCE(ac_cost, 0)
              FROM snapshot_task WHERE snapshot_id = ?1",
         )
         .map_err(errore)?;
@@ -100,7 +100,7 @@ fn avanzamento_vigente(conn: &Connection, pid: i64) -> Esito<Vigente> {
         .query_map([snap], |r| {
             Ok((
                 r.get::<_, i64>(0)?,
-                (r.get::<_, f64>(1)?, r.get(2)?, r.get(3)?),
+                (r.get::<_, f64>(1)?, r.get(2)?, r.get(3)?, r.get::<_, f64>(4)?),
             ))
         })
         .map_err(errore)?
@@ -206,13 +206,15 @@ pub struct NodoWbs {
     pub nome: String,
     pub genitore: Option<String>,
     pub task: i64,
+    /// Budget assegnato al nodo (€), `None` se non assegnato.
+    pub budget: Option<f64>,
 }
 
 pub fn wbs(conn: &Connection, pid: i64) -> Esito<Vec<NodoWbs>> {
     let mut stmt = conn
         .prepare(
             "SELECT w.id, w.code, w.name, p.code,
-                    (SELECT count(*) FROM task t WHERE t.wbs_id = w.id AND t.is_summary = 0)
+                    (SELECT count(*) FROM task t WHERE t.wbs_id = w.id AND t.is_summary = 0), w.bac
              FROM wbs w LEFT JOIN wbs p ON p.id = w.parent_id
              WHERE w.project_id = ?1
              ORDER BY w.code",
@@ -226,6 +228,7 @@ pub fn wbs(conn: &Connection, pid: i64) -> Esito<Vec<NodoWbs>> {
                 nome: r.get(2)?,
                 genitore: r.get(3)?,
                 task: r.get(4)?,
+                budget: r.get(5)?,
             })
         })
         .map_err(errore)?
@@ -358,6 +361,8 @@ pub struct RigaAvanzamento {
     pub stato_ultima_voce: Option<String>,
     /// Motivo dell'ultimo rifiuto, se l'ultima voce è stata respinta.
     pub nota_ultima_voce: Option<String>,
+    /// AC cumulato del task alla status date vigente (€).
+    pub ac: f64,
 }
 
 pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzamento>> {
@@ -371,10 +376,10 @@ pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzame
         .map_err(errore)?;
     let mut righe = Vec::new();
     for t in tasks.iter().filter(|t| !t.riepilogo) {
-        let (pct, inizio, fine) = vigente
+        let (pct, inizio, fine, ac) = vigente
             .get(&t.id)
-            .map(|v| (v.0, v.1.clone(), v.2.clone()))
-            .unwrap_or((0.0, None, None));
+            .map(|v| (v.0, v.1.clone(), v.2.clone(), v.3))
+            .unwrap_or((0.0, None, None, 0.0));
         let ultima: Option<(String, Option<String>)> = stmt
             .query_row([t.id], |r| Ok((r.get(0)?, r.get(1)?)))
             .optional()
@@ -391,6 +396,7 @@ pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzame
             fine_effettiva: fine,
             stato_ultima_voce: stato,
             nota_ultima_voce: nota,
+            ac,
         });
     }
     Ok(righe)
@@ -422,8 +428,8 @@ fn snapshot_manuale(conn: &Connection, pid: i64) -> Esito<i64> {
     let nuovo = conn.last_insert_rowid();
     if let Some(vecchio) = precedente {
         conn.execute(
-            "INSERT INTO snapshot_task (snapshot_id, task_id, actual_start, actual_finish, pct_complete)
-             SELECT ?1, task_id, actual_start, actual_finish, pct_complete
+            "INSERT INTO snapshot_task (snapshot_id, task_id, actual_start, actual_finish, pct_complete, ac_cost)
+             SELECT ?1, task_id, actual_start, actual_finish, pct_complete, ac_cost
              FROM snapshot_task WHERE snapshot_id = ?2",
             params![nuovo, vecchio],
         )
@@ -441,9 +447,13 @@ pub fn registra_avanzamento(
     pct: f64,
     inizio: Option<String>,
     fine: Option<String>,
+    ac: Option<f64>,
 ) -> Esito<()> {
     if !(0.0..=100.0).contains(&pct) {
         return Err("l'avanzamento deve essere tra 0 e 100".into());
+    }
+    if ac.is_some_and(|v| !v.is_finite() || v < 0.0) {
+        return Err("il costo consuntivo (AC) deve essere un importo positivo o zero".into());
     }
     let inizio = inizio.filter(|v| !v.is_empty()).map(|v| tempo::normalizza_data(&v).ok_or(format!("data non valida: {v}"))).transpose()?;
     let fine = fine.filter(|v| !v.is_empty()).map(|v| tempo::normalizza_data(&v).ok_or(format!("data non valida: {v}"))).transpose()?;
@@ -460,9 +470,9 @@ pub fn registra_avanzamento(
     let snapshot = snapshot_manuale(&tx, pid)?;
     tx.execute(
         "INSERT INTO progress_entry (snapshot_id, task_id, entered_at, pct_complete,
-                                     actual_start, actual_finish, state)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'inviato')",
-        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine],
+                                     actual_start, actual_finish, actual_cost, state)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'inviato')",
+        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine, ac],
     )
     .map_err(errore)?;
     tx.commit().map_err(errore)?;
@@ -481,13 +491,15 @@ pub struct RigaApprovazione {
     pub inizio_effettivo: Option<String>,
     pub fine_effettiva: Option<String>,
     pub inviato_il: String,
+    /// AC cumulato proposto (€), se inserito.
+    pub ac: Option<f64>,
 }
 
 pub fn approvazioni(conn: &Connection, pid: i64) -> Esito<Vec<RigaApprovazione>> {
     let mut stmt = conn
         .prepare(
             "SELECT pe.id, t.uid_source, t.name, pe.pct_complete, pe.actual_start,
-                    pe.actual_finish, pe.entered_at
+                    pe.actual_finish, pe.entered_at, pe.actual_cost
              FROM progress_entry pe
              JOIN task t ON t.id = pe.task_id
              JOIN status_snapshot s ON s.id = pe.snapshot_id
@@ -505,6 +517,7 @@ pub fn approvazioni(conn: &Connection, pid: i64) -> Esito<Vec<RigaApprovazione>>
                 inizio_effettivo: r.get(4)?,
                 fine_effettiva: r.get(5)?,
                 inviato_il: r.get(6)?,
+                ac: r.get(7)?,
             })
         })
         .map_err(errore)?
@@ -516,25 +529,26 @@ pub fn approvazioni(conn: &Connection, pid: i64) -> Esito<Vec<RigaApprovazione>>
 /// Approva una voce inviata: il suo valore entra nello snapshot a cui appartiene.
 pub fn approva(conn: &mut Connection, entry_id: i64) -> Esito<()> {
     let tx = conn.transaction().map_err(errore)?;
-    let (stato, snapshot, task, pct, inizio, fine): (String, i64, i64, Option<f64>, Option<String>, Option<String>) = tx
+    let (stato, snapshot, task, pct, inizio, fine, ac): (String, i64, i64, Option<f64>, Option<String>, Option<String>, Option<f64>) = tx
         .query_row(
-            "SELECT state, snapshot_id, task_id, pct_complete, actual_start, actual_finish
+            "SELECT state, snapshot_id, task_id, pct_complete, actual_start, actual_finish, actual_cost
              FROM progress_entry WHERE id = ?1",
             [entry_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
         )
         .map_err(errore)?;
     if stato != "inviato" {
         return Err(format!("la voce è in stato «{stato}», non può essere approvata"));
     }
     tx.execute(
-        "INSERT INTO snapshot_task (snapshot_id, task_id, actual_start, actual_finish, pct_complete)
-         VALUES (?1, ?2, ?3, ?4, ?5)
+        "INSERT INTO snapshot_task (snapshot_id, task_id, actual_start, actual_finish, pct_complete, ac_cost)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(snapshot_id, task_id) DO UPDATE SET
            pct_complete = excluded.pct_complete,
            actual_start = COALESCE(excluded.actual_start, snapshot_task.actual_start),
-           actual_finish = COALESCE(excluded.actual_finish, snapshot_task.actual_finish)",
-        params![snapshot, task, inizio, fine, pct],
+           actual_finish = COALESCE(excluded.actual_finish, snapshot_task.actual_finish),
+           ac_cost = COALESCE(excluded.ac_cost, snapshot_task.ac_cost)",
+        params![snapshot, task, inizio, fine, pct, ac],
     )
     .map_err(errore)?;
     tx.execute(
@@ -979,7 +993,7 @@ mod tests {
     #[test]
     fn un_rifiuto_riporta_il_motivo_a_chi_ha_proposto() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None).unwrap();
         let voce = approvazioni(&conn, pid).unwrap()[0].id;
         assert!(respingi(&conn, voce, "  ").is_err(), "il motivo è obbligatorio");
         respingi(&conn, voce, "manca la data di fine").unwrap();
@@ -992,7 +1006,7 @@ mod tests {
     #[test]
     fn avanzamento_passa_da_inviato_ad_applicato() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None, Some(1200.0)).unwrap();
         let coda = approvazioni(&conn, pid).unwrap();
         assert_eq!(coda.len(), 1, "una proposta registrata è subito in approvazione");
         approva(&mut conn, coda[0].id).unwrap();

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Pietroni Tecnologie
 
 pub mod calendario;
+pub mod controllo;
+pub mod risorse;
 pub mod import;
 pub mod migrations;
 pub mod progetto;

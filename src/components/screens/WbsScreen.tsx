@@ -44,6 +44,7 @@ export function WbsScreen() {
                 <th className={TESTA_TABELLA}>Codice</th>
                 <th className={TESTA_TABELLA}>Nome</th>
                 <th className={`${TESTA_TABELLA} text-right`}>Task</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Budget (€)</th>
               </tr>
             </thead>
             <tbody>
@@ -56,6 +57,9 @@ export function WbsScreen() {
                   </td>
                   <td className={`${CELLA} ${n.genitore ? "" : "font-semibold"}`}>{n.nome}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{n.task}</td>
+                  <td className={CELLA}>
+                    <BudgetCella key={`${n.codice}-${n.budget ?? ""}`} nodo={n} percorso={percorso} onSalvato={ricarica} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -79,6 +83,34 @@ export function WbsScreen() {
           </Button>
         </form>
       </Sezione>
+    </div>
+  );
+}
+
+/** Budget di un nodo WBS: modificabile, salvato con il comando `imposta_budget_wbs`. */
+function BudgetCella({ nodo, percorso, onSalvato }: { nodo: NodoWbs; percorso: string; onSalvato: () => Promise<void> }) {
+  const [valore, setValore] = React.useState(nodo.budget === null ? "" : String(nodo.budget));
+  async function salva() {
+    const ok = await esegui("Budget non salvato", () =>
+      chiama(percorso, "imposta_budget_wbs", { codice: nodo.codice, budget: valore.trim() === "" ? null : Number(valore) }),
+      `Budget di ${nodo.codice} salvato`,
+    );
+    if (ok) await onSalvato();
+  }
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        className={`${CAMPO} w-32 text-right`}
+        aria-label={`Budget del nodo ${nodo.codice}`}
+        value={valore}
+        onChange={(e) => setValore(e.target.value)}
+      />
+      <Button size="sm" variant="ghost" onClick={salva} disabled={valore === (nodo.budget === null ? "" : String(nodo.budget))}>
+        Salva
+      </Button>
     </div>
   );
 }

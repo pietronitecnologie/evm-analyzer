@@ -349,3 +349,30 @@ Aggiornato a ogni fase.
 56. **Lint e clippy.** `cargo clippy --all-targets` senza avvisi su `evm-db`. Aggiunto
     `@types/node` come dipendenza di sviluppo: i test TypeScript leggono la fixture
     con le API di Node (`node:fs`, `Buffer`).
+
+57. **Vista EVM del workbook nella Dashboard.** La sezione «EVM del workbook» (stima,
+    checkpoint, agile, riserve) è calcolata nel frontend con `packages/engine`
+    (`src/lib/evm-workbook.ts`) a partire dagli input letti con `input_workbook`. Si
+    mostra solo se il progetto ha attività del workbook. Gli indici non definiti
+    mostrano `—` con il motivo nel tooltip. Restano da fare il grafico della curva S
+    e la schermata Forecast dedicata (fase 5).
+
+58. **Budget per WBS (ricevuto, non stimato).** Il budget è un input assegnato al nodo
+    WBS (`wbs.bac`, migrazione 0003). Il budget di un nodo con task si distribuisce sui
+    suoi task in proporzione al costo di baseline (in parti uguali se il costo è zero).
+    Un nodo con budget senza task produce un avviso. La stima dei costi del workbook
+    resta fuori da questo flusso (decisione dell'utente).
+
+59. **Monitoraggio EVM su task.** PV di un task = budget × frazione di durata pianificata
+    trascorsa (giorni di calendario, distribuzione lineare: il libro usa la baseline
+    time-phased, non disponibile dagli import). EV = budget × % fisica registrata. AC =
+    AC cumulato registrato. Ogni data di stato dell'app è un punto della serie. Gli
+    indici sono calcolati dal motore (`packages/engine/src/monitoring.ts`). Soglie
+    semaforo fisse 0,95 / 0,85: da collegare ai parametri del progetto.
+
+60. **Actual cost e governance.** L'AC si inserisce per task nella schermata Avanzamento
+    e passa per la stessa approvazione del valore di avanzamento. Governance costi:
+    contingency e riserva di gestione (stanziate e consumate), baseline di budget
+    bloccata (immutabile per trigger), richieste di variazione con approvatore tracciato.
+    Limite noto: i progetti da workbook non creano ancora nodi WBS nel database, quindi
+    non ricevono un budget per WBS dall'interfaccia (va esteso).

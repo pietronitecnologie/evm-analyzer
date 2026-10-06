@@ -5,6 +5,8 @@ use std::path::Path;
 
 use evm_db::progetto::{self, ProjectInfo};
 use evm_db::calendario;
+use evm_db::controllo;
+use evm_db::risorse;
 use evm_db::export::{self, CacheExport, OpzioniExport};
 use evm_db::workbook::{self, WorkbookImportato};
 use evm_db::schermate;
@@ -164,9 +166,10 @@ fn registra_avanzamento(
     pct: f64,
     inizio: Option<String>,
     fine: Option<String>,
+    ac: Option<f64>,
 ) -> Result<(), String> {
     let (mut conn, id) = apri_con_id(&percorso)?;
-    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine)
+    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine, ac)
 }
 
 #[tauri::command]
@@ -369,6 +372,86 @@ fn esporta_workbook(
     )
 }
 
+// ----------------------------------------------------- Costi, governance, risorse
+
+#[tauri::command]
+fn imposta_budget_wbs(percorso: String, codice: String, budget: Option<f64>) -> Result<(), String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::imposta_budget_wbs(&conn, id, &codice, budget)
+}
+
+#[tauri::command]
+fn dati_monitoraggio(percorso: String) -> Result<controllo::DatiMonitoraggio, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::dati_monitoraggio(&conn, id)
+}
+
+#[tauri::command]
+fn governance(percorso: String) -> Result<controllo::Governance, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::governance(&conn, id)
+}
+
+#[tauri::command]
+fn crea_change_request(percorso: String, motivo: String, delta_costo: Option<f64>, delta_durata: Option<f64>) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::crea_change_request(&conn, id, &motivo, delta_costo, delta_durata)
+}
+
+#[tauri::command]
+fn approva_change_request(percorso: String, id: i64, approvatore: String) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    controllo::approva_change_request(&conn, pid, id, &approvatore)
+}
+
+#[tauri::command]
+fn blocca_baseline_budget(percorso: String, nome: String, tipo: String) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::blocca_baseline_budget(&conn, id, &nome, &tipo)
+}
+
+#[tauri::command]
+fn risorse_elenco(percorso: String) -> Result<Vec<risorse::RisorsaRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    risorse::risorse(&conn, id)
+}
+
+#[tauri::command]
+fn crea_risorsa(percorso: String, nome: String, tipo: Option<String>, tariffa: Option<f64>, tariffa_straordinario: Option<f64>) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    risorse::crea_risorsa(&conn, id, &nome, tipo.as_deref(), tariffa, tariffa_straordinario)
+}
+
+#[tauri::command]
+fn imposta_tariffa(percorso: String, id: i64, tariffa: Option<f64>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    risorse::imposta_tariffa(&conn, pid, id, tariffa)
+}
+
+#[tauri::command]
+fn imposta_costo_reale(percorso: String, id: i64, costo: Option<f64>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    risorse::imposta_costo_reale(&conn, pid, id, costo)
+}
+
+#[tauri::command]
+fn assegnazioni_elenco(percorso: String) -> Result<Vec<risorse::AssegnazioneRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    risorse::assegnazioni(&conn, id)
+}
+
+#[tauri::command]
+fn crea_assegnazione(percorso: String, task_uid: String, risorsa_id: i64, unita: f64) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    risorse::crea_assegnazione(&conn, id, &task_uid, risorsa_id, unita)
+}
+
+#[tauri::command]
+fn elimina_assegnazione(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    risorse::elimina_assegnazione(&conn, pid, id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -406,7 +489,20 @@ pub fn run() {
             aggiorna_workbook,
             input_workbook,
             esporta_workbook,
-            salva_testo
+            salva_testo,
+            imposta_budget_wbs,
+            dati_monitoraggio,
+            governance,
+            crea_change_request,
+            approva_change_request,
+            blocca_baseline_budget,
+            risorse_elenco,
+            crea_risorsa,
+            imposta_tariffa,
+            imposta_costo_reale,
+            assegnazioni_elenco,
+            crea_assegnazione,
+            elimina_assegnazione
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

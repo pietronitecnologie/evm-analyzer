@@ -28,6 +28,8 @@ export interface NodoWbs {
   nome: string;
   genitore: string | null;
   task: number;
+  /** Budget assegnato al nodo (€), `null` se non assegnato. */
+  budget: number | null;
 }
 
 export interface RigaGantt {
@@ -52,6 +54,8 @@ export interface RigaAvanzamento {
   fineEffettiva: string | null;
   statoUltimaVoce: string | null;
   notaUltimaVoce: string | null;
+  /** AC cumulato vigente del task (€). */
+  ac: number;
 }
 
 export interface RigaApprovazione {
@@ -62,6 +66,8 @@ export interface RigaApprovazione {
   inizioEffettivo: string | null;
   fineEffettiva: string | null;
   inviatoIl: string;
+  /** AC cumulato proposto (€), se inserito. */
+  ac: number | null;
 }
 
 export interface Utente {
@@ -139,4 +145,104 @@ export const GIORNI_SETTIMANA = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"
 /** Etichette dei giorni lavorativi di una maschera, in ordine lun → dom. */
 export function giorniDi(maschera: number): string {
   return GIORNI_SETTIMANA.filter((_, i) => maschera & (1 << i)).join(", ") || "nessuno";
+}
+
+// ------------------------------------------------------------- Costi e governance
+
+export interface BudgetWbs {
+  codice: string;
+  budget: number | null;
+}
+
+export interface TaskMon {
+  uid: string;
+  wbs: string | null;
+  riepilogo: boolean;
+  inizio: string | null;
+  fine: string | null;
+  costoBaseline: number;
+}
+
+export interface SnapshotMon {
+  data: string;
+  etichetta: string | null;
+  sorgente: string;
+  righe: { uid: string; pct: number; ac: number }[];
+}
+
+export interface CheckpointMon {
+  data: string;
+  nota: string | null;
+  pctPianificato: number | null;
+  pctReale: number | null;
+  ac: number | null;
+}
+
+export interface DatiMonitoraggio {
+  wbs: BudgetWbs[];
+  task: TaskMon[];
+  snapshot: SnapshotMon[];
+  checkpoint: CheckpointMon[];
+}
+
+export interface ConsumoRiserva {
+  id: number;
+  tipo: string;
+  importo: number;
+  data: string;
+  nota: string | null;
+}
+
+export interface BaselineRiga {
+  id: number;
+  nome: string;
+  tipo: string;
+  creataIl: string;
+  bloccata: boolean;
+  bacTotale: number | null;
+}
+
+export interface ChangeRequestRiga {
+  id: number;
+  richiestaIl: string;
+  motivo: string;
+  deltaCosto: number | null;
+  deltaDurata: number | null;
+  approvataIl: string | null;
+  approvataDa: string | null;
+}
+
+export interface Governance {
+  budgetTotale: number;
+  wbsConBudget: number;
+  contingencyPct: number;
+  contingencyStanziata: number;
+  contingencyUsata: number;
+  riservaGestionePct: number;
+  riservaGestioneUsata: number;
+  consumi: ConsumoRiserva[];
+  baseline: BaselineRiga[];
+  changeRequest: ChangeRequestRiga[];
+}
+
+export interface RisorsaRiga {
+  id: number;
+  nome: string;
+  tipo: string | null;
+  tariffa: number | null;
+  tariffaStraordinario: number | null;
+  costoPerUso: number | null;
+  costoOrarioReale: number | null;
+  fonte: string;
+  task: number;
+  unita: number;
+}
+
+export interface AssegnazioneRiga {
+  id: number;
+  taskUid: string;
+  taskNome: string;
+  risorsaId: number;
+  risorsaNome: string;
+  unita: number;
 }

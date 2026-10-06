@@ -19,3 +19,4 @@ export * from "./montecarlo";
 export * from "./flow";
 export * from "./program";
 export * from "./quality";
+export * from "./monitoring";

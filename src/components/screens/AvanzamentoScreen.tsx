@@ -16,6 +16,8 @@ interface Bozza {
   pct: string;
   inizio: string;
   fine: string;
+  /** AC cumulato a oggi (€), stringa vuota se non inserito. */
+  ac: string;
 }
 
 const ETICHETTE_STATO: Record<string, string> = {
@@ -37,6 +39,7 @@ export function AvanzamentoScreen() {
       pct: String(Math.round(r.pct)),
       inizio: r.inizioEffettivo ?? "",
       fine: r.fineEffettiva ?? "",
+      ac: r.ac ? String(r.ac) : "",
     };
 
   function modifica(uid: string, r: RigaAvanzamento, campo: keyof Bozza, v: string) {
@@ -51,6 +54,7 @@ export function AvanzamentoScreen() {
         pct: Number(b.pct),
         inizio: b.inizio || null,
         fine: b.fine || null,
+        ac: b.ac === "" ? null : Number(b.ac),
       }),
       `Inviato per approvazione: ${r.uid}`,
     );
@@ -81,6 +85,7 @@ export function AvanzamentoScreen() {
               <th className={TESTA_TABELLA}>Nuovo %</th>
               <th className={TESTA_TABELLA}>Inizio effettivo</th>
               <th className={TESTA_TABELLA}>Fine effettiva</th>
+              <th className={`${TESTA_TABELLA} text-right`}>AC cumulato (€)</th>
               <th className={TESTA_TABELLA}>Stato ultima proposta</th>
               <th className={TESTA_TABELLA} />
             </tr>
@@ -109,6 +114,18 @@ export function AvanzamentoScreen() {
                   </td>
                   <td className={CELLA}>
                     <input type="date" className={CAMPO} value={b.fine} onChange={(e) => modifica(r.uid, r, "fine", e.target.value)} />
+                  </td>
+                  <td className={CELLA}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`${CAMPO} w-32 text-right`}
+                      placeholder={r.ac ? String(r.ac) : "0,00"}
+                      value={b.ac}
+                      aria-label={`AC cumulato di ${r.uid}`}
+                      onChange={(e) => modifica(r.uid, r, "ac", e.target.value)}
+                    />
                   </td>
                   <td className={`${CELLA} text-xs`}>
                     <span className="text-muted-foreground">

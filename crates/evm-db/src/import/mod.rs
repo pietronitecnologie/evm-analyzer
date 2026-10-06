@@ -91,6 +91,7 @@ pub struct SourceInfo<'a> {
 }
 
 /// Esito di un import: id del progetto creato e avvisi emersi.
+#[derive(Debug)]
 pub struct ImportOutcome {
     pub project_id: i64,
     pub warnings: Vec<String>,
