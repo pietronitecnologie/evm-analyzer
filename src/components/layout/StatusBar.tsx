@@ -12,10 +12,10 @@ export function StatusBar() {
   const openScreen = useLayoutStore((s) => s.openScreen);
 
   return (
-    <div className="flex h-6 items-center gap-4 border-t border-border bg-card px-3 text-xs text-muted-foreground">
+    <div className="flex h-6 items-center gap-4 border-t border-black/40 bg-zona-stato px-3 text-xs text-zona-stato-foreground">
       <span>
         Copertura{" "}
-        <strong className="text-foreground">
+        <strong className="text-white">
           {ctx.coveragePct === null
             ? NON_CALCOLABILE
             : formatPercentIt(ctx.coveragePct, 0)}
@@ -26,7 +26,7 @@ export function StatusBar() {
         <RefreshCw className="size-3" />
         Piano:{" "}
         {ctx.planSynced ? (
-          <span className="flex items-center gap-1 text-foreground">
+          <span className="flex items-center gap-1 text-white">
             sincronizzato <Check className="size-3 text-semaforo-verde" />
             {ctx.planSyncHash && `(hash ${ctx.planSyncHash})`}
           </span>
@@ -37,7 +37,7 @@ export function StatusBar() {
       <button
         type="button"
         onClick={() => openScreen("qualita-dati", "Qualità dati")}
-        className="flex items-center gap-1 hover:text-foreground"
+        className="flex items-center gap-1 rounded px-1 hover:bg-white/10 hover:text-white"
       >
         <AlertTriangle className="size-3" />
         {ctx.anomalyCount} anomalie

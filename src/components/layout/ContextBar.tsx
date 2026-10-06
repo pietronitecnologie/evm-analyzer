@@ -43,7 +43,7 @@ export function ContextBar() {
   const setCommandPaletteOpen = useLayoutStore((s) => s.setCommandPaletteOpen);
 
   return (
-    <div className="flex h-10 flex-wrap items-center gap-1 border-b border-border bg-card px-2">
+    <div className="flex h-10 flex-wrap items-center gap-1 border-b border-border-strong bg-zona-contesto px-2">
       <ContextSelector label="Progetto" value={ctx.projectName} />
       <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-accent">
         <span className="text-muted-foreground">Status date</span>

@@ -12,6 +12,7 @@ export type BaseEvMode = "bac_con_contingency" | "bac_senza_contingency";
 
 interface ProjectContextState {
   projectName: string;
+  percorso: string | null;
   statusDate: string;
   statusDateState: StatoStatusDate;
   perimetro: string;
@@ -25,10 +26,17 @@ interface ProjectContextState {
   planSyncHash: string | null;
   anomalyCount: number;
   saved: boolean;
+  impostaProgetto: (progetto: {
+    projectName: string;
+    percorso: string;
+    statusDate: string;
+  }) => void;
 }
 
-export const useProjectContextStore = create<ProjectContextState>(() => ({
+export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   projectName: "Nessun progetto aperto",
+  percorso: null,
+  impostaProgetto: (progetto) => set(progetto),
   statusDate: "—",
   statusDateState: "bozza",
   perimetro: "Tutto il progetto",

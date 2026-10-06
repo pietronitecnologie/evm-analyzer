@@ -133,3 +133,86 @@ Aggiornato a ogni fase.
     segnaposto statici (`project-context-store.ts`): l'aggancio al
     database SQLite reale del progetto arriva con le Fasi 2-4, quando
     esistono import del piano e motore EVM da cui leggerli.
+
+## Creazione, apertura e importazione del piano (Fase 2, avvio)
+
+20. **Creazione e apertura di un progetto**: un file `.evmproj` per
+    progetto. "Nuovo progetto…" crea un file vuoto con migrazioni, parametri
+    e calendario standard; non sovrascrive mai un file esistente. "Apri
+    progetto…" migra il file se serve. Il nome del progetto è il nome del file.
+
+21. **Importazione del piano** (menu File → Importa piano, anche dalla home):
+    crea un nuovo `.evmproj` dal file scelto, formato dall'estensione
+    `.xml` (MS Project MSPDI), `.csv`, `.xlsx`/`.xlsm`/`.xls`. Se l'import
+    fallisce il file di destinazione non viene lasciato a metà.
+
+22. **Ore per giorno = 8**: MS Project esporta le durate in ore; per
+    convertirle in giorni si usa 8 h/giorno (calendario standard). I
+    calendari di MS Project non sono importati: restano quelli standard.
+
+23. **Profilo di importazione CSV/Excel**: la riga di intestazione è
+    riconosciuta per nome di colonna, in italiano o in inglese (es. `UID`/`ID`,
+    `Nome`/`Name`, `WBS`, `Inizio`/`Start`, `Fine`/`Finish`, `Durata`/`Duration`,
+    `Predecessori`/`Predecessors`, `Nomi risorse`/`Resource Names`,
+    `% completamento`/`% Complete`). Servono almeno Nome e UID; le altre colonne
+    sono facoltative. Il separatore del CSV è `;` o `,` (rilevato). Le
+    risorse nei CSV/Excel hanno come UID il proprio nome; `Nome[50%]` indica
+    le unità. Il profilo è provvisorio: va confermato con un export reale.
+
+24. **Mappatura nel database**: task, dipendenze, risorse, assegnazioni e WBS
+    (gerarchia dal codice: `1.2` è figlio di `1`) entrano nelle tabelle di
+    sez. 4. L'avanzamento presente nel piano genera uno snapshot
+    `import_piano` datato al giorno dell'import (la status date reale del piano
+    non è ancora letta). Il piano genera anche una baseline `Startup` non
+    bloccata con i costi dei task. Work e costo di MS Project non hanno una
+    colonna dedicata nello schema dei task: il lavoro è in `baseline_task.work`.
+
+25. **Avvisi non bloccanti**: predecessori inesistenti, UID duplicati e righe
+    senza UID sono scartati e registrati in `import_log.warnings_json`; il
+    messaggio di esito ne mostra il primo.
+
+26. **Limite di verifica**: il parser XML è coperto da test su un export di
+    esempio costruito a mano, non su un export reale di MS Project; il
+    percorso Excel è verificato solo fino al riconoscimento delle colonne (il
+    workbook di prova in `fixtures/` non è un export di piano). Da verificare
+    con un export reale prima di considerare l'import chiuso.
+
+27. **Creazione di task da interfaccia** (menu Progetto → Nuovo task…, e
+    schermata "Task e risorse"): nome obbligatorio; WBS, inizio, fine, durata
+    e milestone facoltativi. L'UID è progressivo (massimo esistente + 1). Il
+    codice WBS deve esistere nel progetto. Ogni creazione va in `audit_log`
+    con utente `locale`, in attesa dell'identità utente della fase di governo.
+    Il task non è collegato a predecessori né assegnato a risorse: queste
+    operazioni arrivano con la schermata Gantt/risorse.
+
+## Schermate di lavoro e calendari (Fase 4-bis, 4-ter e 5, parziale)
+
+28. **Schermate implementate**: Dashboard (indicatori di base, anomalie),
+    WBS (struttura e nuovi nodi), Gantt in sola lettura, Avanzamento,
+    Approvazioni, Perimetri e utenti, Buffer e riserve, Calendari di lavoro.
+    Non ancora implementati: indici EVM (CPI/SPI, semafori, Earned Schedule)
+    della Fase 2; Baseline/Forecast/Filoni/Agile/Qualità dati/Report della
+    Fase 5; import Excel completo, wizard e feed della Fase 3 e 4-bis.
+
+29. **Flusso dell'avanzamento** (fase 4-bis): ogni modifica crea una voce
+    `progress_entry` in stato `bozza`; "Invia per approvazione" la porta a
+    `inviato`; l'approvazione la applica allo snapshot del giorno e la marca
+    `applicato`; il rifiuto richiede un motivo e la marca `respinto`. Lo
+    snapshot manuale del giorno copia lo stato precedente, così l'avanzamento
+    degli altri task non va perso. Il chi-ha-approvato non è ancora tracciato:
+    arriverà con l'identità utente della fase 4-ter.
+
+30. **Perimetri**: un perimetro è un sottoalbero WBS; i task di lavoro del
+    sottoalbero sono fissati alla creazione (non ricalcolati dopo). I
+    riepiloghi non entrano nel perimetro.
+
+31. **Calendari di lavoro**: uno schema è una maschera dei giorni lavorativi e
+    un elenco di festivi (tabella `calendar_exception` con `is_working = 0`).
+    Lo schema predefinito del progetto fissa le durate. Creando un task con
+    inizio e durata la fine si calcola sui giorni lavorativi; con inizio e fine
+    la durata è il numero di giorni lavorativi tra le due date. Durate frazionarie
+    si arrotondano per eccesso sul calcolo della fine. "Ricalcola durate dei task"
+    applica lo schema ai task con date, anche importati da MS Project; le baseline
+    non cambiano. Le durate importate da MS Project restano in ore/8 finché non
+    si ricalcolano. I giorni lavorativi eccezionali (es. un sabato lavorato) sono
+    supportati dalle regole ma non ancora dalla UI.

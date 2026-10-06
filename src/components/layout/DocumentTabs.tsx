@@ -70,10 +70,10 @@ function SortableTab({
       role="tab"
       aria-selected={active}
       className={cn(
-        "group flex max-w-48 shrink-0 items-center gap-1.5 border-r border-border px-3 py-1.5 text-sm",
+        "group flex max-w-48 shrink-0 cursor-default items-center gap-1.5 border-r border-border-strong border-t-2 px-3 py-1.5 text-sm",
         active
-          ? "bg-background text-foreground"
-          : "bg-card text-muted-foreground hover:bg-accent",
+          ? "border-t-zona-accento bg-zona-area font-medium text-foreground"
+          : "border-t-transparent bg-zona-schede text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground",
       )}
     >
       <span className="truncate">{tab.title}</span>
@@ -127,7 +127,7 @@ export function DocumentTabs() {
     <div
       role="tablist"
       aria-label="Schede aperte"
-      className="flex h-9 items-stretch overflow-x-auto border-b border-border bg-card"
+      className="flex h-9 items-stretch overflow-x-auto border-b border-border-strong bg-zona-schede"
     >
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <SortableContext
@@ -144,7 +144,7 @@ export function DocumentTabs() {
         aria-label="Apri una nuova scheda (Dashboard)"
         title="Nuova scheda"
         onClick={() => openScreen("dashboard", NAV_ITEMS_BY_ID.dashboard.label)}
-        className="flex w-8 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent"
+        className="flex w-8 shrink-0 items-center justify-center text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
       >
         <Plus className="size-4" />
       </button>

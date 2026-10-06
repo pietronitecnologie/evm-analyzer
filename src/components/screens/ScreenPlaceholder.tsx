@@ -9,6 +9,15 @@
 import { FolderOpen, Import, PackagePlus, Sheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { TaskScreen } from "@/components/screens/TaskScreen";
+import { AvanzamentoScreen } from "@/components/screens/AvanzamentoScreen";
+import { ApprovazioniScreen } from "@/components/screens/ApprovazioniScreen";
+import { DashboardScreen } from "@/components/screens/DashboardScreen";
+import { GanttScreen } from "@/components/screens/GanttScreen";
+import { PerimetriUtentiScreen } from "@/components/screens/PerimetriUtentiScreen";
+import { RiserveScreen } from "@/components/screens/RiserveScreen";
+import { WbsScreen } from "@/components/screens/WbsScreen";
+import { CalendariScreen } from "@/components/screens/CalendariScreen";
 import { NAV_ITEMS_BY_ID } from "@/lib/navigation";
 import { runCommand } from "@/lib/commands";
 
@@ -64,6 +73,15 @@ function HomeScreen() {
 
 export function ScreenPlaceholder({ screenId, title }: { screenId: string; title: string }) {
   if (screenId === "home") return <HomeScreen />;
+  if (screenId === "task-risorse") return <TaskScreen />;
+  if (screenId === "dashboard") return <DashboardScreen />;
+  if (screenId === "wbs") return <WbsScreen />;
+  if (screenId === "gantt") return <GanttScreen />;
+  if (screenId === "avanzamento") return <AvanzamentoScreen />;
+  if (screenId === "approvazioni") return <ApprovazioniScreen />;
+  if (screenId === "perimetri-utenti") return <PerimetriUtentiScreen />;
+  if (screenId === "buffer-riserve") return <RiserveScreen />;
+  if (screenId === "calendari") return <CalendariScreen />;
 
   const Icon = NAV_ITEMS_BY_ID[screenId]?.icon;
 

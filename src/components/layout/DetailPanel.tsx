@@ -17,26 +17,26 @@ export function DetailPanel() {
   const toggleDetailPanel = useLayoutStore((s) => s.toggleDetailPanel);
 
   return (
-    <div className="flex h-full flex-col border-l border-border bg-card">
-      <div className="flex h-9 items-center justify-between border-b border-border px-2">
+    <div className="flex h-full flex-col border-l border-border-strong bg-zona-dettaglio">
+      <div className="flex h-9 items-center justify-between border-b border-border-strong bg-zona-menu px-2 text-zona-menu-foreground">
         <span className="text-sm font-medium">Dettaglio</span>
         <button
           type="button"
           aria-label="Chiudi pannello dettaglio (Ctrl+I)"
           title="Chiudi pannello dettaglio (Ctrl+I)"
           onClick={toggleDetailPanel}
-          className="rounded p-1 text-muted-foreground hover:bg-accent"
+          className="rounded p-1 hover:bg-white/10"
         >
           <PanelRightClose className="size-4" />
         </button>
       </div>
       <Tabs.Root defaultValue="dettaglio" className="flex flex-1 flex-col">
-        <Tabs.List className="flex border-b border-border">
+        <Tabs.List className="flex border-b border-border-strong bg-zona-schede">
           {TABS.map((tab) => (
             <Tabs.Trigger
               key={tab.id}
               value={tab.id}
-              className="flex-1 border-b-2 border-transparent px-2 py-1.5 text-xs font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
+              className="flex-1 border-b-2 border-transparent px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-zona-accento data-[state=active]:bg-zona-dettaglio data-[state=active]:text-foreground"
             >
               {tab.label}
             </Tabs.Trigger>

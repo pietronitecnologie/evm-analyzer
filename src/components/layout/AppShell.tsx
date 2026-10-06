@@ -66,7 +66,7 @@ export function AppShell() {
                 <Sidebar />
                 <div className="flex flex-1 flex-col overflow-hidden">
                   <DocumentTabs />
-                  <div className="flex-1 overflow-auto" role="tabpanel">
+                  <div className="flex-1 overflow-auto bg-zona-area" role="tabpanel">
                     {activeTab ? (
                       <ScreenPlaceholder
                         screenId={activeTab.screenId}

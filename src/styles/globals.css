@@ -31,8 +31,21 @@
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --border: 220 13% 91%;
+  --border-strong: 220 16% 76%;
   --input: 220 13% 91%;
   --ring: 221 83% 53%;
+
+  /* Zone del guscio: ogni area ha una tinta propria per separarla dalle altre */
+  --zona-menu: 222 47% 19%;               /* barra dei menu: blu notte */
+  --zona-menu-foreground: 210 40% 96%;
+  --zona-contesto: 214 60% 96%;           /* barra di contesto: azzurro chiarissimo */
+  --zona-navigazione: 220 24% 93%;        /* barra laterale: ardesia tenue */
+  --zona-schede: 220 16% 88%;             /* striscia schede: grigio, la scheda attiva "emerge" */
+  --zona-area: 210 25% 99%;               /* area di lavoro */
+  --zona-dettaglio: 40 30% 96%;           /* pannello dettaglio: sabbia tenue */
+  --zona-stato: 222 40% 27%;              /* barra di stato: blu scuro */
+  --zona-stato-foreground: 210 40% 92%;
+  --zona-accento: 221 83% 53%;            /* voce attiva di navigazione */
 
   /* Semaforo CPI/SPI (soglie configurabili in project_params) */
   --semaforo-verde: 142 71% 40%;
@@ -71,8 +84,20 @@
   --destructive: 0 63% 60%;
   --destructive-foreground: 0 0% 100%;
   --border: 222 25% 22%;
+  --border-strong: 222 22% 34%;
   --input: 222 25% 22%;
   --ring: 217 91% 65%;
+
+  --zona-menu: 222 55% 6%;
+  --zona-menu-foreground: 210 40% 96%;
+  --zona-contesto: 222 40% 13%;
+  --zona-navigazione: 222 38% 11%;
+  --zona-schede: 222 45% 7%;
+  --zona-area: 222 47% 9%;
+  --zona-dettaglio: 222 36% 12%;
+  --zona-stato: 222 55% 6%;
+  --zona-stato-foreground: 215 20% 75%;
+  --zona-accento: 217 91% 65%;
 
   --semaforo-verde: 142 60% 45%;
   --semaforo-verde-fg: 0 0% 100%;
@@ -111,6 +136,18 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-border-strong: hsl(var(--border-strong));
+
+  --color-zona-menu: hsl(var(--zona-menu));
+  --color-zona-menu-foreground: hsl(var(--zona-menu-foreground));
+  --color-zona-contesto: hsl(var(--zona-contesto));
+  --color-zona-navigazione: hsl(var(--zona-navigazione));
+  --color-zona-schede: hsl(var(--zona-schede));
+  --color-zona-area: hsl(var(--zona-area));
+  --color-zona-dettaglio: hsl(var(--zona-dettaglio));
+  --color-zona-stato: hsl(var(--zona-stato));
+  --color-zona-stato-foreground: hsl(var(--zona-stato-foreground));
+  --color-zona-accento: hsl(var(--zona-accento));
 
   --color-semaforo-verde: hsl(var(--semaforo-verde));
   --color-semaforo-verde-fg: hsl(var(--semaforo-verde-fg));

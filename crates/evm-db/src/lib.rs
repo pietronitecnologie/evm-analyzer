@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
+pub mod calendario;
+pub mod import;
 pub mod migrations;
+pub mod progetto;
+pub mod schermate;
+pub mod task;
+pub mod tempo;
 
 use std::path::Path;
 

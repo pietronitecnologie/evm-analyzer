@@ -20,7 +20,7 @@ export function Sidebar() {
     <aside
       aria-label="Barra laterale di navigazione"
       className={cn(
-        "flex flex-col border-r border-border bg-card transition-[width] duration-150",
+        "flex flex-col border-r border-border-strong bg-zona-navigazione transition-[width] duration-150",
         collapsed ? "w-12" : "w-56",
       )}
     >
@@ -28,7 +28,7 @@ export function Sidebar() {
         {NAV_GROUPS.map((group) => (
           <div key={group.id} className="mb-3">
             {!collapsed && (
-              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mt-1 border-t border-border-strong px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-zona-accento first:mt-0 first:border-t-0 first:pt-0">
                 {group.label}
               </p>
             )}
@@ -43,9 +43,10 @@ export function Sidebar() {
                       title={collapsed ? item.label : undefined}
                       onClick={() => openScreen(item.id, item.label)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-card-foreground hover:bg-accent",
+                        "flex w-full items-center gap-2.5 border-l-2 border-transparent px-3 py-1.5 text-sm text-foreground hover:bg-zona-accento/10",
                         collapsed && "justify-center px-0",
-                        active && "bg-accent font-medium text-accent-foreground",
+                        active &&
+                          "border-zona-accento bg-zona-accento/15 font-medium text-zona-accento",
                       )}
                     >
                       <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -62,7 +63,7 @@ export function Sidebar() {
         type="button"
         onClick={toggleSidebar}
         aria-label={collapsed ? "Espandi barra laterale" : "Comprimi barra laterale"}
-        className="flex items-center justify-center border-t border-border py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="flex items-center justify-center border-t border-border-strong py-2 text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
       >
         {collapsed ? (
           <ChevronsRight className="size-4" />

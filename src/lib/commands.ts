@@ -5,6 +5,7 @@
 // sia la palette comandi Ctrl+K (cmdk), così ogni azione è raggiungibile
 // da entrambi i percorsi senza duplicare la logica.
 
+import { apriProgetto, importaPiano, nuovoProgetto } from "@/lib/progetto";
 import { NAV_GROUPS } from "@/lib/navigation";
 import { notImplemented } from "@/stores/toast-store";
 import { applyThemeToDocument, useThemeStore } from "@/stores/theme-store";
@@ -93,11 +94,32 @@ function placeholder(id: string, label: string, group: string): Command {
   return { id, label, group, run: () => notImplemented(label) };
 }
 
+// Creazione, apertura e importazione del piano: funzionanti nell'app desktop.
+const progettoCommands: Command[] = [
+  {
+    id: "progetto.calendari",
+    label: "Calendari di lavoro…",
+    group: "Progetto",
+    run: () => useLayoutStore.getState().openScreen("calendari", "Calendari di lavoro"),
+  },
+  {
+    id: "progetto.nuovo-task",
+    label: "Nuovo task…",
+    group: "Progetto",
+    run: () => useLayoutStore.getState().openScreen("task-risorse", "Task e risorse"),
+  },
+  { id: "file.nuovo", label: "Nuovo progetto…", group: "File", run: () => void nuovoProgetto() },
+  { id: "file.apri", label: "Apri progetto…", group: "File", run: () => void apriProgetto() },
+  {
+    id: "file.importa-piano",
+    label: "Importa piano da export MS Project…",
+    group: "File",
+    run: () => void importaPiano(),
+  },
+];
+
 const placeholderCommands: Command[] = [
-  placeholder("file.nuovo", "Nuovo progetto…", "File"),
-  placeholder("file.apri", "Apri progetto…", "File"),
   placeholder("file.progetti-recenti", "Progetti recenti", "File"),
-  placeholder("file.importa-piano", "Importa piano da export MS Project…", "File"),
   placeholder("file.importa-workbook", "Importa workbook Excel…", "File"),
   placeholder("file.importa-pacchetto", "Importa pacchetto…", "File"),
   placeholder("file.esporta-workbook", "Esporta workbook Excel…", "File"),
@@ -146,6 +168,7 @@ const placeholderCommands: Command[] = [
 export const COMMANDS: Command[] = [
   ...screenCommands,
   ...viewCommands,
+  ...progettoCommands,
   ...placeholderCommands,
 ];
 

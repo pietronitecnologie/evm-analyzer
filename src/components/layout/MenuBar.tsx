@@ -12,14 +12,14 @@ export function MenuBar() {
   return (
     <nav
       aria-label="Barra dei menu"
-      className="flex h-8 items-center gap-0.5 border-b border-border bg-card px-2"
+      className="flex h-8 items-center gap-0.5 border-b border-black/40 bg-zona-menu px-2 text-zona-menu-foreground"
     >
       {MENUS.map((menu) => (
         <DropdownMenu.Root key={menu.id}>
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              className="rounded px-2 py-1 text-sm text-card-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent"
+              className="rounded px-2 py-1 text-sm outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-zona-accento data-[state=open]:text-white"
             >
               {menu.label}
             </button>
