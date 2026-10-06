@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
-// Avanzamento (fase 4-bis): ogni modifica diventa una proposta (bozza) che si
-// invia per approvazione nella schermata Approvazioni. Il valore vigente
-// resta quello approvato finché la proposta non viene applicata.
+// Avanzamento (fase 4-bis): "Invia per approvazione" trasforma la modifica in
+// una proposta che compare subito nella schermata Approvazioni. Il valore
+// vigente resta quello approvato finché la proposta non viene applicata.
 
 import * as React from "react";
-import { Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { type RigaAvanzamento, chiama } from "@/lib/api";
-import { useToastStore } from "@/stores/toast-store";
 import { Vuoto } from "./comuni";
-import { CAMPO, CELLA, TESTA_TABELLA, avviso, esegui, usePercorso, useDati } from "@/lib/schermate";
+import { CAMPO, CELLA, TESTA_TABELLA, esegui, usePercorso, useDati } from "@/lib/schermate";
 
 interface Bozza {
   pct: string;
@@ -21,7 +19,6 @@ interface Bozza {
 }
 
 const ETICHETTE_STATO: Record<string, string> = {
-  bozza: "in bozza",
   inviato: "in approvazione",
   applicato: "approvato",
   respinto: "respinto",
@@ -55,7 +52,7 @@ export function AvanzamentoScreen() {
         inizio: b.inizio || null,
         fine: b.fine || null,
       }),
-      `Proposta registrata per ${r.uid}`,
+      `Inviato per approvazione: ${r.uid}`,
     );
     if (ok) {
       setBozze((prev) => {
@@ -67,26 +64,12 @@ export function AvanzamentoScreen() {
     }
   }
 
-  async function invia() {
-    try {
-      const n = await chiama<number>(percorso!, "invia_avanzamento");
-      useToastStore.getState().push({ title: `${n} proposte inviate per approvazione` });
-      await ricarica();
-    } catch (e) {
-      avviso("Invio non riuscito", e);
-    }
-  }
-
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border-strong bg-zona-contesto px-4 py-2">
         <span className="text-sm text-muted-foreground">
-          Le modifiche diventano proposte: vanno inviate e approvate per entrare nel progetto.
+          Ogni proposta va in approvazione subito; il valore vigente cambia solo quando viene approvata.
         </span>
-        <Button variant="outline" onClick={invia}>
-          <Send className="size-4" />
-          Invia per approvazione
-        </Button>
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse text-sm">
@@ -127,12 +110,17 @@ export function AvanzamentoScreen() {
                   <td className={CELLA}>
                     <input type="date" className={CAMPO} value={b.fine} onChange={(e) => modifica(r.uid, r, "fine", e.target.value)} />
                   </td>
-                  <td className={`${CELLA} text-xs text-muted-foreground`}>
-                    {r.statoUltimaVoce ? ETICHETTE_STATO[r.statoUltimaVoce] ?? r.statoUltimaVoce : "—"}
+                  <td className={`${CELLA} text-xs`}>
+                    <span className="text-muted-foreground">
+                      {r.statoUltimaVoce ? ETICHETTE_STATO[r.statoUltimaVoce] ?? r.statoUltimaVoce : "—"}
+                    </span>
+                    {r.statoUltimaVoce === "respinto" && r.notaUltimaVoce && (
+                      <p className="mt-0.5 text-semaforo-rosso">Motivo: {r.notaUltimaVoce}</p>
+                    )}
                   </td>
                   <td className={CELLA}>
                     <Button size="sm" variant="ghost" disabled={!modificata} onClick={() => registra(r)}>
-                      Registra
+                      Invia per approvazione
                     </Button>
                   </td>
                 </tr>

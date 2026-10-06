@@ -1,0 +1,17 @@
+{
+  "caso_a_bac_totale": 16024.8,
+  "caso_a_bac_misura": 14568,
+  "caso_a_sigma_costo": 1160.8548574218914,
+  "evm_cpi": 0.8333333333333334,
+  "evm_spi": 0.875,
+  "evm_eac": 120000,
+  "evm_eac_lineare": 120000,
+  "evm_tcpi": 1.1206896551724137,
+  "es_ev40": 4.333333333333333,
+  "es_ieac_ev40": 11.53846153846154,
+  "mc_p50": 11,
+  "mc_p80": 12,
+  "mc_p90": 13,
+  "mc_media": 11.4112,
+  "rng_primo": 0.601104
+}

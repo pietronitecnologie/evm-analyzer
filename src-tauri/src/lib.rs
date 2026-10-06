@@ -5,6 +5,8 @@ use std::path::Path;
 
 use evm_db::progetto::{self, ProjectInfo};
 use evm_db::calendario;
+use evm_db::export::{self, CacheExport, OpzioniExport};
+use evm_db::workbook::{self, WorkbookImportato};
 use evm_db::schermate;
 use evm_db::task::{self, NuovoTask, TaskRiga};
 use serde::{Deserialize, Serialize};
@@ -168,12 +170,6 @@ fn registra_avanzamento(
 }
 
 #[tauri::command]
-fn invia_avanzamento(percorso: String) -> Result<usize, String> {
-    let (conn, id) = apri_con_id(&percorso)?;
-    schermate::invia_avanzamento(&conn, id)
-}
-
-#[tauri::command]
 fn approvazioni_elenco(percorso: String) -> Result<Vec<schermate::RigaApprovazione>, String> {
     let (conn, id) = apri_con_id(&percorso)?;
     schermate::approvazioni(&conn, id)
@@ -290,6 +286,89 @@ fn ricalcola_durate(percorso: String) -> Result<usize, String> {
     calendario::ricalcola_durate(&mut conn, id)
 }
 
+/// Esito di importazione del workbook: progetto aperto più il contenuto letto (avvisi, cache, input).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EsitoWorkbook {
+    progetto: ProgettoAperto,
+    dati: WorkbookImportato,
+}
+
+/// Anteprima del workbook senza scrivere nel database (specifica fase 3, §0).
+#[tauri::command]
+fn anteprima_workbook(percorso: String) -> Result<WorkbookImportato, String> {
+    workbook::anteprima(Path::new(&percorso))
+}
+
+/// Importa il workbook in un nuovo progetto `.evmproj`.
+#[tauri::command]
+fn importa_workbook(origine: String, destinazione: String, nome: String) -> Result<EsitoWorkbook, String> {
+    let (esito, dati) = workbook::importa_workbook(Path::new(&origine), Path::new(&destinazione), &nome)?;
+    let info = progetto::apri_progetto(Path::new(&destinazione))?;
+    let _ = esito;
+    Ok(EsitoWorkbook { progetto: ProgettoAperto::da_info(Path::new(&destinazione), info), dati })
+}
+
+/// Aggiorna gli input di un progetto esistente con il workbook (idempotente).
+#[tauri::command]
+fn aggiorna_workbook(origine: String, progetto: String) -> Result<EsitoWorkbook, String> {
+    let (_, dati) = workbook::aggiorna_progetto(Path::new(&origine), Path::new(&progetto))?;
+    let info = progetto::apri_progetto(Path::new(&progetto))?;
+    Ok(EsitoWorkbook { progetto: ProgettoAperto::da_info(Path::new(&progetto), info), dati })
+}
+
+/// Input del progetto aperto, per il calcolo della cache nel motore (frontend).
+#[tauri::command]
+fn input_workbook(percorso: String) -> Result<WorkbookImportato, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    workbook::input_progetto(&conn, id)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpzioniEsportazione {
+    #[serde(default = "vero")]
+    con_formule: bool,
+    /// Data di stato ISO: esporta solo i checkpoint fino a questa data.
+    data_di_stato: Option<String>,
+}
+
+fn vero() -> bool {
+    true
+}
+
+/// Scrive un file di testo (log degli avvisi in CSV). Non sovrascrive un file esistente.
+#[tauri::command]
+fn salva_testo(percorso: String, contenuto: String) -> Result<(), String> {
+    let path = Path::new(&percorso);
+    if path.exists() {
+        return Err(format!("il file {} esiste già", path.display()));
+    }
+    std::fs::write(path, contenuto).map_err(|e| e.to_string())
+}
+
+/// Esporta il progetto in un workbook nuovo, con formule e valori in cache dal motore.
+#[tauri::command]
+fn esporta_workbook(
+    percorso: String,
+    destinazione: String,
+    cache: CacheExport,
+    opzioni: OpzioniEsportazione,
+) -> Result<(), String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    let data_limite = match opzioni.data_di_stato.as_deref() {
+        Some(d) => Some(evm_db::tempo::giorno_da_iso(d).ok_or_else(|| format!("data di stato non valida: {d}"))?),
+        None => None,
+    };
+    export::esporta_workbook(
+        &conn,
+        id,
+        Path::new(&destinazione),
+        &cache,
+        OpzioniExport { con_formule: opzioni.con_formule, data_di_stato: data_limite },
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -307,7 +386,6 @@ pub fn run() {
             gantt_elenco,
             avanzamento_elenco,
             registra_avanzamento,
-            invia_avanzamento,
             approvazioni_elenco,
             approva_voce,
             respingi_voce,
@@ -322,7 +400,13 @@ pub fn run() {
             calendari_elenco,
             crea_calendario,
             imposta_calendario_predefinito,
-            ricalcola_durate
+            ricalcola_durate,
+            anteprima_workbook,
+            importa_workbook,
+            aggiorna_workbook,
+            input_workbook,
+            esporta_workbook,
+            salva_testo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

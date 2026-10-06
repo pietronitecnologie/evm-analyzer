@@ -14,11 +14,18 @@ struct Migration {
     sql: &'static str,
 }
 
-const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "0001_schema_iniziale",
-    sql: include_str!("../migrations/0001_schema_iniziale.sql"),
-}];
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "0001_schema_iniziale",
+        sql: include_str!("../migrations/0001_schema_iniziale.sql"),
+    },
+    Migration {
+        version: 2,
+        name: "0002_workbook",
+        sql: include_str!("../migrations/0002_workbook.sql"),
+    },
+];
 
 /// Versione di schema più recente conosciuta da questo binario.
 pub fn latest_version() -> i64 {

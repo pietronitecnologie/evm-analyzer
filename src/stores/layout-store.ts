@@ -23,6 +23,7 @@ interface LayoutState {
 
   openScreen: (screenId: string, title: string) => void;
   closeTab: (id: string) => void;
+  closeAllTabs: () => void;
   setActiveTab: (id: string) => void;
   reorderTabs: (activeId: string, overId: string) => void;
 }
@@ -67,6 +68,8 @@ export const useLayoutStore = create<LayoutState>()(
             : get().activeTabId,
         });
       },
+
+      closeAllTabs: () => set({ tabs: [], activeTabId: null }),
 
       setActiveTab: (id) => set({ activeTabId: id }),
 

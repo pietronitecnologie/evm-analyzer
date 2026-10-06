@@ -12,14 +12,26 @@ export default tseslint.config(
     ignores: [
       "dist",
       "storybook-static",
+      "target",
       "src-tauri",
       "crates",
-      "packages",
       "fixtures",
     ],
   },
   js.configs.recommended,
   tseslint.configs.recommended,
+  {
+    // Motore EVM (specifica fase 2, regola 1): funzioni pure, nessun Date né Math.random.
+    files: ["packages/engine/src/**/*.ts"],
+    rules: {
+      "no-restricted-globals": ["error", { name: "Date", message: "Il motore non usa Date: date ISO e giorni via dates.ts" }],
+      "no-restricted-properties": [
+        "error",
+        { object: "Math", property: "random", message: "Il motore non usa Math.random: il seme è un parametro" },
+        { object: "Date", property: "now", message: "Il motore non legge l'orologio: la data è un parametro" },
+      ],
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {

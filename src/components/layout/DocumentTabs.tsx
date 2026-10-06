@@ -16,7 +16,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ExternalLink, Plus, X } from "lucide-react";
+import { ExternalLink, Plus, X, XCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS_BY_ID } from "@/lib/navigation";
@@ -110,6 +110,7 @@ export function DocumentTabs() {
   const activeTabId = useLayoutStore((s) => s.activeTabId);
   const reorderTabs = useLayoutStore((s) => s.reorderTabs);
   const openScreen = useLayoutStore((s) => s.openScreen);
+  const closeAllTabs = useLayoutStore((s) => s.closeAllTabs);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -148,6 +149,18 @@ export function DocumentTabs() {
       >
         <Plus className="size-4" />
       </button>
+      {tabs.length > 0 && (
+        <button
+          type="button"
+          aria-label="Chiudi tutte le schede"
+          title="Chiudi tutte le schede"
+          onClick={closeAllTabs}
+          className="ml-auto flex shrink-0 items-center gap-1 px-3 text-xs text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
+        >
+          <XCircle className="size-3.5" />
+          Chiudi tutte
+        </button>
+      )}
     </div>
   );
 }

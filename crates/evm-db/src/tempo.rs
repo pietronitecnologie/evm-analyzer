@@ -36,12 +36,18 @@ pub fn adesso_iso() -> String {
     )
 }
 
-/// Converte un serial Excel (giorni dal 1899-12-30, parte intera) in `YYYY-MM-DD`.
+/// Converte un serial Excel in `YYYY-MM-DD` (specifica fase 3, §2.4): sistema 1900
+/// con il bug del 29/02/1900. Per `serial ≥ 61` la base è 1899-12-30; per
+/// `serial < 61` è 1899-12-31. Il serial 60 (29/02/1900, inesistente) è `None`.
 pub fn seriale_excel_a_iso(serial: f64) -> Option<String> {
     if !serial.is_finite() || serial < 1.0 {
         return None;
     }
-    let giorni = serial.floor() as i64 - GIORNI_EXCEL_A_UNIX;
+    let s = serial.floor() as i64;
+    if s == 60 {
+        return None;
+    }
+    let giorni = if s >= 61 { s - GIORNI_EXCEL_A_UNIX } else { s - GIORNI_EXCEL_A_UNIX + 1 };
     let (y, m, d) = civile_da_giorni(giorni);
     Some(format!("{y:04}-{m:02}-{d:02}"))
 }
@@ -52,7 +58,7 @@ pub fn seriale_excel_a_iso(serial: f64) -> Option<String> {
 pub fn normalizza_data(grezzo: &str) -> Option<String> {
     let testo = grezzo.trim();
     let parte = testo
-        .split(|c: char| c == 'T' || c == ' ')
+        .split(['T', ' '])
         .next()
         .unwrap_or("");
 
@@ -67,7 +73,7 @@ pub fn normalizza_data(grezzo: &str) -> Option<String> {
             campi[2].parse::<u32>().ok()?,
         )
     } else {
-        let campi: Vec<&str> = parte.split(|c| c == '/' || c == '-' || c == '.').collect();
+        let campi: Vec<&str> = parte.split(['/', '-', '.']).collect();
         if campi.len() != 3 {
             return None;
         }
@@ -166,6 +172,15 @@ mod tests {
         // 1 gennaio 2026 è il serial 46023 in Excel.
         assert_eq!(seriale_excel_a_iso(46_023.0).as_deref(), Some("2026-01-01"));
         assert_eq!(seriale_excel_a_iso(0.0), None);
+    }
+
+    #[test]
+    fn serial_prima_del_bug_1900_e_il_29_febbraio_inesistente() {
+        // Casi della specifica fase 3, §4.
+        assert_eq!(seriale_excel_a_iso(1.0).as_deref(), Some("1900-01-01"));
+        assert_eq!(seriale_excel_a_iso(59.0).as_deref(), Some("1900-02-28"));
+        assert_eq!(seriale_excel_a_iso(60.0), None, "29/02/1900 non esiste");
+        assert_eq!(seriale_excel_a_iso(61.0).as_deref(), Some("1900-03-01"));
     }
 
     #[test]

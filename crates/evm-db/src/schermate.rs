@@ -8,7 +8,7 @@
 //! - l'avanzamento è una frazione 0..1 nel database e una percentuale 0..100
 //!   nelle strutture esposte alla UI;
 //! - lo stato di avanzamento "vigente" è quello dello snapshot più recente;
-//! - ogni modifica di avanzamento passa da `progress_entry` (bozza → inviato
+//! - ogni modifica di avanzamento passa da `progress_entry` (inviato
 //!   → applicato / respinto), così resta tracciata e approvabile.
 
 use std::collections::HashMap;
@@ -156,8 +156,8 @@ pub fn dashboard(conn: &Connection, pid: i64) -> Esito<Dashboard> {
                 messaggio: "date pianificate mancanti".into(),
             });
         }
-        let avanzato = vigente.get(&t.id).map_or(false, |v| v.0 > 0.0);
-        let senza_inizio = vigente.get(&t.id).map_or(true, |v| v.1.is_none());
+        let avanzato = vigente.get(&t.id).is_some_and(|v| v.0 > 0.0);
+        let senza_inizio = vigente.get(&t.id).is_none_or(|v| v.1.is_none());
         if avanzato && senza_inizio {
             anomalie.push(Anomalia {
                 uid: t.uid.clone(),
@@ -356,6 +356,8 @@ pub struct RigaAvanzamento {
     pub fine_effettiva: Option<String>,
     /// Stato dell'ultima voce di avanzamento per il task, se presente.
     pub stato_ultima_voce: Option<String>,
+    /// Motivo dell'ultimo rifiuto, se l'ultima voce è stata respinta.
+    pub nota_ultima_voce: Option<String>,
 }
 
 pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzamento>> {
@@ -363,7 +365,7 @@ pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzame
     let vigente = avanzamento_vigente(conn, pid)?;
     let mut stmt = conn
         .prepare(
-            "SELECT pe.state FROM progress_entry pe
+            "SELECT pe.state, pe.note FROM progress_entry pe
              WHERE pe.task_id = ?1 ORDER BY pe.id DESC LIMIT 1",
         )
         .map_err(errore)?;
@@ -373,10 +375,14 @@ pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzame
             .get(&t.id)
             .map(|v| (v.0, v.1.clone(), v.2.clone()))
             .unwrap_or((0.0, None, None));
-        let stato: Option<String> = stmt
-            .query_row([t.id], |r| r.get(0))
+        let ultima: Option<(String, Option<String>)> = stmt
+            .query_row([t.id], |r| Ok((r.get(0)?, r.get(1)?)))
             .optional()
             .map_err(errore)?;
+        let (stato, nota) = match ultima {
+            Some((s, n)) => (Some(s), n),
+            None => (None, None),
+        };
         righe.push(RigaAvanzamento {
             uid: t.uid.clone(),
             nome: t.nome.clone(),
@@ -384,6 +390,7 @@ pub fn avanzamento_elenco(conn: &Connection, pid: i64) -> Esito<Vec<RigaAvanzame
             inizio_effettivo: inizio,
             fine_effettiva: fine,
             stato_ultima_voce: stato,
+            nota_ultima_voce: nota,
         });
     }
     Ok(righe)
@@ -425,7 +432,8 @@ fn snapshot_manuale(conn: &Connection, pid: i64) -> Esito<i64> {
     Ok(nuovo)
 }
 
-/// Registra una proposta di avanzamento (bozza) per un task, identificato dall'UID.
+/// Registra una proposta di avanzamento per un task (UID) e la invia subito per
+/// approvazione: compare nella schermata Approvazioni.
 pub fn registra_avanzamento(
     conn: &mut Connection,
     pid: i64,
@@ -453,23 +461,12 @@ pub fn registra_avanzamento(
     tx.execute(
         "INSERT INTO progress_entry (snapshot_id, task_id, entered_at, pct_complete,
                                      actual_start, actual_finish, state)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'bozza')",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'inviato')",
         params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine],
     )
     .map_err(errore)?;
     tx.commit().map_err(errore)?;
     Ok(())
-}
-
-/// Invia per approvazione tutte le bozze del progetto. Restituisce quante ne ha inviate.
-pub fn invia_avanzamento(conn: &Connection, pid: i64) -> Esito<usize> {
-    conn.execute(
-        "UPDATE progress_entry SET state = 'inviato'
-         WHERE state = 'bozza' AND snapshot_id IN
-               (SELECT id FROM status_snapshot WHERE project_id = ?1)",
-        [pid],
-    )
-    .map_err(errore)
 }
 
 // ------------------------------------------------------------ Approvazioni
@@ -980,12 +977,24 @@ mod tests {
     }
 
     #[test]
-    fn avanzamento_passa_da_bozza_ad_approvato_e_applicato() {
+    fn un_rifiuto_riporta_il_motivo_a_chi_ha_proposto() {
+        let (_d, mut conn, pid) = progetto();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None).unwrap();
+        let voce = approvazioni(&conn, pid).unwrap()[0].id;
+        assert!(respingi(&conn, voce, "  ").is_err(), "il motivo è obbligatorio");
+        respingi(&conn, voce, "manca la data di fine").unwrap();
+        let riga = avanzamento_elenco(&conn, pid).unwrap().into_iter().find(|r| r.uid == "3").unwrap();
+        assert_eq!(riga.stato_ultima_voce.as_deref(), Some("respinto"));
+        assert_eq!(riga.nota_ultima_voce.as_deref(), Some("manca la data di fine"));
+        assert!(approvazioni(&conn, pid).unwrap().is_empty());
+    }
+
+    #[test]
+    fn avanzamento_passa_da_inviato_ad_applicato() {
         let (_d, mut conn, pid) = progetto();
         registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None).unwrap();
-        assert_eq!(invia_avanzamento(&conn, pid).unwrap(), 1);
         let coda = approvazioni(&conn, pid).unwrap();
-        assert_eq!(coda.len(), 1);
+        assert_eq!(coda.len(), 1, "una proposta registrata è subito in approvazione");
         approva(&mut conn, coda[0].id).unwrap();
         let riga = avanzamento_elenco(&conn, pid)
             .unwrap()

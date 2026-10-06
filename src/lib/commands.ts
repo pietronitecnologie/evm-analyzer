@@ -6,6 +6,7 @@
 // da entrambi i percorsi senza duplicare la logica.
 
 import { apriProgetto, importaPiano, nuovoProgetto } from "@/lib/progetto";
+import { esportaWorkbook, importaWorkbook } from "@/lib/workbook";
 import { NAV_GROUPS } from "@/lib/navigation";
 import { notImplemented } from "@/stores/toast-store";
 import { applyThemeToDocument, useThemeStore } from "@/stores/theme-store";
@@ -56,6 +57,12 @@ const viewCommands: Command[] = [
     run: () => useLayoutStore.getState().toggleDetailPanel(),
   },
   {
+    id: "vista.chiudi-schede",
+    label: "Chiudi tutte le schede",
+    group: "Vista",
+    run: () => useLayoutStore.getState().closeAllTabs(),
+  },
+  {
     id: "vista.schermo-intero",
     label: "Schermo intero",
     shortcut: "F11",
@@ -96,6 +103,8 @@ function placeholder(id: string, label: string, group: string): Command {
 
 // Creazione, apertura e importazione del piano: funzionanti nell'app desktop.
 const progettoCommands: Command[] = [
+  { id: "file.importa-workbook", label: "Importa workbook Excel…", group: "File", run: () => void importaWorkbook() },
+  { id: "file.esporta-workbook", label: "Esporta workbook Excel…", group: "File", run: () => void esportaWorkbook() },
   {
     id: "progetto.calendari",
     label: "Calendari di lavoro…",
@@ -120,9 +129,7 @@ const progettoCommands: Command[] = [
 
 const placeholderCommands: Command[] = [
   placeholder("file.progetti-recenti", "Progetti recenti", "File"),
-  placeholder("file.importa-workbook", "Importa workbook Excel…", "File"),
   placeholder("file.importa-pacchetto", "Importa pacchetto…", "File"),
-  placeholder("file.esporta-workbook", "Esporta workbook Excel…", "File"),
   placeholder("file.esporta-report", "Esporta report PDF…", "File"),
   placeholder("file.esporta-pacchetto-lavoro", "Esporta pacchetto di lavoro…", "File"),
   placeholder("file.esporta-pacchetto-avanzamento", "Esporta pacchetto di avanzamento…", "File"),

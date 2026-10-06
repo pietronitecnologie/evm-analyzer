@@ -66,6 +66,7 @@ export const MENUS: MenuDef[] = [
       sep,
       cmd("vista.salva-vista"),
       cmd("vista.ripristina-layout"),
+      cmd("vista.chiudi-schede"),
       sep,
       cmd("vista.schermo-intero"),
     ],

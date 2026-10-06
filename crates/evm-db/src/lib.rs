@@ -7,6 +7,8 @@ pub mod migrations;
 pub mod progetto;
 pub mod schermate;
 pub mod task;
+pub mod workbook;
+pub mod export;
 pub mod tempo;
 
 use std::path::Path;

@@ -51,6 +51,7 @@ export interface RigaAvanzamento {
   inizioEffettivo: string | null;
   fineEffettiva: string | null;
   statoUltimaVoce: string | null;
+  notaUltimaVoce: string | null;
 }
 
 export interface RigaApprovazione {

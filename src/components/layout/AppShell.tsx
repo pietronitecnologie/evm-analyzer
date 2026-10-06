@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { ContextBar } from "@/components/layout/ContextBar";
 import { DetailPanel } from "@/components/layout/DetailPanel";
 import { DocumentTabs } from "@/components/layout/DocumentTabs";
+import { EsitoImportazione } from "@/components/layout/EsitoImportazione";
 import { MenuBar } from "@/components/layout/MenuBar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { StatusBar } from "@/components/layout/StatusBar";
@@ -94,6 +95,7 @@ export function AppShell() {
         <StatusBar />
       </div>
       <CommandPalette />
+      <EsitoImportazione />
       <Toaster />
     </TooltipProvider>
   );

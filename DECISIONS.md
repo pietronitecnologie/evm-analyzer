@@ -216,3 +216,136 @@ Aggiornato a ogni fase.
     non cambiano. Le durate importate da MS Project restano in ore/8 finché non
     si ricalcolano. I giorni lavorativi eccezionali (es. un sabato lavorato) sono
     supportati dalle regole ma non ancora dalla UI.
+
+## Fase 2 — Motore EVM (`packages/engine`), secondo docs/specifiche/SPEC_FASE_2_MOTORE_EVM.md
+
+32. **Struttura e API.** I file seguono la sez. 0 della specifica (types, estimate,
+    evm, ev-methods, earned-schedule, buffers, agile, montecarlo, flow, program,
+    quality, index). Aggiunto `dates.ts` per la conversione ISO ↔ giorni (aritmetica
+    civile, senza `Date`). Alcune firme estendono la specifica: `agileMetrics(sprint,
+    params, backlogSp)` riceve il backlog, che nella specifica manca; `programRollup`
+    riceve `forecasts` opzionali per verificare i gate; `simulateThroughput` usa
+    settimane come periodo.
+
+33. **Soglia degli importi nulli (EURO_ZERO = 1e-9 €).** Importi sotto questa soglia
+    sono trattati come zero nel calcolo dei CPI/SPI. Senza soglia i numeri subnormali
+    producono indici senza significato (scoperto dalle proprietà di fast-check).
+
+34. **Tolleranza dell'identità EAC lineare = EAC base.** La tolleranza relativa
+    1e-9 è misurata sulla scala dei termini (AC, BAC): in virgola mobile la
+    cancellazione può lasciare residui proporzionali ai termini, non a `eac`.
+
+35. **Riserva di gestione.** `mgmtReserve = BAC × mgmtReservePct`, come nella colonna
+    B32 del workbook (fixture: 2.796,69 €). Risolve il punto aperto della specifica.
+
+36. **Costo di deviazione σ (sigmaCost).** `√Σ(σᵢ·hᵢ·cᵢ)² · (1 + overhead)`: la radice
+    si applica alla somma e il fattore di overhead resta fuori. È l'unica lettura che
+    riproduce 1.160,85 € del caso A. Contingency e materiali sono esclusi.
+
+37. **Soglie di default non fissate dalla specifica** (configurabili nelle funzioni):
+    - indice di salute del buffer: giallo oltre 1, rosso oltre 1,5 (§6);
+    - LOE: quota BAC oltre 15% esclude i LOE dallo SPI di filone (§4);
+    - cadenza irregolare: intervallo oltre il 50% dalla mediana (§4);
+    - «90% fatto» (Q020): quattro status date consecutive ≥ 90%, cioè più di tre;
+    - diagnosi WIP (FLOW_WIP_EXCESS): sulle ultime k=4 finestre, cycle time in
+      crescita oltre 20% tra prima e seconda metà con throughput entro ±10%;
+    - scostamento stima/startup (Q012): avviso oltre 20%, critico oltre 30%.
+
+38. **Definizioni operative.** Burn rate = AC del periodo / PV del periodo.
+    Accuratezza della previsione = 1 − |EAC − costo finale| / costo finale: il libro
+    non la fissa in forma chiusa. Il TCPI è `null` quando BAC − AC non è positivo
+    (non solo quando è zero), perché un denominatore negativo non ha significato.
+
+39. **Earned Schedule.** Il tempo è in giorni di calendario da `startDate`. La curva
+    PV si interpreta a gradini lineari. Se EV supera il BAC, ES = PD. La versione su
+    periodi (`earnedSchedulePoints`) serve ai test di riferimento della specifica.
+
+40. **Monte Carlo.** Il generatore è mulberry32 con le costanti della specifica
+    (verificato: 0,601104 · 0,448291 · 0,852466). Nearest-rank per i percentili. I
+    valori di riferimento (P50 11, P80 12, P90 13, media 11,4112) coincidono con la
+    specifica: conferma che campionamento e ordine di iterazione sono quelli attesi.
+
+41. **Fixture e golden.** I test di fixture leggono `Parte_III_Gestione_Progetti.xlsx`
+    a runtime con un lettore minimo dello zip (`test/helpers/xlsx.ts`, solo test).
+    La regressione è in `test/fixtures/golden.json`: generato una volta e poi
+    immutabile. Le formule della fixture sono in `docs/excel-formulas.md`.
+
+42. **Gap noti rispetto alla specifica.** Il test di `RES_CONT_MISMATCH` sui 7.296 €
+    contro i 15.000 € richiede il foglio *Buffer e Contingency*, non ancora letto
+    dal test di fixture: il controllo esiste e ha test unitari.
+
+43. **Punti da integrare nella fase successiva (non ancora risolti).**
+    - Unità: il motore usa frazioni 0..1 per `overheadPct`, `contingencyPct` e
+      `mgmtReservePct`; il database oggi memorizza percentuali (es. 10,0 per 10%).
+      Va scelta la conversione al confine con il backend.
+    - Metodi di misura: i nomi del motore (`zero_cento`, `soggettiva`, …) differiscono
+      dai valori del database (`0_100`, `pct_soggettiva`, …): va definita la mappa.
+    - La spec chiede `EngineInputError` per gli input invalidi: il motore lo lancia
+      solo per input strutturali; le proprietà coprono gli input matematici degeneri.
+
+44. **Lint del motore.** La configurazione radice ora include `packages/engine/src`
+    con `no-restricted-globals` su `Date` e `no-restricted-properties` su
+    `Math.random` e `Date.now` (sez. 0 regola 1). I pacchetti non sono più ignorati
+    nel loro insieme. `fast-check` è una dipendenza di sviluppo; il pacchetto non
+    ha dipendenze di runtime.
+
+45. **Esempio d'uso.** `packages/engine/examples/demo.ts` si esegue con
+    `npx tsx packages/engine/examples/demo.ts`. `tsx` è uno strumento di sviluppo e
+    non è aggiunto alle dipendenze del pacchetto.
+
+## Fase 3 — Import ed export del workbook Excel (docs/specifiche/SPEC_FASE_3_EXCEL.md)
+
+46. **Comandi e modello di progetto.** La specifica chiede `import_workbook(path, opts)`
+    con `project_id` in un database unico. L'app usa un file `.evmproj` per progetto
+    (decisione 6-quater). I comandi esposti sono `anteprima_workbook`,
+    `importa_workbook(origine, destinazione, nome)`, `aggiorna_workbook(origine,
+    progetto)` (import idempotente nello stesso progetto), `input_workbook` ed
+    `esporta_workbook(percorso, destinazione, cache, opzioni)`. Il file di destinazione
+    non viene mai sovrascritto.
+
+47. **Calcoli nel motore, non nel backend.** Il backend legge e scrive e basta. I
+    confronti col ricalcolo (`XL_CONT_MISMATCH`, `XL_CACHE_DIFF`) e la cache delle
+    formule dell'export sono fatti dal frontend con `packages/engine`. Il backend
+    espone solo i totali letti dal file (`cache.totali`, `cache.checkpoint`).
+
+48. **Date seriali.** Regola della specifica (§2.4): per `serial ≥ 61` la base è
+    1899-12-30; per `serial < 61` è 1899-12-31; il 60 (29/02/1900 inesistente) è
+    un errore di cella. Verificato con i casi 1, 59, 60, 61 e 46023.
+
+49. **Checkpoint.** La tabella è `project_checkpoint` (date, note, pct_planned,
+    pct_actual, ac), come da specifica. Non si generano `status_snapshot` per i
+    checkpoint del workbook: sono valori di progetto, non per task, e la tabella
+    `status_snapshot` ha un vincolo `source` che non include `workbook`. Lo snapshot
+    per task resta riservato al piano importato e all'avanzamento.
+
+50. **Percentuali.** Il database e il motore usano frazioni 0..1. Un valore di
+    parametro maggiore di 1 è letto come percento con avviso `XL_PCT_SCALE`. Chiude
+    il punto 43 della fase 2 per i parametri del workbook.
+
+51. **Base di misura EV.** Il workbook senza il parametro `Base di misura EV` usa
+    `bac_con_contingency`, per riprodurre i numeri del file (avviso informativo
+    `BASE_EV` nella specifica; qui è nei default di `Parametri`).
+
+52. **Idempotenza.** `aggiorna_workbook` sostituisce le righe di input del progetto
+    (attività, checkpoint, rischi, sprint) e non le duplica. Se `_meta.project_id`
+    appartiene a un altro progetto l'operazione è rifiutata, come da specifica.
+
+53. **Foglio agile.** Il costo per SP del file (`CostoTeamSprint / SPPianificati`
+    della velocity reale) non si importa come valore: il motore ricalcola con il
+    costo di baseline (6-bis.2). L'avviso `AGILE_COSTO_SP` lo segnala.
+
+54. **Export: cosa manca rispetto al template.** Il foglio *Agile - Velocity* non
+    esporta le colonne `BacklogResiduo`, `SprintResidui`, `EACtempoGg` e `EACcosto`
+    (il backlog residuo non è nello schema di import). Il foglio *Buffer e
+    Contingency* non esporta la sezione Management reserve né il buffer di tempo
+    consumato. Il foglio *Agile* non esporta il Kanban. Sono i punti che la
+    specifica elenca e che restano da completare.
+
+55. **Verifica non eseguita qui.** LibreOffice non è installato nell'ambiente:
+    l'apertura del file esportato in un programma reale (test §5.6) va fatta a mano
+    o in CI. Il test automatico verifica la presenza di fogli, grafici nel XML e il
+    foglio `_meta` nascosto.
+
+56. **Lint e clippy.** `cargo clippy --all-targets` senza avvisi su `evm-db`. Aggiunto
+    `@types/node` come dipendenza di sviluppo: i test TypeScript leggono la fixture
+    con le API di Node (`node:fs`, `Buffer`).
