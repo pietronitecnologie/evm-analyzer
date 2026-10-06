@@ -448,7 +448,11 @@ pub fn registra_avanzamento(
     inizio: Option<String>,
     fine: Option<String>,
     ac: Option<f64>,
+    ore: Option<f64>,
 ) -> Esito<()> {
+    if ore.is_some_and(|v| !v.is_finite() || v < 0.0) {
+        return Err("le ore consuntive devono essere un numero positivo o zero".into());
+    }
     if !(0.0..=100.0).contains(&pct) {
         return Err("l'avanzamento deve essere tra 0 e 100".into());
     }
@@ -470,9 +474,9 @@ pub fn registra_avanzamento(
     let snapshot = snapshot_manuale(&tx, pid)?;
     tx.execute(
         "INSERT INTO progress_entry (snapshot_id, task_id, entered_at, pct_complete,
-                                     actual_start, actual_finish, actual_cost, state)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'inviato')",
-        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine, ac],
+                                     actual_start, actual_finish, actual_cost, actual_work_h, state)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'inviato')",
+        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine, ac, ore],
     )
     .map_err(errore)?;
     tx.commit().map_err(errore)?;
@@ -848,7 +852,7 @@ pub fn crea_rischio(
     conn: &Connection,
     pid: i64,
     descrizione: &str,
-    probabilita_pct: Option<f64>,
+    probabilita_pct: Option<i64>,
     impatto: Option<f64>,
     contingenza: Option<f64>,
 ) -> Esito<()> {
@@ -856,8 +860,8 @@ pub fn crea_rischio(
         return Err("la descrizione del rischio è obbligatoria".into());
     }
     if let Some(p) = probabilita_pct {
-        if !(0.0..=100.0).contains(&p) {
-            return Err("la probabilità deve essere tra 0 e 100".into());
+        if !(0..=100).contains(&p) {
+            return Err("la probabilità deve essere un intero tra 0 e 100".into());
         }
     }
     conn.execute(
@@ -892,16 +896,16 @@ pub fn registra_consumo(
 pub fn aggiorna_parametri(
     conn: &Connection,
     pid: i64,
-    contingency_pct: f64,
-    mgmt_reserve_pct: f64,
+    contingency_pct: i64,
+    mgmt_reserve_pct: i64,
     time_buffer_days: f64,
 ) -> Esito<()> {
     for (nome, v) in [
         ("contingency", contingency_pct),
         ("riserva di gestione", mgmt_reserve_pct),
     ] {
-        if !(0.0..=100.0).contains(&v) {
-            return Err(format!("la {nome} deve essere tra 0 e 100 %"));
+        if !(0..=100).contains(&v) {
+            return Err(format!("la {nome} deve essere un intero tra 0 e 100 %"));
         }
     }
     if time_buffer_days < 0.0 {
@@ -910,7 +914,7 @@ pub fn aggiorna_parametri(
     conn.execute(
         "UPDATE project_params SET contingency_pct = ?2, mgmt_reserve_pct = ?3, time_buffer_days = ?4
          WHERE project_id = ?1",
-        params![pid, contingency_pct, mgmt_reserve_pct, time_buffer_days],
+        params![pid, contingency_pct as f64, mgmt_reserve_pct as f64, time_buffer_days],
     )
     .map_err(errore)?;
     Ok(())
@@ -993,7 +997,7 @@ mod tests {
     #[test]
     fn un_rifiuto_riporta_il_motivo_a_chi_ha_proposto() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None, None).unwrap();
         let voce = approvazioni(&conn, pid).unwrap()[0].id;
         assert!(respingi(&conn, voce, "  ").is_err(), "il motivo è obbligatorio");
         respingi(&conn, voce, "manca la data di fine").unwrap();
@@ -1006,7 +1010,7 @@ mod tests {
     #[test]
     fn avanzamento_passa_da_inviato_ad_applicato() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None, Some(1200.0)).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None, Some(1200.0), None).unwrap();
         let coda = approvazioni(&conn, pid).unwrap();
         assert_eq!(coda.len(), 1, "una proposta registrata è subito in approvazione");
         approva(&mut conn, coda[0].id).unwrap();
@@ -1035,14 +1039,14 @@ mod tests {
     #[test]
     fn riserve_registra_rischi_consumi_e_parametri() {
         let (_d, conn, pid) = progetto();
-        crea_rischio(&conn, pid, "Ritardo fornitore", Some(30.0), Some(200.0), Some(60.0)).unwrap();
+        crea_rischio(&conn, pid, "Ritardo fornitore", Some(30), Some(200.0), Some(60.0)).unwrap();
         registra_consumo(&conn, pid, "contingency", 25.0, "10/02/2026", Some("prima tranche")).unwrap();
-        aggiorna_parametri(&conn, pid, 10.0, 5.0, 3.0).unwrap();
+        aggiorna_parametri(&conn, pid, 10, 5, 3.0).unwrap();
         let r = riserve(&conn, pid).unwrap();
         assert_eq!(r.rischi.len(), 1);
         assert_eq!(r.consumi[0].data, "2026-02-10");
         assert_eq!(r.contingenza_allocata, 60.0);
         assert_eq!(r.contingency_pct, 10.0);
-        assert!(aggiorna_parametri(&conn, pid, 150.0, 0.0, 0.0).is_err());
+        assert!(aggiorna_parametri(&conn, pid, 150, 0, 0.0).is_err());
     }
 }

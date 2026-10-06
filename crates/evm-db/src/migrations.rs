@@ -30,6 +30,16 @@ const MIGRATIONS: &[Migration] = &[
         name: "0003_controllo_costi",
         sql: include_str!("../migrations/0003_controllo_costi.sql"),
     },
+    Migration {
+        version: 4,
+        name: "0004_percentuali_intere",
+        sql: include_str!("../migrations/0004_percentuali_intere.sql"),
+    },
+    Migration {
+        version: 5,
+        name: "0005_archivio_baseline",
+        sql: include_str!("../migrations/0005_archivio_baseline.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

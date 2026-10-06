@@ -167,9 +167,10 @@ fn registra_avanzamento(
     inizio: Option<String>,
     fine: Option<String>,
     ac: Option<f64>,
+    ore: Option<f64>,
 ) -> Result<(), String> {
     let (mut conn, id) = apri_con_id(&percorso)?;
-    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine, ac)
+    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine, ac, ore)
 }
 
 #[tauri::command]
@@ -229,7 +230,7 @@ fn riserve_dati(percorso: String) -> Result<schermate::Riserve, String> {
 fn crea_rischio(
     percorso: String,
     descrizione: String,
-    probabilita_pct: Option<f64>,
+    probabilita_pct: Option<i64>,
     impatto: Option<f64>,
     contingenza: Option<f64>,
 ) -> Result<(), String> {
@@ -252,8 +253,8 @@ fn registra_consumo(
 #[tauri::command]
 fn aggiorna_parametri(
     percorso: String,
-    contingency_pct: f64,
-    mgmt_reserve_pct: f64,
+    contingency_pct: i64,
+    mgmt_reserve_pct: i64,
     time_buffer_days: f64,
 ) -> Result<(), String> {
     let (conn, id) = apri_con_id(&percorso)?;
@@ -405,6 +406,12 @@ fn approva_change_request(percorso: String, id: i64, approvatore: String) -> Res
 }
 
 #[tauri::command]
+fn archivia_baseline(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    controllo::archivia_baseline(&conn, pid, id)
+}
+
+#[tauri::command]
 fn blocca_baseline_budget(percorso: String, nome: String, tipo: String) -> Result<i64, String> {
     let (conn, id) = apri_con_id(&percorso)?;
     controllo::blocca_baseline_budget(&conn, id, &nome, &tipo)
@@ -496,6 +503,7 @@ pub fn run() {
             crea_change_request,
             approva_change_request,
             blocca_baseline_budget,
+            archivia_baseline,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

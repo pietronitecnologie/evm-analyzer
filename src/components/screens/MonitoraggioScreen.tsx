@@ -12,6 +12,7 @@ import { vistaMonitoraggio, type PuntoVista } from "@/lib/monitoraggio";
 import type { DatiMonitoraggio } from "@/lib/api";
 import { CELLA, TESTA_TABELLA, usePercorso, useDati } from "@/lib/schermate";
 import { Sezione, Vuoto } from "./comuni";
+import { TermineEvm } from "./TermineEvm";
 
 const eur = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }));
 const num = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -25,7 +26,7 @@ function Indice({ valore, luce, motivo }: { valore: number | null; luce: EvmOutp
   );
 }
 
-function Kpi({ etichetta, valore, nota }: { etichetta: string; valore: React.ReactNode; nota?: string }) {
+function Kpi({ etichetta, valore, nota }: { etichetta: React.ReactNode; valore: React.ReactNode; nota?: string }) {
   return (
     <div className="rounded-md border border-border-strong bg-card p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{etichetta}</p>
@@ -39,16 +40,16 @@ function Ultimo({ p, bac }: { p: PuntoVista; bac: number }) {
   const motivo = p.evm.warnings.map((w) => w.message).join("; ");
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Kpi etichetta="BAC" valore={eur(bac)} nota="budget dei WBS" />
-      <Kpi etichetta="PV" valore={eur(p.pv)} nota={`al ${p.data}`} />
-      <Kpi etichetta="EV" valore={eur(p.ev)} />
-      <Kpi etichetta="AC" valore={eur(p.ac)} />
-      <Kpi etichetta="CV / SV" valore={`${eur(p.evm.cv)} / ${eur(p.evm.sv)}`} />
-      <Kpi etichetta="CPI" valore={<Indice valore={p.evm.cpi} luce={p.evm.cpiLight} motivo={motivo} />} nota="EV ÷ AC" />
-      <Kpi etichetta="SPI" valore={<Indice valore={p.evm.spi} luce={p.evm.spiLight} motivo={motivo} />} nota="EV ÷ PV" />
-      <Kpi etichetta="EAC" valore={eur(p.evm.eac)} nota={`ottimistica ${eur(p.evm.eacOptimistic)}`} />
-      <Kpi etichetta="VAC" valore={eur(p.evm.vac)} />
-      <Kpi etichetta="TCPI" valore={p.evm.tcpi === null ? "—" : num(p.evm.tcpi)} nota="efficienza richiesta sul residuo" />
+      <Kpi etichetta={<TermineEvm sigla="BAC" />} valore={eur(bac)} nota="budget dei WBS" />
+      <Kpi etichetta={<TermineEvm sigla="PV" />} valore={eur(p.pv)} nota={`al ${p.data}`} />
+      <Kpi etichetta={<TermineEvm sigla="EV" />} valore={eur(p.ev)} />
+      <Kpi etichetta={<TermineEvm sigla="AC" />} valore={eur(p.ac)} />
+      <Kpi etichetta={<><TermineEvm sigla="CV" /> / <TermineEvm sigla="SV" /></>} valore={`${eur(p.evm.cv)} / ${eur(p.evm.sv)}`} />
+      <Kpi etichetta={<TermineEvm sigla="CPI" />} valore={<Indice valore={p.evm.cpi} luce={p.evm.cpiLight} motivo={motivo} />} nota="EV ÷ AC" />
+      <Kpi etichetta={<TermineEvm sigla="SPI" />} valore={<Indice valore={p.evm.spi} luce={p.evm.spiLight} motivo={motivo} />} nota="EV ÷ PV" />
+      <Kpi etichetta={<TermineEvm sigla="EAC" />} valore={eur(p.evm.eac)} nota={`ottimistica ${eur(p.evm.eacOptimistic)}`} />
+      <Kpi etichetta={<TermineEvm sigla="VAC" />} valore={eur(p.evm.vac)} />
+      <Kpi etichetta={<TermineEvm sigla="TCPI" />} valore={p.evm.tcpi === null ? "—" : num(p.evm.tcpi)} nota="efficienza richiesta sul residuo" />
     </div>
   );
 }
@@ -89,7 +90,7 @@ export function MonitoraggioScreen() {
               <thead>
                 <tr>
                   {["Data", "Origine", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "TCPI"].map((t) => (
-                    <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}>{t}</th>
+                    <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}><TermineEvm sigla={t} /></th>
                   ))}
                 </tr>
               </thead>
@@ -120,7 +121,7 @@ export function MonitoraggioScreen() {
             <thead>
               <tr>
                 {["WBS", "Budget", "PV", "EV", "AC", "CV", "SV", "CPI", "SPI"].map((t) => (
-                  <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}>{t}</th>
+                  <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}><TermineEvm sigla={t} /></th>
                 ))}
               </tr>
             </thead>

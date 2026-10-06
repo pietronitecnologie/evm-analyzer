@@ -50,12 +50,14 @@ const sommaNumeri = (valori: (number | null)[]) => valori.reduce<number>((s, v) 
 export function parametriDaWorkbook(w: WorkbookImportato): ProjectParams {
   const p = w.parametri;
   const evBaseMode = (p.baseEv ?? "").toLowerCase().includes("senza") ? "bac_senza_contingency" : "bac_con_contingency";
+  // Il backend espone le percentuali in intero (0..100); il motore lavora in frazioni (0..1).
+  const frazione = (percento: number | null | undefined, predefinito: number) => (percento ?? predefinito) / 100;
   return withDefaults({
-    overheadPct: p.overhead ?? 0,
-    contingencyPct: p.contingency ?? 0,
-    mgmtReservePct: p.riservaGestione ?? 0,
-    greenThreshold: p.sogliaVerde ?? 0.95,
-    yellowThreshold: p.sogliaGialla ?? 0.85,
+    overheadPct: frazione(p.overhead, 0),
+    contingencyPct: frazione(p.contingency, 0),
+    mgmtReservePct: frazione(p.riservaGestione, 0),
+    greenThreshold: frazione(p.sogliaVerde, 95),
+    yellowThreshold: frazione(p.sogliaGialla, 85),
     startDate: p.inizio ?? "1970-01-01",
     plannedEndDate: p.fine ?? "1970-01-01",
     timeBufferDays: p.bufferGiorni ?? 0,

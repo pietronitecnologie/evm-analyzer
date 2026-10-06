@@ -12,13 +12,11 @@ export interface DocumentTab {
 
 interface LayoutState {
   sidebarCollapsed: boolean;
-  detailPanelOpen: boolean;
   commandPaletteOpen: boolean;
   tabs: DocumentTab[];
   activeTabId: string | null;
 
   toggleSidebar: () => void;
-  toggleDetailPanel: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
 
   openScreen: (screenId: string, title: string) => void;
@@ -34,15 +32,12 @@ export const useLayoutStore = create<LayoutState>()(
   persist(
     (set, get) => ({
       sidebarCollapsed: false,
-      detailPanelOpen: true,
       commandPaletteOpen: false,
       tabs: [],
       activeTabId: null,
 
       toggleSidebar: () =>
         set({ sidebarCollapsed: !get().sidebarCollapsed }),
-      toggleDetailPanel: () =>
-        set({ detailPanelOpen: !get().detailPanelOpen }),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
 
       openScreen: (screenId, title) => {
@@ -87,7 +82,6 @@ export const useLayoutStore = create<LayoutState>()(
       name: "evm-analyzer.layout",
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
-        detailPanelOpen: state.detailPanelOpen,
         tabs: state.tabs,
         activeTabId: state.activeTabId,
       }),

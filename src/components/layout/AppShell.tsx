@@ -2,11 +2,10 @@
 // Copyright (C) 2026 Pietroni Tecnologie
 
 import * as React from "react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Group, Panel } from "react-resizable-panels";
 
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { ContextBar } from "@/components/layout/ContextBar";
-import { DetailPanel } from "@/components/layout/DetailPanel";
 import { DocumentTabs } from "@/components/layout/DocumentTabs";
 import { EsitoImportazione } from "@/components/layout/EsitoImportazione";
 import { MenuBar } from "@/components/layout/MenuBar";
@@ -20,13 +19,11 @@ import { useLayoutStore } from "@/stores/layout-store";
 
 const SHORTCUT_COMMANDS: Record<string, string> = {
   b: "vista.sidebar",
-  i: "vista.dettaglio",
 };
 
 export function AppShell() {
   const tabs = useLayoutStore((s) => s.tabs);
   const activeTabId = useLayoutStore((s) => s.activeTabId);
-  const detailPanelOpen = useLayoutStore((s) => s.detailPanelOpen);
   const openScreen = useLayoutStore((s) => s.openScreen);
 
   React.useEffect(() => {
@@ -62,7 +59,7 @@ export function AppShell() {
         <ContextBar />
         <div className="flex-1 overflow-hidden">
           <Group orientation="horizontal" style={{ height: "100%" }}>
-            <Panel id="workspace" minSize={15} defaultSize={detailPanelOpen ? 78 : 100}>
+            <Panel id="workspace" minSize={15} defaultSize={100}>
               <div className="flex h-full">
                 <Sidebar />
                 <div className="flex flex-1 flex-col overflow-hidden">
@@ -82,14 +79,6 @@ export function AppShell() {
                 </div>
               </div>
             </Panel>
-            {detailPanelOpen && (
-              <>
-                <Separator className="w-px bg-border hover:bg-ring" />
-                <Panel id="dettaglio" minSize={15} defaultSize={22}>
-                  <DetailPanel />
-                </Panel>
-              </>
-            )}
           </Group>
         </div>
         <StatusBar />

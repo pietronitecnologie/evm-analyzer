@@ -182,7 +182,8 @@ pub fn salva_piano(
     let project_id = tx.last_insert_rowid();
 
     tx.execute(
-        "INSERT INTO project_params (project_id, start_date, planned_end_date) VALUES (?1, ?2, ?3)",
+        "INSERT INTO project_params (project_id, start_date, planned_end_date, green_threshold, yellow_threshold)
+         VALUES (?1, ?2, ?3, 95, 85)",
         params![project_id, inizio, fine],
     )?;
     tx.execute(

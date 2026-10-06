@@ -20,3 +20,4 @@ export * from "./flow";
 export * from "./program";
 export * from "./quality";
 export * from "./monitoring";
+export * from "./resource-costs";

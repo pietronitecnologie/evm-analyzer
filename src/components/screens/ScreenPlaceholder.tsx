@@ -96,7 +96,7 @@ export function ScreenPlaceholder({ screenId, title }: { screenId: string; title
       <p className="max-w-sm text-xs">
         Il contenuto di questa schermata arriva nelle fasi successive del
         piano di sviluppo (sez. 9). Il guscio (menu, schede, pannello di
-        dettaglio, tabella comune) è già operativo.
+        tabella comune) è già operativo.
       </p>
     </div>
   );

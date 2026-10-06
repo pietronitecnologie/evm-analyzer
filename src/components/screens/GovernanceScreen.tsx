@@ -6,7 +6,7 @@
 // tracciata. Le baseline bloccate non si modificano: serve una variazione approvata.
 
 import * as React from "react";
-import { Lock, Plus } from "lucide-react";
+import { Archive, Lock, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { chiama, TIPI_CONSUMO, type Governance } from "@/lib/api";
@@ -15,7 +15,6 @@ import { Campo, Sezione, Vuoto } from "./comuni";
 
 const eur = (v: number | null | undefined) =>
   v === null || v === undefined ? "—" : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
-const pct = (v: number) => `${(v * 100).toLocaleString("it-IT", { maximumFractionDigits: 2 })} %`;
 
 function Kpi({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
   return (
@@ -38,8 +37,11 @@ export function GovernanceScreen() {
   if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per la governance dei costi." />;
   if (!g) return <Vuoto messaggio="Caricamento…" />;
 
-  const contingencyBudget = g.budgetTotale * g.contingencyPct;
-  const riservaBudget = g.budgetTotale * g.riservaGestionePct;
+  // Percentuali in intero positivo (0..100), come nel database.
+  const baselineAttive = g.baseline.filter((b) => !b.archiviata);
+  const archiviate = g.baseline.length - baselineAttive.length;
+  const contingencyBudget = (g.budgetTotale * g.contingencyPct) / 100;
+  const riservaBudget = (g.budgetTotale * g.riservaGestionePct) / 100;
   const numero = (v: string) => (v === "" ? null : Number(v));
 
   async function registraConsumo(e: React.FormEvent) {
@@ -61,6 +63,11 @@ export function GovernanceScreen() {
       setBaseline({ nome: "", tipo: "startup" });
       await ricarica();
     }
+  }
+
+  async function archivia(id: number) {
+    const ok = await esegui("Baseline non archiviata", () => chiama(percorso!, "archivia_baseline", { id }), "Baseline archiviata");
+    if (ok) await ricarica();
   }
 
   async function creaVariazione(e: React.FormEvent) {
@@ -90,9 +97,9 @@ export function GovernanceScreen() {
       <Sezione titolo="Budget e riserve">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Kpi etichetta="Budget dei WBS" valore={eur(g.budgetTotale)} nota={`${g.wbsConBudget} nodi con budget`} />
-          <Kpi etichetta="Contingency" valore={eur(contingencyBudget)} nota={`${pct(g.contingencyPct)} del budget`} />
+          <Kpi etichetta="Contingency" valore={eur(contingencyBudget)} nota={`${g.contingencyPct} % del budget`} />
           <Kpi etichetta="Contingency stanziata" valore={eur(g.contingencyStanziata)} nota={`usata ${eur(g.contingencyUsata)}`} />
-          <Kpi etichetta="Riserva di gestione" valore={eur(riservaBudget)} nota={`${pct(g.riservaGestionePct)} — usata ${eur(g.riservaGestioneUsata)}`} />
+          <Kpi etichetta="Riserva di gestione" valore={eur(riservaBudget)} nota={`${g.riservaGestionePct} % — usata ${eur(g.riservaGestioneUsata)}`} />
         </div>
         {g.wbsConBudget === 0 && (
           <p className="mt-3 text-sm text-semaforo-giallo">Nessun budget assegnato ai WBS: assegnalo nella schermata WBS per avere il BAC.</p>
@@ -144,8 +151,8 @@ export function GovernanceScreen() {
       </Sezione>
 
       <Sezione titolo="Baseline di budget">
-        {g.baseline.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessuna baseline: bloccane una quando il budget dei WBS è definito.</p>
+        {baselineAttive.length === 0 ? (
+          <p className="mb-4 text-sm text-muted-foreground">Nessuna baseline attiva: bloccane una quando il budget dei WBS è definito.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
@@ -155,20 +162,30 @@ export function GovernanceScreen() {
                 <th className={TESTA_TABELLA}>Creata il</th>
                 <th className={`${TESTA_TABELLA} text-right`}>BAC</th>
                 <th className={TESTA_TABELLA}>Stato</th>
+                <th className={TESTA_TABELLA} />
               </tr>
             </thead>
             <tbody>
-              {g.baseline.map((b) => (
+              {baselineAttive.map((b) => (
                 <tr key={b.id}>
                   <td className={`${CELLA} font-medium`}>{b.nome}</td>
                   <td className={CELLA}>{b.tipo}</td>
                   <td className={`${CELLA} tabular-num`}>{b.creataIl.slice(0, 10)}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{eur(b.bacTotale)}</td>
                   <td className={CELLA}>{b.bloccata ? <span className="inline-flex items-center gap-1"><Lock className="size-3" />bloccata</span> : "modificabile"}</td>
+                  <td className={CELLA}>
+                    <Button size="sm" variant="ghost" onClick={() => archivia(b.id)}>
+                      <Archive className="size-4" />
+                      Archivia
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        )}
+        {archiviate > 0 && (
+          <p className="mb-4 text-xs text-muted-foreground">{archiviate} baseline archiviate: restano nel database con la loro data e il loro contenuto.</p>
         )}
         <form onSubmit={bloccaBaseline} className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
           <Campo etichetta="Nome della baseline">

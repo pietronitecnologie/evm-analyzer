@@ -61,7 +61,6 @@ export const MENUS: MenuDef[] = [
       cmd("vista.testo-piu-piccolo"),
       sep,
       cmd("vista.sidebar"),
-      cmd("vista.dettaglio"),
       cmd("vista.colonne"),
       sep,
       cmd("vista.salva-vista"),

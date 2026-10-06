@@ -27,9 +27,9 @@ fn fixture_legge_input_e_segnala_la_data_incoerente() {
     assert_eq!(w.checkpoint.len(), 1);
     assert_eq!(w.rischi.len(), 1);
     assert_eq!(w.sprint.len(), 3);
-    assert_eq!(w.parametri.overhead, Some(0.1), "overhead 10%");
-    assert_eq!(w.parametri.contingency, Some(0.15));
-    assert_eq!(w.parametri.riserva_gestione, Some(0.05));
+    assert_eq!(w.parametri.overhead, Some(10.0), "overhead 10% in intero");
+    assert_eq!(w.parametri.contingency, Some(15.0));
+    assert_eq!(w.parametri.riserva_gestione, Some(5.0));
     assert_eq!(w.parametri.inizio.as_deref(), Some("2027-01-01"), "Parametri inizia il 01/01/2027");
     assert_eq!(w.attivita[0].data_inizio.as_deref(), Some("2026-01-01"));
     assert!(avvisi_codici(&w).contains(&"XL_DATE_MISMATCH".to_string()));

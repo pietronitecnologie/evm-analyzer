@@ -50,13 +50,6 @@ const viewCommands: Command[] = [
     run: () => useLayoutStore.getState().toggleSidebar(),
   },
   {
-    id: "vista.dettaglio",
-    label: "Mostra/nascondi pannello dettaglio",
-    shortcut: "Ctrl+I",
-    group: "Vista",
-    run: () => useLayoutStore.getState().toggleDetailPanel(),
-  },
-  {
     id: "vista.chiudi-schede",
     label: "Chiudi tutte le schede",
     group: "Vista",

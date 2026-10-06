@@ -199,6 +199,7 @@ export interface BaselineRiga {
   tipo: string;
   creataIl: string;
   bloccata: boolean;
+  archiviata: boolean;
   bacTotale: number | null;
 }
 
@@ -215,9 +216,11 @@ export interface ChangeRequestRiga {
 export interface Governance {
   budgetTotale: number;
   wbsConBudget: number;
+  /** Percentuale intera (0..100). */
   contingencyPct: number;
   contingencyStanziata: number;
   contingencyUsata: number;
+  /** Percentuale intera (0..100). */
   riservaGestionePct: number;
   riservaGestioneUsata: number;
   consumi: ConsumoRiserva[];

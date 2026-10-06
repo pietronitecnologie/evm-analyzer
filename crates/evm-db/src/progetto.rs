@@ -47,7 +47,7 @@ fn inserisci_vuoto(conn: &mut Connection, nome: &str) -> rusqlite::Result<i64> {
         params![nome, tempo::adesso_iso(), latest_version()],
     )?;
     let id = tx.last_insert_rowid();
-    tx.execute("INSERT INTO project_params (project_id) VALUES (?1)", [id])?;
+    tx.execute("INSERT INTO project_params (project_id, green_threshold, yellow_threshold) VALUES (?1, 95, 85)", [id])?;
     tx.execute(
         "INSERT INTO calendar (project_id, name, is_default) VALUES (?1, 'Standard', 1)",
         [id],

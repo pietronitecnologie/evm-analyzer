@@ -6,7 +6,7 @@
 // mancante, Q013 costo reale non verificato) vengono dal motore.
 
 import * as React from "react";
-import { checkQ007, checkQ013, type QResource } from "@evm-analyzer/engine";
+import { checkQ007, checkQ013, costoPianificatoAssegnazione, type QResource } from "@evm-analyzer/engine";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,11 @@ import { Campo, Sezione } from "./comuni";
 interface TaskScelta {
   uid: string;
   nome: string;
+  durataGiorni: number | null;
 }
+
+/** Ore per giorno di lavoro del calendario standard (come nell'import MS Project). */
+const ORE_PER_GIORNO = 8;
 
 
 export function RisorseSezione() {
@@ -173,23 +177,36 @@ export function RisorseSezione() {
                 <th className={TESTA_TABELLA}>Task</th>
                 <th className={TESTA_TABELLA}>Risorsa</th>
                 <th className={`${TESTA_TABELLA} text-right`}>Unità</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Ore pian.</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Tariffa (€/h)</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Costo pianificato</th>
                 <th className={TESTA_TABELLA} />
               </tr>
             </thead>
             <tbody>
-              {assegnazioni.map((a) => (
+              {assegnazioni.map((a) => {
+                const risorsa = risorse.find((r) => r.id === a.risorsaId);
+                const tariffa = risorsa?.costoOrarioReale ?? risorsa?.tariffa ?? null;
+                const ore = (task ?? []).find((t) => t.uid === a.taskUid)?.durataGiorni ?? null;
+                const orePianificate = ore === null ? null : ore * ORE_PER_GIORNO;
+                const costo = orePianificate === null || tariffa === null ? null : costoPianificatoAssegnazione(a.unita, orePianificate, tariffa);
+                return (
                 <tr key={a.id}>
                   <td className={`${CELLA} tabular-num`}>{a.taskUid}</td>
                   <td className={CELLA}>{a.taskNome}</td>
                   <td className={CELLA}>{a.risorsaNome}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{a.unita}</td>
+                  <td className={`${CELLA} tabular-num text-right`}>{orePianificate === null ? "—" : orePianificate.toLocaleString("it-IT")}</td>
+                  <td className={`${CELLA} tabular-num text-right`}>{tariffa === null ? "—" : tariffa.toLocaleString("it-IT", { minimumFractionDigits: 2 })}</td>
+                  <td className={`${CELLA} tabular-num text-right`}>{costo === null ? "—" : costo.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}</td>
                   <td className={CELLA}>
                     <Button size="sm" variant="ghost" aria-label={`Rimuovi assegnazione ${a.id}`} onClick={() => eliminaAssegnazione(a.id)}>
                       <Trash2 className="size-4" />
                     </Button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

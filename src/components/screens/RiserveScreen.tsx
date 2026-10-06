@@ -10,7 +10,7 @@ import { Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Riserve, TIPI_CONSUMO, chiama } from "@/lib/api";
 import { Campo, Sezione, Vuoto } from "./comuni";
-import { CAMPO, CELLA, TESTA_TABELLA, esegui, usePercorso, useDati } from "@/lib/schermate";
+import { CAMPO, CELLA, TESTA_TABELLA, avviso, esegui, usePercorso, useDati } from "@/lib/schermate";
 
 const eur = (v: number | null | undefined) =>
   v === null || v === undefined
@@ -29,13 +29,21 @@ export function RiserveScreen() {
   if (!r) return <Vuoto messaggio="Caricamento…" />;
 
   const numero = (v: string) => (v === "" ? null : Number(v));
+  // Le percentuali sono interi (0..100): niente decimali.
+  const intero = (v: string) => (v === "" ? null : Number.isInteger(Number(v)) ? Number(v) : NaN);
 
   async function salvaParametri(e: React.FormEvent) {
     e.preventDefault();
+    const contingenza = intero(parametri.contingenza);
+    const gestione = intero(parametri.gestione);
+    if (Number.isNaN(contingenza) || Number.isNaN(gestione)) {
+      avviso("Percentuale non valida", "usa un intero tra 0 e 100");
+      return;
+    }
     const ok = await esegui("Parametri non salvati", () =>
       chiama(percorso!, "aggiorna_parametri", {
-        contingencyPct: Number(parametri.contingenza || r!.contingencyPct),
-        mgmtReservePct: Number(parametri.gestione || r!.mgmtReservePct),
+        contingencyPct: contingenza ?? r!.contingencyPct,
+        mgmtReservePct: gestione ?? r!.mgmtReservePct,
         timeBufferDays: Number(parametri.buffer || r!.timeBufferDays),
       }),
       "Parametri salvati",
@@ -48,10 +56,15 @@ export function RiserveScreen() {
 
   async function creaRischio(e: React.FormEvent) {
     e.preventDefault();
+    const probabilita = intero(rischio.probabilita);
+    if (Number.isNaN(probabilita)) {
+      avviso("Probabilità non valida", "usa un intero tra 0 e 100");
+      return;
+    }
     const ok = await esegui("Rischio non creato", () =>
       chiama(percorso!, "crea_rischio", {
         descrizione: rischio.descrizione,
-        probabilitaPct: numero(rischio.probabilita),
+        probabilitaPct: probabilita,
         impatto: numero(rischio.impatto),
         contingenza: numero(rischio.contingenza),
       }),
@@ -92,10 +105,10 @@ export function RiserveScreen() {
         </div>
         <form onSubmit={salvaParametri} className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
           <Campo etichetta="Contingenza %">
-            <input type="number" min="0" max="100" step="0.5" className={CAMPO} placeholder={String(r.contingencyPct)} value={parametri.contingenza} onChange={(e) => setParametri({ ...parametri, contingenza: e.target.value })} />
+            <input type="number" min="0" max="100" step="1" className={CAMPO} placeholder={String(r.contingencyPct)} value={parametri.contingenza} onChange={(e) => setParametri({ ...parametri, contingenza: e.target.value })} />
           </Campo>
           <Campo etichetta="Riserva di gestione %">
-            <input type="number" min="0" max="100" step="0.5" className={CAMPO} placeholder={String(r.mgmtReservePct)} value={parametri.gestione} onChange={(e) => setParametri({ ...parametri, gestione: e.target.value })} />
+            <input type="number" min="0" max="100" step="1" className={CAMPO} placeholder={String(r.mgmtReservePct)} value={parametri.gestione} onChange={(e) => setParametri({ ...parametri, gestione: e.target.value })} />
           </Campo>
           <Campo etichetta="Buffer di tempo (giorni)">
             <input type="number" min="0" step="0.5" className={CAMPO} placeholder={String(r.timeBufferDays)} value={parametri.buffer} onChange={(e) => setParametri({ ...parametri, buffer: e.target.value })} />

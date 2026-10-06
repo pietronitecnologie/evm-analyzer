@@ -5,7 +5,7 @@
 //! (PV/EV/AC si calcolano nel motore), governance (contingency, riserva di gestione,
 //! change request, baseline di budget).
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
 use serde::Serialize;
 
 use crate::tempo;
@@ -194,6 +194,7 @@ pub struct BaselineRiga {
     pub tipo: String,
     pub creata_il: String,
     pub bloccata: bool,
+    pub archiviata: bool,
     pub bac_totale: Option<f64>,
 }
 
@@ -267,7 +268,7 @@ pub fn governance(conn: &Connection, pid: i64) -> Esito<Governance> {
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(e)?;
     let mut st = conn
-        .prepare("SELECT id, name, kind, created_at, locked, bac_total FROM baseline WHERE project_id = ?1 ORDER BY id")
+        .prepare("SELECT id, name, kind, created_at, locked, bac_total, archiviata FROM baseline WHERE project_id = ?1 ORDER BY id")
         .map_err(e)?;
     let baseline = st
         .query_map([pid], |r| {
@@ -278,6 +279,7 @@ pub fn governance(conn: &Connection, pid: i64) -> Esito<Governance> {
                 creata_il: r.get(3)?,
                 bloccata: r.get::<_, i64>(4)? != 0,
                 bac_totale: r.get(5)?,
+                archiviata: r.get::<_, i64>(6)? != 0,
             })
         })
         .map_err(e)?
@@ -344,6 +346,21 @@ pub fn approva_change_request(conn: &Connection, pid: i64, id: i64, approvatore:
         .map_err(e)?;
     if cambiate == 0 {
         return Err("richiesta non trovata o già approvata".into());
+    }
+    Ok(())
+}
+
+/// Archivia una baseline: non compare più nell'elenco attivo, ma resta nel database con
+/// la sua data e il suo contenuto. Non si cancella una baseline bloccata.
+pub fn archivia_baseline(conn: &Connection, pid: i64, id: i64) -> Esito<()> {
+    let cambiate = conn
+        .execute(
+            "UPDATE baseline SET archiviata = 1 WHERE id = ?1 AND project_id = ?2 AND archiviata = 0",
+            params![id, pid],
+        )
+        .map_err(e)?;
+    if cambiate == 0 {
+        return Err("baseline non trovata o già archiviata".into());
     }
     Ok(())
 }
@@ -419,6 +436,21 @@ mod tests {
         let id = blocca_baseline_budget(&conn, pid, "Startup", "startup").unwrap();
         let aggiornamento = conn.execute("UPDATE baseline SET bac_total = 1 WHERE id = ?1", [id]);
         assert!(aggiornamento.is_err(), "baseline bloccata non modificabile");
+    }
+
+    #[test]
+    fn baseline_bloccata_si_archivia_ma_non_si_cancella() {
+        let (_d, conn, pid) = progetto();
+        imposta_budget_wbs(&conn, pid, "1.1", Some(12000.0)).unwrap();
+        let id = blocca_baseline_budget(&conn, pid, "Startup", "startup").unwrap();
+        assert!(conn.execute("DELETE FROM baseline WHERE id = ?1", [id]).is_err(), "cancellazione bloccata");
+        archivia_baseline(&conn, pid, id).unwrap();
+        assert!(archivia_baseline(&conn, pid, id).is_err(), "già archiviata");
+        let g = governance(&conn, pid).unwrap();
+        assert!(g.baseline[0].archiviata);
+        assert_eq!(g.baseline[0].bac_totale, Some(12000.0), "contenuto invariato");
+        let altro = conn.execute("UPDATE baseline SET bac_total = 1 WHERE id = ?1", [id]);
+        assert!(altro.is_err(), "archiviazione non sblocca altre modifiche");
     }
 
     #[test]

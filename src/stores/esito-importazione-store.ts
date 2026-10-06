@@ -16,7 +16,7 @@ export interface Avviso {
   suggerimento: string;
 }
 
-/** Contenuto letto dal workbook, come lo serializza il backend (camelCase). */
+/** Contenuto letto dal workbook, come lo serializza il backend (camelCase). Le percentuali sono in intero positivo (0..100). */
 export interface WorkbookImportato {
   meta: { schemaVersion: number | null; projectId: number | null; exportedAt: string | null; appVersion: string | null } | null;
   parametri: {

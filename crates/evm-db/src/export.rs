@@ -211,7 +211,8 @@ pub fn esporta_workbook(
         ];
         for (r, etichetta, valore, descr) in righe_pct {
             ws.write_string(r, 0, etichetta).map_err(e)?;
-            scrivi_numero(ws, r, 1, valore, &stili.input_pct)?;
+            // Percentuali in percento intero nel database; il foglio le scrive come frazioni (formato %).
+            scrivi_numero(ws, r, 1, valore.map(|v| v / 100.0), &stili.input_pct)?;
             ws.write_string(r, 2, "%").map_err(e)?;
             ws.write_string(r, 3, descr).map_err(e)?;
         }
@@ -227,7 +228,12 @@ pub fn esporta_workbook(
         ];
         for (r, etichetta, valore, descr) in altri {
             ws.write_string(r, 0, etichetta).map_err(e)?;
-            scrivi_numero(ws, r, 1, valore, &stili.input_num)?;
+            let (valore_cella, formato) = if r == 10 || r == 11 {
+                (valore.map(|v| v / 100.0), &stili.input_pct)
+            } else {
+                (valore, &stili.input_num)
+            };
+            scrivi_numero(ws, r, 1, valore_cella, formato)?;
             ws.write_string(r, 3, descr).map_err(e)?;
         }
         ws.write_string(14, 0, "Data inizio progetto").map_err(e)?;
@@ -378,7 +384,7 @@ pub fn esporta_workbook(
             let rr = primo_rischio + i as u32;
             let x = rr + 1;
             ws.write_string_with_format(rr, 0, &r.descrizione, &stili.input).map_err(e)?;
-            scrivi_numero(ws, rr, 1, r.probabilita, &stili.input_pct)?;
+            scrivi_numero(ws, rr, 1, r.probabilita.map(|v| v / 100.0), &stili.input_pct)?;
             scrivi_numero(ws, rr, 2, r.impatto, &stili.input_num)?;
             scrivi_numero(ws, rr, 3, r.contingenza, &stili.input_num)?;
             match r.data_utilizzo.as_deref().and_then(serial) {

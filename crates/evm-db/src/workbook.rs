@@ -199,10 +199,11 @@ pub struct Meta {
     pub app_version: Option<String>,
 }
 
-/// Parametri del foglio *Parametri* (valori già normalizzati a frazioni 0..1 per le percentuali).
+/// Parametri del foglio *Parametri*. Le percentuali sono in intero positivo (0..100).
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParametriImportati {
+    /// Percentuali in intero positivo (0..100), come nel database.
     pub overhead: Option<f64>,
     pub contingency: Option<f64>,
     pub riserva_gestione: Option<f64>,
@@ -252,7 +253,7 @@ pub struct CheckpointImportato {
 #[serde(rename_all = "camelCase")]
 pub struct RischioImportato {
     pub descrizione: String,
-    /// Frazione 0..1.
+    /// Probabilità in percento intero (0..100).
     pub probabilita: Option<f64>,
     pub impatto: Option<f64>,
     pub contingenza: Option<f64>,
@@ -293,21 +294,23 @@ pub struct WorkbookImportato {
     pub avvisi: Vec<Avviso>,
 }
 
-/// Percentuale di parametro: `0,15` resta `0,15`; `15` diventa `0,15` con avviso (§2.5).
+/// Percentuale di parametro in intero positivo (0..100). Una frazione (`0,15` o
+/// `15%` in Excel) è ≤ 1 e diventa `15`; un valore > 1 è già in percento (`15`) e
+/// resta `15`, con un avviso `XL_PCT_SCALE`.
 fn percentuale(cella: &Data, foglio: &str, rif: &str, avvisi: &mut Vec<Avviso>) -> Option<f64> {
     let v = numero(cella)?;
-    if v > 1.0 {
+    if v <= 1.0 {
+        Some((v * 100.0).round())
+    } else {
         avvisi.push(avviso(
-            "avviso",
+            "info",
             foglio,
             rif,
             "XL_PCT_SCALE",
-            format!("Valore {v} interpretato come percento ({}%)", v),
+            format!("Valore {v} letto come percento intero ({v}%)"),
             "Inserisci la percentuale come 15% o 0,15",
         ));
-        Some(v / 100.0)
-    } else {
-        Some(v)
+        Some(v.round())
     }
 }
 
@@ -667,7 +670,7 @@ fn tx_nuovo(conn: &mut Connection, w: &WorkbookImportato, nome: &str, nome_file:
         params![nome, nome_file, tempo::adesso_iso(), latest_version()],
     )?;
     let pid = tx.last_insert_rowid();
-    tx.execute("INSERT INTO project_params (project_id) VALUES (?1)", [pid])?;
+    tx.execute("INSERT INTO project_params (project_id, green_threshold, yellow_threshold) VALUES (?1, 95, 85)", [pid])?;
     tx.execute("INSERT INTO calendar (project_id, name, is_default) VALUES (?1, 'Standard', 1)", [pid])?;
     scrivi_input(&tx, pid, w)?;
     tx.execute(
@@ -728,8 +731,8 @@ fn scrivi_input(tx: &rusqlite::Transaction, pid: i64, w: &WorkbookImportato) -> 
             p.overhead.unwrap_or(0.0),
             p.contingency.unwrap_or(0.0),
             p.riserva_gestione.unwrap_or(0.0),
-            p.soglia_verde.unwrap_or(0.95),
-            p.soglia_gialla.unwrap_or(0.85),
+            p.soglia_verde.unwrap_or(95.0),
+            p.soglia_gialla.unwrap_or(85.0),
             p.inizio,
             p.fine,
             p.buffer_giorni.unwrap_or(0.0),
@@ -765,7 +768,7 @@ fn scrivi_input(tx: &rusqlite::Transaction, pid: i64, w: &WorkbookImportato) -> 
             "INSERT INTO risk (project_id, description, probability_pct, impact_estimated,
                  contingency_allocated, usage_date, usage_amount)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![pid, r.descrizione, r.probabilita.map(|p| p * 100.0), r.impatto, r.contingenza, r.data_utilizzo, r.importo_utilizzato],
+            params![pid, r.descrizione, r.probabilita, r.impatto, r.contingenza, r.data_utilizzo, r.importo_utilizzato],
         )?;
     }
     for s in &w.sprint {
@@ -850,7 +853,7 @@ pub fn input_progetto(conn: &Connection, pid: i64) -> Result<WorkbookImportato, 
         .query_map([pid], |r| {
             Ok(RischioImportato {
                 descrizione: r.get(0)?,
-                probabilita: r.get::<_, Option<f64>>(1)?.map(|p| p / 100.0),
+                probabilita: r.get(1)?,
                 impatto: r.get(2)?,
                 contingenza: r.get(3)?,
                 data_utilizzo: r.get(4)?,

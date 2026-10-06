@@ -318,7 +318,7 @@ Aggiornato a ogni fase.
     `status_snapshot` ha un vincolo `source` che non include `workbook`. Lo snapshot
     per task resta riservato al piano importato e all'avanzamento.
 
-50. **Percentuali.** Il database e il motore usano frazioni 0..1. Un valore di
+50. **Percentuali (superata dalla decisione 62).** Il database e il motore usano frazioni 0..1. Un valore di
     parametro maggiore di 1 è letto come percento con avviso `XL_PCT_SCALE`. Chiude
     il punto 43 della fase 2 per i parametri del workbook.
 
@@ -376,3 +376,40 @@ Aggiornato a ogni fase.
     bloccata (immutabile per trigger), richieste di variazione con approvatore tracciato.
     Limite noto: i progetti da workbook non creano ancora nodi WBS nel database, quindi
     non ricevono un budget per WBS dall'interfaccia (va esteso).
+
+61. **Pannello di destra rimosso.** Il pannello di dettaglio (ispettore) non era usato da
+    nessuna funzione: componente, stato, comando, scorciatoia Ctrl+I e voce di menu
+    sono stati eliminati. Il glossario EVM (`src/lib/glossario-evm.ts`) spiega le sigle
+    del monitoraggio con un tooltip (`TermineEvm`): nome, significato, lettura della
+    formula e riferimento al libro.
+
+62. **Percentuali in intero positivo.** Tutte le percentuali di parametro (overhead,
+    contingency, riserva di gestione, soglie verde e gialla) e le probabilità dei rischi
+    sono interi 0..100, nel database, nelle API e nell'interfaccia. Il motore lavora in
+    frazioni 0..1: la conversione (÷100) sta in un solo punto, `parametriDaWorkbook` nel
+    frontend. Il lettore del workbook converte la frazione del file (0,15) in intero (15);
+    l'export scrive l'intero come frazione nelle celle formattate in percento.
+    Migrazione 0004: i valori già salvati ≤ 1 sono frazioni e si moltiplicano per 100;
+    valori > 1 sono già in percento. Ambiguità nota: un 1% salvato dalla UI prima della
+    migrazione come `1,0` diventa 100%. Va ricontrollato sui progetti creati prima di
+    questa modifica. I valori di avanzamento (task e checkpoint) restano invariati.
+
+63. **Baseline: archiviazione, non cancellazione.** Una baseline bloccata non si
+    cancella (trigger del database e §6-bis.4). Migrazione 0005: colonna `archiviata`.
+    Il trigger di aggiornamento lascia passare solo il passaggio ad archiviata, senza
+    altre modifiche al contenuto. La Governance nasconde le baseline archiviate e ne
+    mostra il conteggio.
+
+64. **Costi delle risorse.** Il costo pianificato di un'assegnazione è unità × ore
+    pianificate × tariffa (`packages/engine/src/resource-costs.ts`). Le ore pianificate
+    sono durata del task in giorni × 8 (calendario standard): nessuna baseline time-phased
+    ancora. La tariffa è il costo orario reale se verificato, altrimenti la tariffa
+    importata. Nell'avanzamento si possono inserire le ore consuntive: se l'AC non è
+    inserito a mano, si calcola come ore × tariffa media ponderata per le unità.
+
+65. **Gantt di sola lettura.** Scala fissa di 18 px per giorno e righe di 28 px. Un solo
+    contenitore con scorrimento orizzontale e verticale: intestazione (mesi e giorni) e
+    colonna delle attività restano fisse nei rispettivi assi. Fine settimana e festivi
+    vengono dal calendario predefinito del progetto (festivi espliciti e maschera dei giorni
+    lavorativi), senza calendario si usa lunedì–venerdì. Le frecce di precedenza seguono il
+    tipo (FS, SS, FF, SF). Il modello è in `src/lib/gantt.ts`, testato.
