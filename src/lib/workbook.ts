@@ -268,7 +268,13 @@ export async function confermaImportazione() {
     const destinazione = await save({ title: "Save the new project", defaultPath: `${nomeBase}.evmproj`, filters: [{ name: "EVM Project", extensions: ["evmproj"] }] });
     if (!destinazione) return;
     const esito = await invoke<EsitoImportWorkbook>("importa_workbook", { origine: stato.origine, destinazione, nome: nomeBase });
-    useProjectContextStore.getState().impostaProgetto({ projectName: esito.progetto.nome, percorso: esito.progetto.percorso, statusDate: esito.progetto.dataDiStato ?? "—" });
+    useProjectContextStore.getState().impostaProgetto({
+      projectName: esito.progetto.nome,
+      percorso: esito.progetto.percorso,
+      statusDate: esito.progetto.dataDiStato ?? "—",
+      dataInizio: esito.progetto.dataInizio,
+      dataFinePrevista: esito.progetto.dataFinePrevista,
+    });
     stato.chiudi();
     useToastStore.getState().push({ title: "Workbook imported", description: `${stato.dati.avvisi.length} warnings` });
   } catch (errore) {

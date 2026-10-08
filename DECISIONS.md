@@ -720,3 +720,48 @@ Change request, Scope — al posto delle tabelle Baseline/Change request finora 
     comandi con argomenti che cambiano, es. le due baseline scelte) invece del
     pattern a zero argomenti usato finora: primo caso in app di un comando Tauri
     richiamato con parametri scelti dall'utente dopo il montaggio della schermata.
+
+## Fase 5, incremento 5 — Forecast: EAC ed Earned Schedule (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.6)
+
+Ambito: nuova schermata `ForecastScreen` (nav id `forecast`, già previsto in
+`navigation.ts` ma non cablato) con le schede EAC ed Earned Schedule. Monte Carlo,
+terza scheda della specifica, resta un segnaposto: l'ordine di lavoro consigliato
+(§7) la rimanda all'incremento con Agile/Flow, che condivide la stessa
+infrastruttura di simulazione.
+
+96. **Nessun calcolo nuovo per la scheda EAC: solo lettura di `EvmOutput`.**
+    `vistaMonitoraggio` (già usata da Dashboard/WBS/Task, decisione 71) porta già
+    `etc`/`eac`/`eacOptimistic`/`vac`/`tcpi` per ogni data di stato dentro
+    `PuntoVista.evm` — la scheda EAC riusa `puntoTestata` per i KPI del punto
+    corrente e `vista.punti` per il grafico a barre EAC-vs-BAC, senza toccare
+    `packages/engine` né il backend. Il messaggio guida "TCPI > 1,1" della
+    specifica è puramente di presentazione (stringa in `ForecastScreen.tsx`,
+    condizione `tcpi !== null && tcpi > 1.1`): non esiste nel motore un codice di
+    avviso per questa soglia, diversamente da CPI/SPI che hanno `cpiLight`/
+    `spiLight`. Niente scenario "lineare" separato nel grafico (coerente con la
+    decisione 34: EAC lineare resta solo un controllo nei test del motore).
+
+97. **Le date di inizio/fine prevista del progetto arrivano ora nello store di
+    contesto.** `ProgettoAperto`/`EsitoImportWorkbook` portavano già
+    `dataInizio`/`dataFinePrevista` (da `project_params`, viste da `progetto.rs`)
+    ma `applicaAlContesto` (`lib/progetto.ts`) e l'equivalente in `lib/workbook.ts`
+    le scartavano, copiando solo la data di stato. Servono a `earnedSchedule()`
+    (date di calendario per ES/AT/PD): si sono aggiunte `dataInizio`/
+    `dataFinePrevista` a `project-context-store` e ai due punti che aprono un
+    progetto, invece di un nuovo comando Tauri o di derivarle da
+    min/max delle date pianificate dei task (`DatiMonitoraggio.task`) — i valori
+    del progetto sono quelli espliciti dell'import, più corretti di
+    un'approssimazione dalle date dei singoli task. Se un progetto non le ha
+    (ancora possibile: sono `Option<String>` anche nello schema), la scheda Earned
+    Schedule mostra uno stato vuoto invece di calcolare su date assenti.
+
+98. **La linea "ES" nel grafico si ancora alla data di stato più vicina, non al
+    giorno esatto.** `earnedSchedule()` restituisce `es` in giorni dall'inizio
+    progetto, un numero continuo; l'asse x del grafico PV/EV è a categorie (le
+    date di stato disponibili, stesso schema di `curvaS` in Dashboard) e
+    `markLine.xAxis` su un asse a categorie richiede un valore identico a uno dei
+    tick, non una data arbitraria. `dataPiuVicina` (`ForecastScreen.tsx`) sceglie
+    il punto della vista con `diffDays(dataInizio, p.data)` più vicino a `es` e
+    usa la sua stringa data come ancora: approssimazione onesta (la linea cade sul
+    punto osservato più vicino al vero ES), preferita a un asse a tempo continuo
+    che avrebbe richiesto riscrivere anche `curvaS`/`trendIndici` per coerenza.

@@ -117,6 +117,7 @@ export const MENUS: MenuDef[] = [
     label: "Analysis",
     entries: [
       cmd("vai.dashboard"),
+      cmd("analisi.eac"),
       cmd("analisi.earned-schedule"),
       cmd("analisi.monte-carlo"),
       sep,

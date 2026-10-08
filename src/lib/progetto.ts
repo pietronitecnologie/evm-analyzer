@@ -92,6 +92,8 @@ function applicaAlContesto(progetto: ProgettoAperto) {
     projectName: progetto.nome,
     percorso: progetto.percorso,
     statusDate: progetto.dataDiStato ?? "—",
+    dataInizio: progetto.dataInizio,
+    dataFinePrevista: progetto.dataFinePrevista,
   });
 }
 

@@ -13,6 +13,9 @@ export type BaseEvMode = "bac_con_contingency" | "bac_senza_contingency";
 interface ProjectContextState {
   projectName: string;
   percorso: string | null;
+  /** Date del progetto (da project_params), per la schermata Forecast/Earned Schedule. */
+  dataInizio: string | null;
+  dataFinePrevista: string | null;
   statusDate: string;
   statusDateState: StatoStatusDate;
   /** Null = latest status date (no explicit selection). */
@@ -39,6 +42,8 @@ interface ProjectContextState {
     projectName: string;
     percorso: string;
     statusDate: string;
+    dataInizio: string | null;
+    dataFinePrevista: string | null;
   }) => void;
   setSnapshot: (id: number | null, label: string, stato?: StatoStatusDate) => void;
   setScope: (id: number | null, label: string) => void;
@@ -50,6 +55,8 @@ interface ProjectContextState {
 export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   projectName: "No project open",
   percorso: null,
+  dataInizio: null,
+  dataFinePrevista: null,
   impostaProgetto: (progetto) =>
     set({
       ...progetto,
