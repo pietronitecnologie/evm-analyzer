@@ -14,4 +14,4 @@ export default meta;
 
 type Story = StoryObj<typeof AppShell>;
 
-export const Guscio: Story = {};
+export const Shell: Story = {};

@@ -413,3 +413,62 @@ Aggiornato a ogni fase.
     vengono dal calendario predefinito del progetto (festivi espliciti e maschera dei giorni
     lavorativi), senza calendario si usa lunedì–venerdì. Le frecce di precedenza seguono il
     tipo (FS, SS, FF, SF). Il modello è in `src/lib/gantt.ts`, testato.
+
+## Procedura guidata di importazione, riconciliazione del BAC e ri-sincronizzazione (Fase 4, incremento)
+
+Ambito di questo incremento: colmare lo scarto più visibile tra l'import a scrittura
+unica di decisione 21 e `docs/specifiche/SPEC_FASE_4_IMPORT_PIANO.md` — la procedura
+guidata con anteprima prima della scrittura, la riconciliazione del BAC, la
+ri-sincronizzazione e il rilevamento della scala dei costi. Restano fuori (e sono
+segnalati come lavoro successivo): profili di mappatura colonne configurabili e
+salvabili (resta la tabella di sinonimi fissa di decisione 23), baseline multiple da
+MSPDI (`Baseline1..10`), campi personalizzati (`ExtendedAttribute`), import dei
+calendari/eccezioni da XML, dati time-phased per assegnazione, e i test di prestazione
+su piani da 2.000/20.000 task.
+
+66. **Comandi separati invece di un unico `importa_piano`.** `inspect_plan_file`
+    (formato/dimensione/colonne, passo 1), `preview_plan_import` (conteggi, avvisi,
+    stima del BAC, passo 3 — nessuna scrittura), `commit_plan_import` (scrittura con le
+    opzioni scelte) e `resync_plan`. Il parsing si fa una sola volta in `leggi_piano`,
+    condiviso da anteprima e commit. Il vecchio comando Tauri `importa_piano` è stato
+    rimosso: l'unico punto d'uso nel frontend ora apre la procedura guidata
+    (`ImportPlanWizard`); la funzione Rust `importa_piano` resta come scorciatoia con le
+    opzioni di default, usata dai test.
+
+67. **Chiavi UID duplicate: ora un errore bloccante**, non più uno scarto silenzioso con
+    avviso (si cambia il comportamento di decisione 25 per seguire la specifica §4.1).
+    `verifica_chiavi_duplicate` gira prima di aprire la transazione ed elenca le chiavi
+    duplicate nel messaggio d'errore.
+
+68. **Rilevamento della scala dei costi (`PLAN_COST_SCALE`).** Si confronta `cost` con
+    `work_hours × tariffa standard della risorsa assegnata` su ogni task per cui entrambi
+    sono noti (serve l'assegnazione, non solo la tariffa della risorsa); con almeno due
+    campioni e un rapporto medio tra 80 e 120, i costi del piano si dividono per 100 e si
+    registra un avviso. Sotto i due campioni il controllo non scatta (evita falsi positivi
+    sui piani piccoli o senza tariffe importate): è una semplificazione pragmatica rispetto
+    al "task campione" singolo della specifica.
+
+69. **Riconciliazione del BAC** (passo 5 della procedura guidata): `bac_indirect` e
+    `bac_contingency` non sono più fissi a zero. Con gli interruttori attivi,
+    `bac_indirect = bac_direct × overhead_pct/100` e
+    `bac_contingency = (bac_direct + bac_indirect) × contingency_pct/100`; il tipo e il
+    blocco della baseline vengono dalla procedura guidata invece di essere fissi a
+    `'startup'` non bloccata.
+
+70. **Distribuzione lineare della PV (`PLAN_LINEAR_PV`).** Senza dati time-phased nel
+    file, il costo di baseline di ogni task con inizio, fine e costo si distribuisce in
+    parti uguali sui giorni lavorativi lunedì–venerdì tra le due date (tabella
+    `baseline_timephased`), con un unico avviso aggregato invece di uno per task. Il
+    calendario di riferimento è fisso lun–ven in questo incremento: non ancora collegato
+    al calendario di progetto di decisione 31.
+
+71. **Ri-sincronizzazione (`resync_plan`).** Confronta il nuovo export con il progetto per
+    `uid_source`: task aggiunti/rimossi, spostati (stesso UID, WBS diversa). Aggiorna solo
+    i campi di sola lettura (`start_planned`, `finish_planned`, `float_days`,
+    `is_critical`) e scrive un nuovo `status_snapshot` con `source = 'resync'` (migrazione
+    0006, che ricostruisce la tabella per ampliare il vincolo `CHECK`): l'avanzamento
+    inserito nell'app non viene mai toccato. Se la baseline bloccata più recente ha un
+    costo diverso dal nuovo export su un task condiviso, si segnala
+    `baseline_changed_locked` (corrisponde all'anomalia critica Q016 della specifica). Il
+    riallineamento della gerarchia WBS ai nuovi codici non è automatico in questo
+    incremento: lo spostamento è solo segnalato nel report, non applicato alla tabella `wbs`.

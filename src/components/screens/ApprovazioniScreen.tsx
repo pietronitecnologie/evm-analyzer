@@ -18,24 +18,24 @@ export function ApprovazioniScreen() {
   const [coda, ricarica] = useDati<RigaApprovazione[]>("approvazioni_elenco", percorso);
   const [note, setNote] = React.useState<Record<number, string>>({});
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per le approvazioni." />;
-  if (!coda) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to see approvals." />;
+  if (!coda) return <Vuoto messaggio="Loading…" />;
   if (coda.length === 0) {
-    return <Vuoto messaggio="Nessuna proposta in attesa di approvazione." />;
+    return <Vuoto messaggio="No proposal waiting for approval." />;
   }
 
   async function approva(voce: RigaApprovazione) {
-    const ok = await esegui("Approvazione non riuscita", () =>
+    const ok = await esegui("Approval failed", () =>
       chiama(percorso!, "approva_voce", { voceId: voce.id }),
-      `Avanzamento di ${voce.uid} approvato`,
+      `Progress update for ${voce.uid} approved`,
     );
     if (ok) await ricarica();
   }
 
   async function respingi(voce: RigaApprovazione) {
-    const ok = await esegui("Rifiuto non riuscito", () =>
+    const ok = await esegui("Rejection failed", () =>
       chiama(percorso!, "respingi_voce", { voceId: voce.id, nota: note[voce.id] ?? "" }),
-      `Proposta per ${voce.uid} respinta`,
+      `Proposal for ${voce.uid} rejected`,
     );
     if (ok) await ricarica();
   }
@@ -47,12 +47,12 @@ export function ApprovazioniScreen() {
           <tr>
             <th className={TESTA_TABELLA}>UID</th>
             <th className={TESTA_TABELLA}>Task</th>
-            <th className={`${TESTA_TABELLA} text-right`}>Proposto %</th>
-            <th className={TESTA_TABELLA}>Inizio effettivo</th>
-            <th className={TESTA_TABELLA}>Fine effettiva</th>
+            <th className={`${TESTA_TABELLA} text-right`}>Proposed %</th>
+            <th className={TESTA_TABELLA}>Actual start</th>
+            <th className={TESTA_TABELLA}>Actual finish</th>
             <th className={`${TESTA_TABELLA} text-right`}>AC (€)</th>
-            <th className={TESTA_TABELLA}>Inviato il</th>
-            <th className={TESTA_TABELLA}>Decisione</th>
+            <th className={TESTA_TABELLA}>Submitted on</th>
+            <th className={TESTA_TABELLA}>Decision</th>
           </tr>
         </thead>
         <tbody>
@@ -69,17 +69,17 @@ export function ApprovazioniScreen() {
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => approva(v)}>
                     <Check className="size-4" />
-                    Approva
+                    Approve
                   </Button>
                   <input
                     className={`${CAMPO} w-48`}
-                    placeholder="Motivo del rifiuto"
+                    placeholder="Reason for rejection"
                     value={note[v.id] ?? ""}
                     onChange={(e) => setNote({ ...note, [v.id]: e.target.value })}
                   />
                   <Button size="sm" variant="outline" onClick={() => respingi(v)}>
                     <X className="size-4" />
-                    Respingi
+                    Reject
                   </Button>
                 </div>
               </td>

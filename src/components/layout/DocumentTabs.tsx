@@ -29,7 +29,7 @@ function isTauriRuntime(): boolean {
 
 async function detachTab(tab: DocumentTab) {
   if (!isTauriRuntime()) {
-    notImplemented(`Stacca "${tab.title}" in una finestra`);
+    notImplemented(`Detach "${tab.title}" into a window`);
     return;
   }
   try {
@@ -41,10 +41,10 @@ async function detachTab(tab: DocumentTab) {
       width: 1100,
       height: 720,
     });
-    win.once("tauri://error", () => notImplemented(`Stacca "${tab.title}" in una finestra`));
+    win.once("tauri://error", () => notImplemented(`Detach "${tab.title}" into a window`));
     useLayoutStore.getState().closeTab(tab.id);
   } catch {
-    notImplemented(`Stacca "${tab.title}" in una finestra`);
+    notImplemented(`Detach "${tab.title}" into a window`);
   }
 }
 
@@ -79,8 +79,8 @@ function SortableTab({
       <span className="truncate">{tab.title}</span>
       <button
         type="button"
-        title="Stacca in una finestra"
-        aria-label={`Stacca ${tab.title} in una finestra`}
+        title="Detach into a window"
+        aria-label={`Detach ${tab.title} into a window`}
         onClick={(e) => {
           e.stopPropagation();
           void detachTab(tab);
@@ -91,8 +91,8 @@ function SortableTab({
       </button>
       <button
         type="button"
-        title="Chiudi scheda"
-        aria-label={`Chiudi ${tab.title}`}
+        title="Close tab"
+        aria-label={`Close ${tab.title}`}
         onClick={(e) => {
           e.stopPropagation();
           closeTab(tab.id);
@@ -127,7 +127,7 @@ export function DocumentTabs() {
   return (
     <div
       role="tablist"
-      aria-label="Schede aperte"
+      aria-label="Open tabs"
       className="flex h-9 items-stretch overflow-x-auto border-b border-border-strong bg-zona-schede"
     >
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
@@ -142,8 +142,8 @@ export function DocumentTabs() {
       </DndContext>
       <button
         type="button"
-        aria-label="Apri una nuova scheda (Dashboard)"
-        title="Nuova scheda"
+        aria-label="Open a new tab (Dashboard)"
+        title="New tab"
         onClick={() => openScreen("dashboard", NAV_ITEMS_BY_ID.dashboard.label)}
         className="flex w-8 shrink-0 items-center justify-center text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
       >
@@ -152,13 +152,13 @@ export function DocumentTabs() {
       {tabs.length > 0 && (
         <button
           type="button"
-          aria-label="Chiudi tutte le schede"
-          title="Chiudi tutte le schede"
+          aria-label="Close all tabs"
+          title="Close all tabs"
           onClick={closeAllTabs}
           className="ml-auto flex shrink-0 items-center gap-1 px-3 text-xs text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
         >
           <XCircle className="size-3.5" />
-          Chiudi tutte
+          Close all
         </button>
       )}
     </div>

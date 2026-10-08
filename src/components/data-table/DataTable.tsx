@@ -111,7 +111,7 @@ export function DataTable<TData extends { id: string }>({
   getLockedReason,
   onCellEdit,
   rowHeight = 32,
-  emptyMessage = "Nessuna riga da mostrare.",
+  emptyMessage = "No rows to show.",
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -396,7 +396,7 @@ export function DataTable<TData extends { id: string }>({
                       <input
                         value={(column.getFilterValue() as string) ?? ""}
                         onChange={(e) => column.setFilterValue(e.target.value)}
-                        placeholder="Filtra…"
+                        placeholder="Filter…"
                         className="h-5 w-full rounded border border-border bg-transparent px-1 text-xs outline-none focus:border-ring"
                       />
                     )}
@@ -514,7 +514,7 @@ function ColumnVisibilityPopover<TData>({
       <Popover.Trigger asChild>
         <Button variant="outline" size="sm">
           <Columns3 className="size-3.5" />
-          Colonne
+          Columns
         </Button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -560,7 +560,7 @@ function SavedViewsPopover({
       <Popover.Trigger asChild>
         <Button variant="outline" size="sm">
           <Save className="size-3.5" />
-          Viste
+          Views
         </Button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -573,7 +573,7 @@ function SavedViewsPopover({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nome vista…"
+              placeholder="View name…"
               className="h-7 flex-1 rounded border border-border bg-transparent px-2 text-sm outline-none"
             />
             <Button
@@ -584,13 +584,13 @@ function SavedViewsPopover({
                 setName("");
               }}
             >
-              Salva
+              Save
             </Button>
           </div>
           <ul className="mt-2 max-h-56 overflow-y-auto">
             {views.length === 0 && (
               <li className="px-1.5 py-1 text-xs text-muted-foreground">
-                Nessuna vista salvata.
+                No saved view.
               </li>
             )}
             {views.map((view) => (
@@ -606,7 +606,7 @@ function SavedViewsPopover({
                   onClick={() => onDelete(view.id)}
                   className="text-xs text-muted-foreground hover:text-destructive"
                 >
-                  Elimina
+                  Delete
                 </button>
               </li>
             ))}

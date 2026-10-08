@@ -18,7 +18,7 @@ export function Sidebar() {
 
   return (
     <aside
-      aria-label="Barra laterale di navigazione"
+      aria-label="Navigation sidebar"
       className={cn(
         "flex flex-col border-r border-border-strong bg-zona-navigazione transition-[width] duration-150",
         collapsed ? "w-12" : "w-56",
@@ -62,7 +62,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={toggleSidebar}
-        aria-label={collapsed ? "Espandi barra laterale" : "Comprimi barra laterale"}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         className="flex items-center justify-center border-t border-border-strong py-2 text-muted-foreground hover:bg-zona-accento/10 hover:text-foreground"
       >
         {collapsed ? (

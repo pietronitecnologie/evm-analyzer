@@ -27,9 +27,9 @@ function ContextSelector({
 }
 
 const STATO_LABEL: Record<string, string> = {
-  bozza: "Bozza",
-  provvisorio: "Provvisorio",
-  finale: "Finale",
+  bozza: "Draft",
+  provvisorio: "Provisional",
+  finale: "Final",
 };
 
 const STATO_SEMANTICO: Record<string, "neutro" | "provvisorio" | "verde"> = {
@@ -44,7 +44,7 @@ export function ContextBar() {
 
   return (
     <div className="flex h-10 flex-wrap items-center gap-1 border-b border-border-strong bg-zona-contesto px-2">
-      <ContextSelector label="Progetto" value={ctx.projectName} />
+      <ContextSelector label="Project" value={ctx.projectName} />
       <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-accent">
         <span className="text-muted-foreground">Status date</span>
         <span className="font-medium tabular-num">{ctx.statusDate}</span>
@@ -53,13 +53,13 @@ export function ContextBar() {
           label={STATO_LABEL[ctx.statusDateState]}
         />
       </div>
-      <ContextSelector label="Perimetro" value={ctx.perimetro} />
+      <ContextSelector label="Scope" value={ctx.perimetro} />
       <ContextSelector label="Baseline" value={ctx.baseline} />
       <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
         Base EV:{" "}
         {ctx.evBaseMode === "bac_senza_contingency"
-          ? "senza contingency"
-          : "con contingency"}
+          ? "without contingency"
+          : "with contingency"}
       </span>
 
       <div className="ml-auto flex items-center gap-2">
@@ -69,14 +69,14 @@ export function ContextBar() {
           className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-sm text-muted-foreground hover:bg-accent"
         >
           <Search className="size-3.5" />
-          Cerca task…
+          Search tasks…
           <kbd className="rounded border border-border px-1 text-[10px]">
             Ctrl+K
           </kbd>
         </button>
         <button
           type="button"
-          aria-label="Notifiche"
+          aria-label="Notifications"
           className="relative rounded-md p-1.5 hover:bg-accent"
         >
           <Bell className="size-4" />

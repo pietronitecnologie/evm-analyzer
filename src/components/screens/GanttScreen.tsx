@@ -15,7 +15,7 @@ import { Vuoto } from "./comuni";
 const LABEL_PX = 300;
 const HEADER_PX = 46;
 const BARRA_PX = 12;
-const MESI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+const MESI = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Segmenti dei mesi per l'intestazione superiore. */
 function segmentiMesi(giorni: { iso: string }[]) {
@@ -44,9 +44,9 @@ export function GanttScreen() {
   );
   const modello = React.useMemo(() => (righe ? modelloGantt(righe, calendario) : null), [righe, calendario]);
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per vedere il Gantt." />;
-  if (!righe || !modello) return <Vuoto messaggio="Caricamento…" />;
-  if (modello.giorni.length === 0) return <Vuoto messaggio="Nessun task con date pianificate da mostrare." />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to see the Gantt chart." />;
+  if (!righe || !modello) return <Vuoto messaggio="Loading…" />;
+  if (modello.giorni.length === 0) return <Vuoto messaggio="No task with planned dates to show." />;
 
   const altezzaRighe = righe.length * RIGA_PX;
   const mesi = segmentiMesi(modello.giorni);
@@ -55,18 +55,18 @@ export function GanttScreen() {
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-strong bg-zona-contesto px-4 py-2 text-xs text-muted-foreground">
         <span>
-          Dal <strong className="text-foreground">{modello.inizio}</strong> al{" "}
-          <strong className="text-foreground">{modello.fine}</strong> · {modello.conDate} attività datate
-          {calendario ? ` · calendario «${calendario.nome}»` : ""}
+          From <strong className="text-foreground">{modello.inizio}</strong> to{" "}
+          <strong className="text-foreground">{modello.fine}</strong> · {modello.conDate} dated activities
+          {calendario ? ` · calendar "${calendario.nome}"` : ""}
         </span>
         <span className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-zona-accento" />task</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-rosso" />critico</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-foreground/50" />riepilogo</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-rosso" />critical</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-foreground/50" />summary</span>
           <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 rotate-45 bg-semaforo-rosso" />milestone</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-muted-foreground/25" />fine settimana</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-giallo/60" />festivo</span>
-          <span>Sola lettura</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-muted-foreground/25" />weekend</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-giallo/60" />holiday</span>
+          <span>Read-only</span>
         </span>
       </div>
 
@@ -76,7 +76,7 @@ export function GanttScreen() {
           {/* Intestazione: mesi e giorni */}
           <div className="sticky top-0 z-20 flex border-b border-border-strong bg-card" style={{ height: HEADER_PX }}>
             <div className="sticky left-0 z-30 flex shrink-0 items-end border-r border-border-strong bg-card px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" style={{ width: LABEL_PX }}>
-              Attività
+              Activity
             </div>
             <div className="relative" style={{ width: modello.larghezzaPx }}>
               {mesi.map((m) => (
@@ -89,7 +89,7 @@ export function GanttScreen() {
                   key={g.iso}
                   className={`absolute bottom-0 text-center text-[10px] tabular-num ${g.festivo ? "font-semibold text-semaforo-giallo" : g.weekend ? "text-muted-foreground" : ""}`}
                   style={{ left: i * GIORNO_PX, width: GIORNO_PX, height: 22 }}
-                  title={`${g.iso}${g.festivo ? " · festivo" : g.weekend ? " · fine settimana" : ""}`}
+                  title={`${g.iso}${g.festivo ? " · holiday" : g.weekend ? " · weekend" : ""}`}
                 >
                   {Number(g.iso.slice(8, 10))}
                 </div>
@@ -105,7 +105,7 @@ export function GanttScreen() {
                   key={`bg-${g.iso}`}
                   className={`absolute top-0 h-full ${g.festivo ? "bg-semaforo-giallo/25" : "bg-muted-foreground/10"}`}
                   style={{ left: i * GIORNO_PX, width: GIORNO_PX }}
-                  title={g.festivo ? `${g.iso} · festivo` : g.iso}
+                  title={g.festivo ? `${g.iso} · holiday` : g.iso}
                 />
               ) : null,
             )}

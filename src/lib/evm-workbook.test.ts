@@ -15,7 +15,7 @@ describe("vista EVM del workbook — fixture", () => {
     expect(vista).not.toBeNull();
     expect(vista!.stima.bacTotal).toBeCloseTo(55933.87, 2);
     expect(vista!.stima.direct + vista!.stima.indirect).toBeCloseTo(48638.15, 2);
-    expect(vista!.etichettaBase).toBe("BAC con contingency");
+    expect(vista!.etichettaBase).toBe("BAC with contingency");
     expect(vista!.baseMisura).toBeCloseTo(55933.87, 2);
     expect(vista!.nomi).toHaveLength(9);
   });

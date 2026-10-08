@@ -12,7 +12,9 @@ use super::tabular::da_righe;
 use super::ImportedPlan;
 use crate::tempo;
 
-pub fn leggi(percorso: &Path) -> Result<ImportedPlan, String> {
+/// Legge il primo foglio del workbook e restituisce le righe di celle di
+/// testo (senza interpretarle).
+pub fn leggi_righe(percorso: &Path) -> Result<Vec<Vec<String>>, String> {
     let mut workbook = open_workbook_auto(percorso).map_err(|e| format!("Excel non leggibile: {e}"))?;
     let primo_foglio = workbook
         .sheet_names()
@@ -23,11 +25,14 @@ pub fn leggi(percorso: &Path) -> Result<ImportedPlan, String> {
         .worksheet_range(&primo_foglio)
         .map_err(|e| format!("foglio «{primo_foglio}» non leggibile: {e}"))?;
 
-    let righe: Vec<Vec<String>> = intervallo
+    Ok(intervallo
         .rows()
         .map(|riga| riga.iter().map(cella_come_testo).collect())
-        .collect();
-    da_righe(righe)
+        .collect())
+}
+
+pub fn leggi(percorso: &Path) -> Result<ImportedPlan, String> {
+    da_righe(leggi_righe(percorso)?)
 }
 
 /// Le celle sono convertite in testo: le date diventano `YYYY-MM-DD` così il

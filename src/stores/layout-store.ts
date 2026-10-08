@@ -13,11 +13,15 @@ export interface DocumentTab {
 interface LayoutState {
   sidebarCollapsed: boolean;
   commandPaletteOpen: boolean;
+  importWizardOpen: boolean;
+  resyncDialogOpen: boolean;
   tabs: DocumentTab[];
   activeTabId: string | null;
 
   toggleSidebar: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  setImportWizardOpen: (open: boolean) => void;
+  setResyncDialogOpen: (open: boolean) => void;
 
   openScreen: (screenId: string, title: string) => void;
   closeTab: (id: string) => void;
@@ -33,12 +37,16 @@ export const useLayoutStore = create<LayoutState>()(
     (set, get) => ({
       sidebarCollapsed: false,
       commandPaletteOpen: false,
+      importWizardOpen: false,
+      resyncDialogOpen: false,
       tabs: [],
       activeTabId: null,
 
       toggleSidebar: () =>
         set({ sidebarCollapsed: !get().sidebarCollapsed }),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+      setImportWizardOpen: (open) => set({ importWizardOpen: open }),
+      setResyncDialogOpen: (open) => set({ resyncDialogOpen: open }),
 
       openScreen: (screenId, title) => {
         const existing = get().tabs.find((t) => t.screenId === screenId);

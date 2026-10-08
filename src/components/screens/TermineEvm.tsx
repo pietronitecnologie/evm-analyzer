@@ -27,7 +27,7 @@ export function TermineEvm({ sigla, children }: { sigla: string; children?: Reac
         <p className="mt-1">{voce.significato}</p>
         <p className="mt-1 text-muted-foreground">{voce.lettura}</p>
         {voce.formula && <p className="mt-1 font-mono">{voce.formula}</p>}
-        <p className="mt-1 text-muted-foreground">Libro {voce.riferimento}</p>
+        <p className="mt-1 text-muted-foreground">Book {voce.riferimento}</p>
       </TooltipContent>
     </Tooltip>
   );

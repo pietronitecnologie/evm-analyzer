@@ -40,6 +40,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0005_archivio_baseline",
         sql: include_str!("../migrations/0005_archivio_baseline.sql"),
     },
+    Migration {
+        version: 6,
+        name: "0006_resync",
+        sql: include_str!("../migrations/0006_resync.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

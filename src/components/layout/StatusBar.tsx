@@ -14,7 +14,7 @@ export function StatusBar() {
   return (
     <div className="flex h-6 items-center gap-4 border-t border-black/40 bg-zona-stato px-3 text-xs text-zona-stato-foreground">
       <span>
-        Copertura{" "}
+        Coverage{" "}
         <strong className="text-white">
           {ctx.coveragePct === null
             ? NON_CALCOLABILE
@@ -24,27 +24,27 @@ export function StatusBar() {
       </span>
       <span className="flex items-center gap-1">
         <RefreshCw className="size-3" />
-        Piano:{" "}
+        Plan:{" "}
         {ctx.planSynced ? (
           <span className="flex items-center gap-1 text-white">
-            sincronizzato <Check className="size-3 text-semaforo-verde" />
+            synced <Check className="size-3 text-semaforo-verde" />
             {ctx.planSyncHash && `(hash ${ctx.planSyncHash})`}
           </span>
         ) : (
-          <span className="text-semaforo-rosso">da ri-sincronizzare</span>
+          <span className="text-semaforo-rosso">needs re-sync</span>
         )}
       </span>
       <button
         type="button"
-        onClick={() => openScreen("qualita-dati", "Qualità dati")}
+        onClick={() => openScreen("qualita-dati", "Data quality")}
         className="flex items-center gap-1 rounded px-1 hover:bg-white/10 hover:text-white"
       >
         <AlertTriangle className="size-3" />
-        {ctx.anomalyCount} anomalie
+        {ctx.anomalyCount} anomalies
       </button>
       <span className="ml-auto flex items-center gap-1">
         <Save className="size-3" />
-        {ctx.saved ? "Salvato" : "Salvataggio…"}
+        {ctx.saved ? "Saved" : "Saving…"}
       </span>
     </div>
   );

@@ -26,10 +26,10 @@ import { runCommand } from "@/lib/commands";
 function HomeScreen() {
   return (
     <div className="mx-auto max-w-2xl p-8">
-      <h1 className="text-lg font-semibold">Progetti recenti</h1>
+      <h1 className="text-lg font-semibold">Recent projects</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Nessun progetto recente: importa un export del piano o un workbook
-        Excel per iniziare.
+        No recent project: import a plan export or an Excel workbook to get
+        started.
       </p>
       <div className="mt-6 grid grid-cols-2 gap-3">
         <Button
@@ -38,8 +38,8 @@ function HomeScreen() {
           onClick={() => runCommand("file.importa-piano")}
         >
           <Import className="size-5" />
-          <span className="font-medium">Nuovo da export di MS Project</span>
-          <span className="text-xs text-muted-foreground">XML MSPDI, Excel o CSV</span>
+          <span className="font-medium">New from MS Project export</span>
+          <span className="text-xs text-muted-foreground">XML MSPDI, Excel or CSV</span>
         </Button>
         <Button
           variant="outline"
@@ -47,8 +47,8 @@ function HomeScreen() {
           onClick={() => runCommand("file.apri")}
         >
           <FolderOpen className="size-5" />
-          <span className="font-medium">Apri</span>
-          <span className="text-xs text-muted-foreground">Progetto .evmproj esistente</span>
+          <span className="font-medium">Open</span>
+          <span className="text-xs text-muted-foreground">Existing .evmproj project</span>
         </Button>
         <Button
           variant="outline"
@@ -56,8 +56,8 @@ function HomeScreen() {
           onClick={() => runCommand("file.importa-workbook")}
         >
           <Sheet className="size-5" />
-          <span className="font-medium">Importa workbook Excel</span>
-          <span className="text-xs text-muted-foreground">Formato Impresa Numerica</span>
+          <span className="font-medium">Import Excel workbook</span>
+          <span className="text-xs text-muted-foreground">Impresa Numerica format</span>
         </Button>
         <Button
           variant="outline"
@@ -65,7 +65,7 @@ function HomeScreen() {
           onClick={() => runCommand("file.importa-pacchetto")}
         >
           <PackagePlus className="size-5" />
-          <span className="font-medium">Importa pacchetto</span>
+          <span className="font-medium">Import package</span>
           <span className="text-xs text-muted-foreground">.evmwork / .evmprog</span>
         </Button>
       </div>
@@ -94,9 +94,9 @@ export function ScreenPlaceholder({ screenId, title }: { screenId: string; title
       {Icon && <Icon className="size-8" aria-hidden="true" />}
       <p className="text-sm font-medium text-foreground">{title}</p>
       <p className="max-w-sm text-xs">
-        Il contenuto di questa schermata arriva nelle fasi successive del
-        piano di sviluppo (sez. 9). Il guscio (menu, schede, pannello di
-        tabella comune) è già operativo.
+        This screen's content arrives in later phases of the development
+        plan (sec. 9). The shell (menu, tabs, common table panel) is already
+        working.
       </p>
     </div>
   );

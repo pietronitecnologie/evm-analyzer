@@ -8,7 +8,9 @@ import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { ContextBar } from "@/components/layout/ContextBar";
 import { DocumentTabs } from "@/components/layout/DocumentTabs";
 import { EsitoImportazione } from "@/components/layout/EsitoImportazione";
+import { ImportPlanWizard } from "@/components/layout/ImportPlanWizard";
 import { MenuBar } from "@/components/layout/MenuBar";
+import { ResyncPlanDialog } from "@/components/layout/ResyncPlanDialog";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { ScreenPlaceholder } from "@/components/screens/ScreenPlaceholder";
@@ -72,7 +74,7 @@ export function AppShell() {
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Nessuna scheda aperta. Usa Ctrl+K per aprire una schermata.
+                        No tab open. Use Ctrl+K to open a screen.
                       </div>
                     )}
                   </div>
@@ -85,6 +87,8 @@ export function AppShell() {
       </div>
       <CommandPalette />
       <EsitoImportazione />
+      <ImportPlanWizard />
+      <ResyncPlanDialog />
       <Toaster />
     </TooltipProvider>
   );

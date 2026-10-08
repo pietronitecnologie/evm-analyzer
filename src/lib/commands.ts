@@ -5,7 +5,7 @@
 // sia la palette comandi Ctrl+K (cmdk), così ogni azione è raggiungibile
 // da entrambi i percorsi senza duplicare la logica.
 
-import { apriProgetto, importaPiano, nuovoProgetto } from "@/lib/progetto";
+import { apriProgetto, nuovoProgetto } from "@/lib/progetto";
 import { esportaWorkbook, importaWorkbook } from "@/lib/workbook";
 import { NAV_GROUPS } from "@/lib/navigation";
 import { notImplemented } from "@/stores/toast-store";
@@ -24,8 +24,8 @@ const screenCommands: Command[] = NAV_GROUPS.flatMap((group) =>
   group.items.map(
     (item): Command => ({
       id: `vai.${item.id}`,
-      label: `Vai a ${item.label}`,
-      group: "Vai a",
+      label: `Go to ${item.label}`,
+      group: "Go to",
       run: () => useLayoutStore.getState().openScreen(item.id, item.label),
     }),
   ),
@@ -34,8 +34,8 @@ const screenCommands: Command[] = NAV_GROUPS.flatMap((group) =>
 const viewCommands: Command[] = [
   {
     id: "vista.tema",
-    label: "Cambia tema chiaro/scuro",
-    group: "Vista",
+    label: "Toggle light/dark theme",
+    group: "View",
     run: () => {
       useThemeStore.getState().toggleTheme();
       const { theme, fontScale } = useThemeStore.getState();
@@ -44,22 +44,22 @@ const viewCommands: Command[] = [
   },
   {
     id: "vista.sidebar",
-    label: "Mostra/nascondi barra laterale",
+    label: "Show/hide sidebar",
     shortcut: "Ctrl+B",
-    group: "Vista",
+    group: "View",
     run: () => useLayoutStore.getState().toggleSidebar(),
   },
   {
     id: "vista.chiudi-schede",
-    label: "Chiudi tutte le schede",
-    group: "Vista",
+    label: "Close all tabs",
+    group: "View",
     run: () => useLayoutStore.getState().closeAllTabs(),
   },
   {
     id: "vista.schermo-intero",
-    label: "Schermo intero",
+    label: "Full screen",
     shortcut: "F11",
-    group: "Vista",
+    group: "View",
     run: () => {
       if (document.fullscreenElement) void document.exitFullscreen();
       else void document.documentElement.requestFullscreen();
@@ -67,8 +67,8 @@ const viewCommands: Command[] = [
   },
   {
     id: "vista.testo-piu-grande",
-    label: "Aumenta dimensione testo",
-    group: "Vista",
+    label: "Increase text size",
+    group: "View",
     run: () => {
       const s = useThemeStore.getState();
       s.setFontScale(s.fontScale + 0.1);
@@ -77,8 +77,8 @@ const viewCommands: Command[] = [
   },
   {
     id: "vista.testo-piu-piccolo",
-    label: "Riduci dimensione testo",
-    group: "Vista",
+    label: "Decrease text size",
+    group: "View",
     run: () => {
       const s = useThemeStore.getState();
       s.setFontScale(s.fontScale - 0.1);
@@ -96,85 +96,90 @@ function placeholder(id: string, label: string, group: string): Command {
 
 // Creazione, apertura e importazione del piano: funzionanti nell'app desktop.
 const progettoCommands: Command[] = [
-  { id: "file.importa-workbook", label: "Importa workbook Excel…", group: "File", run: () => void importaWorkbook() },
-  { id: "file.esporta-workbook", label: "Esporta workbook Excel…", group: "File", run: () => void esportaWorkbook() },
+  { id: "file.importa-workbook", label: "Import Excel workbook…", group: "File", run: () => void importaWorkbook() },
+  { id: "file.esporta-workbook", label: "Export Excel workbook…", group: "File", run: () => void esportaWorkbook() },
   {
     id: "progetto.monitoraggio",
-    label: "Monitoraggio EVM…",
-    group: "Progetto",
-    run: () => useLayoutStore.getState().openScreen("monitoraggio", "Monitoraggio EVM"),
+    label: "EVM Monitoring…",
+    group: "Project",
+    run: () => useLayoutStore.getState().openScreen("monitoraggio", "EVM Monitoring"),
   },
   {
     id: "progetto.governance",
-    label: "Governance costi…",
-    group: "Progetto",
-    run: () => useLayoutStore.getState().openScreen("governance-costi", "Governance costi"),
+    label: "Cost governance…",
+    group: "Project",
+    run: () => useLayoutStore.getState().openScreen("governance-costi", "Cost governance"),
   },
   {
     id: "progetto.calendari",
-    label: "Calendari di lavoro…",
-    group: "Progetto",
-    run: () => useLayoutStore.getState().openScreen("calendari", "Calendari di lavoro"),
+    label: "Working calendars…",
+    group: "Project",
+    run: () => useLayoutStore.getState().openScreen("calendari", "Working calendars"),
   },
   {
     id: "progetto.nuovo-task",
-    label: "Nuovo task…",
-    group: "Progetto",
-    run: () => useLayoutStore.getState().openScreen("task-risorse", "Task e risorse"),
+    label: "New task…",
+    group: "Project",
+    run: () => useLayoutStore.getState().openScreen("task-risorse", "Tasks and resources"),
   },
-  { id: "file.nuovo", label: "Nuovo progetto…", group: "File", run: () => void nuovoProgetto() },
-  { id: "file.apri", label: "Apri progetto…", group: "File", run: () => void apriProgetto() },
+  { id: "file.nuovo", label: "New project…", group: "File", run: () => void nuovoProgetto() },
+  { id: "file.apri", label: "Open project…", group: "File", run: () => void apriProgetto() },
   {
     id: "file.importa-piano",
-    label: "Importa piano da export MS Project…",
+    label: "Import plan from MS Project export…",
     group: "File",
-    run: () => void importaPiano(),
+    run: () => useLayoutStore.getState().setImportWizardOpen(true),
+  },
+  {
+    id: "progetto.risincronizza",
+    label: "Re-sync plan",
+    group: "Project",
+    run: () => useLayoutStore.getState().setResyncDialogOpen(true),
   },
 ];
 
 const placeholderCommands: Command[] = [
-  placeholder("file.progetti-recenti", "Progetti recenti", "File"),
-  placeholder("file.importa-pacchetto", "Importa pacchetto…", "File"),
-  placeholder("file.esporta-report", "Esporta report PDF…", "File"),
-  placeholder("file.esporta-pacchetto-lavoro", "Esporta pacchetto di lavoro…", "File"),
-  placeholder("file.esporta-pacchetto-avanzamento", "Esporta pacchetto di avanzamento…", "File"),
-  placeholder("file.esporta-csv", "Esporta CSV della vista corrente", "File"),
-  placeholder("file.chiudi-progetto", "Chiudi progetto", "File"),
-  placeholder("modifica.annulla", "Annulla", "Modifica"),
-  placeholder("modifica.ripeti", "Ripeti", "Modifica"),
-  placeholder("modifica.copia", "Copia", "Modifica"),
-  placeholder("modifica.incolla", "Incolla", "Modifica"),
-  placeholder("modifica.trova", "Trova", "Modifica"),
-  placeholder("modifica.vai-task", "Vai al task…", "Modifica"),
-  placeholder("vista.colonne", "Colonne…", "Vista"),
-  placeholder("vista.salva-vista", "Salva vista corrente…", "Vista"),
-  placeholder("vista.ripristina-layout", "Ripristina layout", "Vista"),
-  placeholder("progetto.parametri", "Parametri e soglie…", "Progetto"),
-  placeholder("progetto.base-ev", "Base di misura EV…", "Progetto"),
-  placeholder("progetto.calendario-status-date", "Calendario status date…", "Progetto"),
-  placeholder("progetto.nuovo-snapshot", "Crea snapshot…", "Progetto"),
-  placeholder("progetto.blocca-baseline", "Blocca baseline…", "Progetto"),
-  placeholder("progetto.change-request", "Nuova change request…", "Progetto"),
-  placeholder("progetto.risincronizza", "Ri-sincronizza piano", "Progetto"),
-  placeholder("avanzamento.invia", "Invia per approvazione", "Avanzamento"),
-  placeholder("avanzamento.approva", "Approva selezione", "Avanzamento"),
-  placeholder("avanzamento.respingi", "Respingi selezione…", "Avanzamento"),
-  placeholder("avanzamento.copia-periodo-precedente", "Copia avanzamento dalla status date precedente", "Avanzamento"),
-  placeholder("feed.wizard", "Procedura guidata feed MS Project…", "Feed"),
-  placeholder("feed.verifica", "Verifica aggiornamento (carica il nuovo export)…", "Feed"),
-  placeholder("feed.storico", "Storico feed", "Feed"),
-  placeholder("analisi.earned-schedule", "Earned Schedule", "Analisi"),
-  placeholder("analisi.monte-carlo", "Monte Carlo…", "Analisi"),
-  placeholder("analisi.confronta-baseline", "Confronta baseline…", "Analisi"),
-  placeholder("analisi.qualita-dati", "Esegui controlli di qualità dati", "Analisi"),
-  placeholder("strumenti.utenti", "Gestione utenti e perimetri", "Strumenti"),
-  placeholder("strumenti.log-importazione", "Log di importazione", "Strumenti"),
-  placeholder("strumenti.cartella-dati", "Cartella dati", "Strumenti"),
-  placeholder("aiuto.guida", "Guida", "Aiuto"),
-  placeholder("aiuto.glossario", "Glossario KPI", "Aiuto"),
-  placeholder("aiuto.scorciatoie", "Scorciatoie da tastiera", "Aiuto"),
-  placeholder("aiuto.informazioni", "Informazioni", "Aiuto"),
-  placeholder("aiuto.licenza", "Licenza GPL e terze parti", "Aiuto"),
+  placeholder("file.progetti-recenti", "Recent projects", "File"),
+  placeholder("file.importa-pacchetto", "Import package…", "File"),
+  placeholder("file.esporta-report", "Export PDF report…", "File"),
+  placeholder("file.esporta-pacchetto-lavoro", "Export work package…", "File"),
+  placeholder("file.esporta-pacchetto-avanzamento", "Export progress package…", "File"),
+  placeholder("file.esporta-csv", "Export CSV of current view", "File"),
+  placeholder("file.chiudi-progetto", "Close project", "File"),
+  placeholder("modifica.annulla", "Undo", "Edit"),
+  placeholder("modifica.ripeti", "Redo", "Edit"),
+  placeholder("modifica.copia", "Copy", "Edit"),
+  placeholder("modifica.incolla", "Paste", "Edit"),
+  placeholder("modifica.trova", "Find", "Edit"),
+  placeholder("modifica.vai-task", "Go to task…", "Edit"),
+  placeholder("vista.colonne", "Columns…", "View"),
+  placeholder("vista.salva-vista", "Save current view…", "View"),
+  placeholder("vista.ripristina-layout", "Restore layout", "View"),
+  placeholder("progetto.parametri", "Parameters and thresholds…", "Project"),
+  placeholder("progetto.base-ev", "EV measurement basis…", "Project"),
+  placeholder("progetto.calendario-status-date", "Status date calendar…", "Project"),
+  placeholder("progetto.nuovo-snapshot", "Create snapshot…", "Project"),
+  placeholder("progetto.blocca-baseline", "Lock baseline…", "Project"),
+  placeholder("progetto.change-request", "New change request…", "Project"),
+  placeholder("avanzamento.invia", "Submit for approval", "Progress"),
+  placeholder("avanzamento.approva", "Approve selection", "Progress"),
+  placeholder("avanzamento.respingi", "Reject selection…", "Progress"),
+  placeholder("avanzamento.copia-periodo-precedente", "Copy progress from previous status date", "Progress"),
+  placeholder("feed.wizard", "MS Project feed wizard…", "Feed"),
+  placeholder("feed.verifica", "Check for update (load new export)…", "Feed"),
+  placeholder("feed.storico", "Feed history", "Feed"),
+  placeholder("analisi.earned-schedule", "Earned Schedule", "Analysis"),
+  placeholder("analisi.monte-carlo", "Monte Carlo…", "Analysis"),
+  placeholder("analisi.confronta-baseline", "Compare baseline…", "Analysis"),
+  placeholder("analisi.qualita-dati", "Run data quality checks", "Analysis"),
+  placeholder("strumenti.utenti", "User and scope management", "Tools"),
+  placeholder("strumenti.log-importazione", "Import log", "Tools"),
+  placeholder("strumenti.cartella-dati", "Data folder", "Tools"),
+  placeholder("aiuto.guida", "Guide", "Help"),
+  placeholder("aiuto.glossario", "KPI glossary", "Help"),
+  placeholder("aiuto.scorciatoie", "Keyboard shortcuts", "Help"),
+  placeholder("aiuto.informazioni", "About", "Help"),
+  placeholder("aiuto.licenza", "GPL license and third parties", "Help"),
 ];
 
 export const COMMANDS: Command[] = [

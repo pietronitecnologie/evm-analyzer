@@ -48,7 +48,7 @@ export function useDati<T>(
     try {
       setDati(await chiama<T>(percorso, comando));
     } catch (e) {
-      avviso(`Caricamento non riuscito (${comando})`, e);
+      avviso(`Loading failed (${comando})`, e);
     }
   }, [comando, percorso]);
 
@@ -60,7 +60,7 @@ export function useDati<T>(
         if (!annullato) setDati(d);
       })
       .catch((e) => {
-        if (!annullato) avviso(`Caricamento non riuscito (${comando})`, e);
+        if (!annullato) avviso(`Loading failed (${comando})`, e);
       });
     return () => {
       annullato = true;

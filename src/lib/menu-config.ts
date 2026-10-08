@@ -40,7 +40,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "modifica",
-    label: "Modifica",
+    label: "Edit",
     entries: [
       cmd("modifica.annulla"),
       cmd("modifica.ripeti"),
@@ -54,7 +54,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "vista",
-    label: "Vista",
+    label: "View",
     entries: [
       cmd("vista.tema"),
       cmd("vista.testo-piu-grande"),
@@ -72,7 +72,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "progetto",
-    label: "Progetto",
+    label: "Project",
     entries: [
       cmd("progetto.nuovo-task"),
       cmd("progetto.calendari"),
@@ -92,7 +92,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "avanzamento",
-    label: "Avanzamento",
+    label: "Progress",
     entries: [
       cmd("vai.avanzamento"),
       sep,
@@ -114,7 +114,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "analisi",
-    label: "Analisi",
+    label: "Analysis",
     entries: [
       cmd("vai.dashboard"),
       cmd("analisi.earned-schedule"),
@@ -126,7 +126,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "strumenti",
-    label: "Strumenti",
+    label: "Tools",
     entries: [
       cmd("strumenti.utenti"),
       cmd("strumenti.log-importazione"),
@@ -135,7 +135,7 @@ export const MENUS: MenuDef[] = [
   },
   {
     id: "aiuto",
-    label: "Aiuto",
+    label: "Help",
     entries: [
       cmd("aiuto.guida"),
       cmd("aiuto.glossario"),

@@ -59,10 +59,11 @@ fn riconosci(intestazione: &str) -> Option<Campo> {
     })
 }
 
-/// Legge un CSV esportato da MS Project. Gestisce UTF-8 (con o senza BOM) e
-/// le codifiche latin-1/Windows-1252 dei sistemi italiani, e rileva il
+/// Legge un CSV esportato da MS Project e restituisce le righe di celle di
+/// testo (senza interpretarle). Gestisce UTF-8 (con o senza BOM) e le
+/// codifiche latin-1/Windows-1252 dei sistemi italiani, e rileva il
 /// separatore (`;` o `,`) dalla riga di intestazione.
-pub fn leggi_csv(bytes: &[u8]) -> Result<ImportedPlan, String> {
+pub fn leggi_csv_righe(bytes: &[u8]) -> Result<Vec<Vec<String>>, String> {
     let testo: String = match std::str::from_utf8(bytes) {
         Ok(s) => s.to_string(),
         // Senza UTF-8 valido ogni byte è un carattere latin-1 (Windows-1252 quasi ovunque).
@@ -86,16 +87,20 @@ pub fn leggi_csv(bytes: &[u8]) -> Result<ImportedPlan, String> {
         let record = record.map_err(|e| format!("CSV non valido: {e}"))?;
         righe.push(record.iter().map(str::to_string).collect::<Vec<String>>());
     }
-    da_righe(righe)
+    Ok(righe)
 }
 
-/// Costruisce il piano da righe di celle di testo. La prima riga con UID o
-/// nome riconosciuti è l'intestazione; le righe senza nome sono vuote e
-/// vengono saltate.
-pub fn da_righe(righe: Vec<Vec<String>>) -> Result<ImportedPlan, String> {
-    let mut plan = ImportedPlan::default();
+/// Legge un CSV esportato da MS Project. Gestisce UTF-8 (con o senza BOM) e
+/// le codifiche latin-1/Windows-1252 dei sistemi italiani, e rileva il
+/// separatore (`;` o `,`) dalla riga di intestazione.
+pub fn leggi_csv(bytes: &[u8]) -> Result<ImportedPlan, String> {
+    da_righe(leggi_csv_righe(bytes)?)
+}
 
-    let Some((indice_intestazione, mappa)) = righe.iter().take(10).enumerate().find_map(|(i, r)| {
+/// Trova la riga di intestazione (prima tra le prime 10 con la colonna Nome
+/// riconosciuta) e la mappa `Campo -> colonna`.
+fn trova_intestazione(righe: &[Vec<String>]) -> Option<(usize, Vec<(Campo, usize)>)> {
+    righe.iter().take(10).enumerate().find_map(|(i, r)| {
         let mut mappa: Vec<(Campo, usize)> = Vec::new();
         for (colonna, cella) in r.iter().enumerate() {
             if let Some(campo) = riconosci(cella) {
@@ -106,7 +111,28 @@ pub fn da_righe(righe: Vec<Vec<String>>) -> Result<ImportedPlan, String> {
         }
         let ha_base = mappa.iter().any(|(c, _)| *c == Campo::Nome);
         ha_base.then_some((i, mappa))
-    }) else {
+    })
+}
+
+/// Etichette delle colonne riconosciute nella riga di intestazione (per
+/// l'anteprima dell'importazione, `inspect_plan_file`); vuoto se nessuna
+/// intestazione valida è stata trovata.
+pub fn intestazioni_riconosciute(righe: &[Vec<String>]) -> Vec<String> {
+    let Some((indice, mappa)) = trova_intestazione(righe) else { return Vec::new() };
+    let Some(riga) = righe.get(indice) else { return Vec::new() };
+    mappa
+        .iter()
+        .filter_map(|(_, colonna)| riga.get(*colonna).cloned())
+        .collect()
+}
+
+/// Costruisce il piano da righe di celle di testo. La prima riga con UID o
+/// nome riconosciuti è l'intestazione; le righe senza nome sono vuote e
+/// vengono saltate.
+pub fn da_righe(righe: Vec<Vec<String>>) -> Result<ImportedPlan, String> {
+    let mut plan = ImportedPlan::default();
+
+    let Some((indice_intestazione, mappa)) = trova_intestazione(&righe) else {
         return Err("intestazione non riconosciuta: servono almeno le colonne Nome e UID/ID".into());
     };
 

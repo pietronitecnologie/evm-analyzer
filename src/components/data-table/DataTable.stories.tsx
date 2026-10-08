@@ -22,7 +22,7 @@ interface RigaDemo {
 }
 
 function generaRighe(n: number): RigaDemo[] {
-  const metodi = ["0/100", "50/50", "Unità fisiche", "Milestone pesate", "LOE"];
+  const metodi = ["0/100", "50/50", "Physical units", "Weighted milestones", "LOE"];
   return Array.from({ length: n }, (_, i) => {
     const bac = 1000 + (i % 37) * 450;
     const pctFisica = [0, 25, 50, 75, 90, 100][i % 6];
@@ -31,7 +31,7 @@ function generaRighe(n: number): RigaDemo[] {
     return {
       id: `t-${i + 1}`,
       wbs: `1.${Math.floor(i / 10) + 1}.${(i % 10) + 1}`,
-      nome: `Attività ${i + 1}`,
+      nome: `Activity ${i + 1}`,
       metodoEv: metodi[i % metodi.length],
       pctFisica,
       bac,
@@ -51,11 +51,11 @@ function spiOf(row: RigaDemo) {
 
 const columns: ColumnDef<RigaDemo, unknown>[] = [
   { id: "wbs", header: "WBS", accessorKey: "wbs", size: 90 },
-  { id: "nome", header: "Attività", accessorKey: "nome", size: 200 },
-  { id: "metodoEv", header: "Metodo EV", accessorKey: "metodoEv", size: 140, meta: { filterable: false } },
+  { id: "nome", header: "Activity", accessorKey: "nome", size: 200 },
+  { id: "metodoEv", header: "EV method", accessorKey: "metodoEv", size: 140, meta: { filterable: false } },
   {
     id: "pctFisica",
-    header: "% fisica",
+    header: "% physical",
     accessorKey: "pctFisica",
     size: 100,
     meta: { align: "right", editable: true },
@@ -114,7 +114,7 @@ const columns: ColumnDef<RigaDemo, unknown>[] = [
 const quickFilters: QuickFilter<RigaDemo>[] = [
   {
     id: "fuori-soglia",
-    label: "Fuori soglia",
+    label: "Out of threshold",
     predicate: (row) => {
       const cpi = cpiOf(row);
       const spi = spiOf(row);
@@ -123,12 +123,12 @@ const quickFilters: QuickFilter<RigaDemo>[] = [
   },
   {
     id: "non-aggiornati",
-    label: "Non aggiornati",
+    label: "Not updated",
     predicate: (row) => row.pctFisica === 0,
   },
   {
     id: "completati",
-    label: "Completati",
+    label: "Completed",
     predicate: (row) => row.pctFisica === 100,
   },
 ];

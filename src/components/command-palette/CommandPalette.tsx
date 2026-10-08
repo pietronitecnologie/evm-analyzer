@@ -42,19 +42,19 @@ export function CommandPalette() {
           className="fixed left-1/2 top-[18%] z-50 w-full max-w-lg -translate-x-1/2 rounded-lg border border-border bg-popover shadow-xl"
           aria-describedby={undefined}
         >
-          <Dialog.Title className="sr-only">Palette comandi</Dialog.Title>
-          <CommandPrimitive label="Palette comandi" className="flex flex-col">
+          <Dialog.Title className="sr-only">Command palette</Dialog.Title>
+          <CommandPrimitive label="Command palette" className="flex flex-col">
             <div className="flex items-center gap-2 border-b border-border px-3">
               <Search className="size-4 text-muted-foreground" aria-hidden="true" />
               <CommandPrimitive.Input
                 autoFocus
-                placeholder="Cerca un comando, una schermata o un task…"
+                placeholder="Search for a command, screen or task…"
                 className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
             <CommandPrimitive.List className="max-h-80 overflow-y-auto p-1">
               <CommandPrimitive.Empty className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Nessun risultato.
+                No results.
               </CommandPrimitive.Empty>
               {[...groups.entries()].map(([group, items]) => (
                 <CommandPrimitive.Group

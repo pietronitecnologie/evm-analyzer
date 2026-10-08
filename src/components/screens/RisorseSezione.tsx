@@ -45,14 +45,14 @@ export function RisorseSezione() {
 
   async function creaRisorsa(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Risorsa non creata", () =>
+    const ok = await esegui("Resource not created", () =>
       chiama(percorso!, "crea_risorsa", {
         nome: nuova.nome,
         tipo: nuova.tipo || null,
         tariffa: numero(nuova.tariffa),
         tariffaStraordinario: numero(nuova.straordinario),
       }),
-      "Risorsa creata",
+      "Resource created",
     );
     if (ok) {
       setNuova({ nome: "", tipo: "lavoro", tariffa: "", straordinario: "" });
@@ -62,10 +62,10 @@ export function RisorseSezione() {
 
   async function salvaTariffe(r: RisorsaRiga) {
     const m = modifiche[r.id] ?? { tariffa: r.tariffa?.toString() ?? "", costo: r.costoOrarioReale?.toString() ?? "" };
-    const ok = await esegui("Tariffe non salvate", async () => {
+    const ok = await esegui("Rates not saved", async () => {
       await chiama(percorso!, "imposta_tariffa", { id: r.id, tariffa: numero(m.tariffa) });
       await chiama(percorso!, "imposta_costo_reale", { id: r.id, costo: numero(m.costo) });
-    }, `Tariffe di ${r.nome} salvate`);
+    }, `Rates for ${r.nome} saved`);
     if (ok) {
       setModifiche((prev) => {
         const next = { ...prev };
@@ -78,9 +78,9 @@ export function RisorseSezione() {
 
   async function creaAssegnazione(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Assegnazione non creata", () =>
+    const ok = await esegui("Assignment not created", () =>
       chiama(percorso!, "crea_assegnazione", { taskUid: assegna.task, risorsaId: Number(assegna.risorsa), unita: Number(assegna.unita) }),
-      "Risorsa assegnata",
+      "Resource assigned",
     );
     if (ok) {
       await ricaricaAssegnazioni();
@@ -89,7 +89,7 @@ export function RisorseSezione() {
   }
 
   async function eliminaAssegnazione(id: number) {
-    const ok = await esegui("Assegnazione non rimossa", () => chiama(percorso!, "elimina_assegnazione", { id }), "Assegnazione rimossa");
+    const ok = await esegui("Assignment not removed", () => chiama(percorso!, "elimina_assegnazione", { id }), "Assignment removed");
     if (ok) {
       await ricaricaAssegnazioni();
       await ricaricaRisorse();
@@ -98,7 +98,7 @@ export function RisorseSezione() {
 
   return (
     <div className="flex flex-col">
-      <Sezione titolo="Risorse">
+      <Sezione titolo="Resources">
         {avvisi.length > 0 && (
           <ul className="mb-4 list-disc pl-5 text-sm text-semaforo-giallo">
             {avvisi.map((a, i) => (
@@ -107,19 +107,19 @@ export function RisorseSezione() {
           </ul>
         )}
         {risorse.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessuna risorsa: viene dal piano importato o si crea qui sotto.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No resource: it comes from the imported plan or is created below.</p>
         ) : (
           <div className="mb-4 overflow-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className={TESTA_TABELLA}>Nome</th>
-                  <th className={TESTA_TABELLA}>Tipo</th>
-                  <th className={`${TESTA_TABELLA} text-right`}>Tariffa (€/h)</th>
-                  <th className={`${TESTA_TABELLA} text-right`}>Costo reale (€/h)</th>
-                  <th className={TESTA_TABELLA}>Fonte</th>
+                  <th className={TESTA_TABELLA}>Name</th>
+                  <th className={TESTA_TABELLA}>Type</th>
+                  <th className={`${TESTA_TABELLA} text-right`}>Rate (€/h)</th>
+                  <th className={`${TESTA_TABELLA} text-right`}>Real cost (€/h)</th>
+                  <th className={TESTA_TABELLA}>Source</th>
                   <th className={`${TESTA_TABELLA} text-right`}>Task</th>
-                  <th className={`${TESTA_TABELLA} text-right`}>Unità</th>
+                  <th className={`${TESTA_TABELLA} text-right`}>Units</th>
                   <th className={TESTA_TABELLA} />
                 </tr>
               </thead>
@@ -131,16 +131,16 @@ export function RisorseSezione() {
                       <td className={`${CELLA} font-medium`}>{r.nome}</td>
                       <td className={CELLA}>{r.tipo ?? "—"}</td>
                       <td className={CELLA}>
-                        <input type="number" min="0" step="0.01" className={`${CAMPO} w-28 text-right`} aria-label={`Tariffa di ${r.nome}`} value={m.tariffa} onChange={(e) => setModifiche({ ...modifiche, [r.id]: { ...m, tariffa: e.target.value } })} />
+                        <input type="number" min="0" step="0.01" className={`${CAMPO} w-28 text-right`} aria-label={`Rate for ${r.nome}`} value={m.tariffa} onChange={(e) => setModifiche({ ...modifiche, [r.id]: { ...m, tariffa: e.target.value } })} />
                       </td>
                       <td className={CELLA}>
-                        <input type="number" min="0" step="0.01" className={`${CAMPO} w-28 text-right`} aria-label={`Costo reale di ${r.nome}`} value={m.costo} onChange={(e) => setModifiche({ ...modifiche, [r.id]: { ...m, costo: e.target.value } })} />
+                        <input type="number" min="0" step="0.01" className={`${CAMPO} w-28 text-right`} aria-label={`Real cost for ${r.nome}`} value={m.costo} onChange={(e) => setModifiche({ ...modifiche, [r.id]: { ...m, costo: e.target.value } })} />
                       </td>
-                      <td className={`${CELLA} text-xs`}>{r.fonte === "costo_reale" ? "costo reale verificato" : "tariffa importata"}</td>
+                      <td className={`${CELLA} text-xs`}>{r.fonte === "costo_reale" ? "verified real cost" : "imported rate"}</td>
                       <td className={`${CELLA} tabular-num text-right`}>{r.task}</td>
                       <td className={`${CELLA} tabular-num text-right`}>{r.unita}</td>
                       <td className={CELLA}>
-                        <Button size="sm" variant="ghost" onClick={() => salvaTariffe(r)}><Save className="size-4" />Salva</Button>
+                        <Button size="sm" variant="ghost" onClick={() => salvaTariffe(r)}><Save className="size-4" />Save</Button>
                       </td>
                     </tr>
                   );
@@ -150,36 +150,36 @@ export function RisorseSezione() {
           </div>
         )}
         <form onSubmit={creaRisorsa} className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
-          <Campo etichetta="Nome">
+          <Campo etichetta="Name">
             <input className={CAMPO} required value={nuova.nome} onChange={(e) => setNuova({ ...nuova, nome: e.target.value })} />
           </Campo>
-          <Campo etichetta="Tipo">
+          <Campo etichetta="Type">
             <input className={CAMPO} value={nuova.tipo} onChange={(e) => setNuova({ ...nuova, tipo: e.target.value })} />
           </Campo>
-          <Campo etichetta="Tariffa (€/h)">
+          <Campo etichetta="Rate (€/h)">
             <input type="number" min="0" step="0.01" className={CAMPO} value={nuova.tariffa} onChange={(e) => setNuova({ ...nuova, tariffa: e.target.value })} />
           </Campo>
-          <Campo etichetta="Straordinario (€/h)">
+          <Campo etichetta="Overtime (€/h)">
             <input type="number" min="0" step="0.01" className={CAMPO} value={nuova.straordinario} onChange={(e) => setNuova({ ...nuova, straordinario: e.target.value })} />
           </Campo>
-          <Button type="submit"><Plus className="size-4" />Nuova risorsa</Button>
+          <Button type="submit"><Plus className="size-4" />New resource</Button>
         </form>
       </Sezione>
 
-      <Sezione titolo="Assegnazioni task-risorsa">
+      <Sezione titolo="Task-resource assignments">
         {!assegnazioni || assegnazioni.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessuna assegnazione.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No assignment.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className={TESTA_TABELLA}>UID</th>
                 <th className={TESTA_TABELLA}>Task</th>
-                <th className={TESTA_TABELLA}>Risorsa</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Unità</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Ore pian.</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Tariffa (€/h)</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Costo pianificato</th>
+                <th className={TESTA_TABELLA}>Resource</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Units</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Planned hours</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Rate (€/h)</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Planned cost</th>
                 <th className={TESTA_TABELLA} />
               </tr>
             </thead>
@@ -200,7 +200,7 @@ export function RisorseSezione() {
                   <td className={`${CELLA} tabular-num text-right`}>{tariffa === null ? "—" : tariffa.toLocaleString("it-IT", { minimumFractionDigits: 2 })}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{costo === null ? "—" : costo.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}</td>
                   <td className={CELLA}>
-                    <Button size="sm" variant="ghost" aria-label={`Rimuovi assegnazione ${a.id}`} onClick={() => eliminaAssegnazione(a.id)}>
+                    <Button size="sm" variant="ghost" aria-label={`Remove assignment ${a.id}`} onClick={() => eliminaAssegnazione(a.id)}>
                       <Trash2 className="size-4" />
                     </Button>
                   </td>
@@ -213,22 +213,22 @@ export function RisorseSezione() {
         <form onSubmit={creaAssegnazione} className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
           <Campo etichetta="Task">
             <select className={CAMPO} required value={assegna.task} onChange={(e) => setAssegna({ ...assegna, task: e.target.value })}>
-              <option value="">— scegli —</option>
+              <option value="">— choose —</option>
               {(task ?? []).map((t) => <option key={t.uid} value={t.uid}>{t.uid} · {t.nome}</option>)}
             </select>
           </Campo>
-          <Campo etichetta="Risorsa">
+          <Campo etichetta="Resource">
             <select className={CAMPO} required value={assegna.risorsa} onChange={(e) => setAssegna({ ...assegna, risorsa: e.target.value })}>
-              <option value="">— scegli —</option>
+              <option value="">— choose —</option>
               {risorse.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
             </select>
           </Campo>
-          <Campo etichetta="Unità (1 = 100%)">
+          <Campo etichetta="Units (1 = 100%)">
             <input type="number" min="0.01" step="0.05" required className={CAMPO} value={assegna.unita} onChange={(e) => setAssegna({ ...assegna, unita: e.target.value })} />
           </Campo>
-          <Button type="submit"><Plus className="size-4" />Assegna</Button>
+          <Button type="submit"><Plus className="size-4" />Assign</Button>
         </form>
-        <p className="mt-3 text-xs text-muted-foreground">Il costo consuntivo (AC) di ogni task si inserisce nella schermata Avanzamento.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Each task's actual cost (AC) is entered in the Progress screen.</p>
       </Sezione>
     </div>
   );

@@ -120,7 +120,22 @@ export const RUOLI = [
   "amministratore",
 ] as const;
 
+/** Etichette inglesi dei ruoli mostrate all'utente; i valori restano quelli inviati al backend. */
+export const ETICHETTA_RUOLO: Record<string, string> = {
+  project_engineer: "Project engineer",
+  supervisore: "Supervisor",
+  coordinatore_piano: "Plan coordinator",
+  amministratore: "Administrator",
+};
+
 export const TIPI_CONSUMO = ["contingency", "management_reserve", "buffer_tempo"] as const;
+
+/** Etichette inglesi dei tipi di consumo mostrate all'utente; i valori restano quelli inviati al backend. */
+export const ETICHETTA_TIPO_CONSUMO: Record<string, string> = {
+  contingency: "Contingency",
+  management_reserve: "Management reserve",
+  buffer_tempo: "Time buffer",
+};
 
 /** Chiama un comando del backend sul progetto aperto. */
 export function chiama<T>(
@@ -140,11 +155,11 @@ export interface Calendario {
   festivi: string[];
 }
 
-export const GIORNI_SETTIMANA = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"] as const;
+export const GIORNI_SETTIMANA = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 /** Etichette dei giorni lavorativi di una maschera, in ordine lun → dom. */
 export function giorniDi(maschera: number): string {
-  return GIORNI_SETTIMANA.filter((_, i) => maschera & (1 << i)).join(", ") || "nessuno";
+  return GIORNI_SETTIMANA.filter((_, i) => maschera & (1 << i)).join(", ") || "none";
 }
 
 // ------------------------------------------------------------- Costi e governance

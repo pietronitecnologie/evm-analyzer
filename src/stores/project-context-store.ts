@@ -34,12 +34,12 @@ interface ProjectContextState {
 }
 
 export const useProjectContextStore = create<ProjectContextState>()((set) => ({
-  projectName: "Nessun progetto aperto",
+  projectName: "No project open",
   percorso: null,
   impostaProgetto: (progetto) => set(progetto),
   statusDate: "—",
   statusDateState: "bozza",
-  perimetro: "Tutto il progetto",
+  perimetro: "Whole project",
   baseline: "Startup",
   evBaseMode: "bac_senza_contingency",
   userName: "—",

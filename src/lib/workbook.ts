@@ -95,18 +95,18 @@ export function verificaWorkbook(w: WorkbookImportato): Avviso[] {
   try {
     r = estimateProject(stimeDaWorkbook(w), params);
   } catch (errore) {
-    avvisi.push({ gravita: "critico", foglio: "WBS e Stima Costi", cella: "", codice: "XL_ENGINE", messaggio: String(errore), suggerimento: "Controlla i valori di stima" });
+    avvisi.push({ gravita: "critico", foglio: "WBS and Cost Estimate", cella: "", codice: "XL_ENGINE", messaggio: String(errore), suggerimento: "Check the estimate values" });
     return avvisi;
   }
   const stanziata = sommaNumeri(w.rischi.map((x) => x.contingenza));
   if (w.rischi.length > 0 && Math.abs(r.contingency - stanziata) > 1) {
     avvisi.push({
       gravita: "avviso",
-      foglio: "Buffer e Contingency",
+      foglio: "Buffer and Contingency",
       cella: "D14",
       codice: "XL_CONT_MISMATCH",
-      messaggio: `Contingency a budget ${r.contingency.toFixed(2)} € diversa dalla somma stanziata per rischio ${stanziata.toFixed(2)} €`,
-      suggerimento: "Allinea la contingency di Parametri ai rischi, o accetta lo scarto",
+      messaggio: `Budgeted contingency ${r.contingency.toFixed(2)} € differs from the amount allocated per risk ${stanziata.toFixed(2)} €`,
+      suggerimento: "Align the Parameters contingency with the risks, or accept the difference",
     });
   }
   const confronti: [string, number, number][] = [
@@ -123,11 +123,11 @@ export function verificaWorkbook(w: WorkbookImportato): Avviso[] {
     if (valoreFile !== undefined && Math.abs(valoreFile - valoreMotore) > tolleranza) {
       avvisi.push({
         gravita: "avviso",
-        foglio: "WBS e Stima Costi",
+        foglio: "WBS and Cost Estimate",
         cella: "",
         codice: "XL_CACHE_DIFF",
-        messaggio: `${chiave}: valore del file ${valoreFile.toFixed(4)}, ricalcolato ${valoreMotore.toFixed(4)}. Vale il motore.`,
-        suggerimento: "Ricalcola il workbook prima di esportarlo, o verifica le formule",
+        messaggio: `${chiave}: file value ${valoreFile.toFixed(4)}, recalculated ${valoreMotore.toFixed(4)}. The engine value takes precedence.`,
+        suggerimento: "Recalculate the workbook before exporting it, or check the formulas",
       });
     }
   }
@@ -142,11 +142,11 @@ export function verificaWorkbook(w: WorkbookImportato): Avviso[] {
       if (valoreFile !== undefined && valoreMotore !== null && Math.abs(valoreFile - valoreMotore) > 0.001) {
         avvisi.push({
           gravita: "avviso",
-          foglio: "Monitoraggio EVM",
+          foglio: "EVM Monitoring",
           cella: "",
           codice: "XL_CACHE_DIFF",
-          messaggio: `Checkpoint ${c.date}: ${chiave} del file ${valoreFile.toFixed(4)}, ricalcolato ${valoreMotore.toFixed(4)}`,
-          suggerimento: "Vale il motore: ricalcola il workbook",
+          messaggio: `Checkpoint ${c.date}: ${chiave} from the file ${valoreFile.toFixed(4)}, recalculated ${valoreMotore.toFixed(4)}`,
+          suggerimento: "The engine value takes precedence: recalculate the workbook",
         });
       }
     }
@@ -247,15 +247,15 @@ export function costruisciCache(w: WorkbookImportato): CacheExport {
 
 /** Passo 1 dell'import: anteprima con avvisi del backend e verifica del motore, poi pannello. */
 export async function importaWorkbook() {
-  if (!isTauriRuntime()) return notImplemented("Importa workbook Excel…");
+  if (!isTauriRuntime()) return notImplemented("Import Excel workbook…");
   try {
-    const origine = await open({ title: "Importa workbook Excel", multiple: false, directory: false, filters: [FILTRO_EXCEL] });
+    const origine = await open({ title: "Import Excel workbook", multiple: false, directory: false, filters: [FILTRO_EXCEL] });
     if (!origine) return;
     const anteprima = await invoke<WorkbookImportato>("anteprima_workbook", { percorso: origine });
     const dati: WorkbookImportato = { ...anteprima, avvisi: [...anteprima.avvisi, ...verificaWorkbook(anteprima)] };
     useEsitoStore.getState().apri({ origine, dati, modalita: "nuovo" });
   } catch (errore) {
-    mostraErrore("Anteprima del workbook non riuscita", errore);
+    mostraErrore("Workbook preview failed", errore);
   }
 }
 
@@ -265,44 +265,44 @@ export async function confermaImportazione() {
   if (!stato.origine || !stato.dati) return;
   try {
     const nomeBase = stato.origine.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "progetto";
-    const destinazione = await save({ title: "Salva il nuovo progetto", defaultPath: `${nomeBase}.evmproj`, filters: [{ name: "Progetto EVM", extensions: ["evmproj"] }] });
+    const destinazione = await save({ title: "Save the new project", defaultPath: `${nomeBase}.evmproj`, filters: [{ name: "EVM Project", extensions: ["evmproj"] }] });
     if (!destinazione) return;
     const esito = await invoke<EsitoImportWorkbook>("importa_workbook", { origine: stato.origine, destinazione, nome: nomeBase });
     useProjectContextStore.getState().impostaProgetto({ projectName: esito.progetto.nome, percorso: esito.progetto.percorso, statusDate: esito.progetto.dataDiStato ?? "—" });
     stato.chiudi();
-    useToastStore.getState().push({ title: "Workbook importato", description: `${stato.dati.avvisi.length} avvisi` });
+    useToastStore.getState().push({ title: "Workbook imported", description: `${stato.dati.avvisi.length} warnings` });
   } catch (errore) {
-    mostraErrore("Importazione non riuscita", errore);
+    mostraErrore("Import failed", errore);
   }
 }
 
 /** Export del progetto aperto in un workbook nuovo con formule e cache del motore. */
 export async function esportaWorkbook() {
-  if (!isTauriRuntime()) return notImplemented("Esporta workbook Excel…");
+  if (!isTauriRuntime()) return notImplemented("Export Excel workbook…");
   const percorso = useProjectContextStore.getState().percorso;
   if (!percorso) {
-    mostraErrore("Esportazione non possibile", "apri un progetto prima di esportarlo");
+    mostraErrore("Export not possible", "open a project before exporting it");
     return;
   }
   try {
-    const destinazione = await save({ title: "Esporta workbook Excel", defaultPath: "impresa-numerica.xlsx", filters: [FILTRO_EXCEL] });
+    const destinazione = await save({ title: "Export Excel workbook", defaultPath: "impresa-numerica.xlsx", filters: [FILTRO_EXCEL] });
     if (!destinazione) return;
     const input = await invoke<WorkbookImportato>("input_workbook", { percorso });
     const cache = costruisciCache(input);
     await invoke("esporta_workbook", { percorso, destinazione, cache, opzioni: { conFormule: true, dataDiStato: null } });
-    useToastStore.getState().push({ title: "Workbook esportato", description: destinazione });
+    useToastStore.getState().push({ title: "Workbook exported", description: destinazione });
   } catch (errore) {
-    mostraErrore("Esportazione non riuscita", errore);
+    mostraErrore("Export failed", errore);
   }
 }
 
 /** Salva il log degli avvisi in CSV (pannello di esito). */
 export async function esportaLogCsv(avvisi: Avviso[]) {
-  const percorso = await save({ title: "Esporta log importazione", defaultPath: "log-importazione.csv", filters: [{ name: "CSV", extensions: ["csv"] }] });
+  const percorso = await save({ title: "Export import log", defaultPath: "log-importazione.csv", filters: [{ name: "CSV", extensions: ["csv"] }] });
   if (!percorso) return;
   const campi = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const righe = [
-    ["Gravità", "Foglio", "Cella", "Codice", "Messaggio", "Suggerimento"].join(","),
+    ["Severity", "Sheet", "Cell", "Code", "Message", "Suggestion"].join(","),
     ...avvisi.map((a) => [a.gravita, a.foglio, a.cella, a.codice, a.messaggio, a.suggerimento].map(campi).join(",")),
   ];
   await invoke("salva_testo", { percorso, contenuto: `\uFEFF${righe.join("\n")}\n` });

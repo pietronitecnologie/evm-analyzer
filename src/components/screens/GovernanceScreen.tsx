@@ -9,12 +9,14 @@ import * as React from "react";
 import { Archive, Lock, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { chiama, TIPI_CONSUMO, type Governance } from "@/lib/api";
+import { chiama, ETICHETTA_TIPO_CONSUMO, TIPI_CONSUMO, type Governance } from "@/lib/api";
 import { CAMPO, CELLA, TESTA_TABELLA, avviso, esegui, useDati, usePercorso } from "@/lib/schermate";
 import { Campo, Sezione, Vuoto } from "./comuni";
 
 const eur = (v: number | null | undefined) =>
   v === null || v === undefined ? "—" : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+
+const ETICHETTA_TIPO_BASELINE: Record<string, string> = { startup: "Startup", stima: "Estimate", altra: "Other" };
 
 function Kpi({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
   return (
@@ -34,8 +36,8 @@ export function GovernanceScreen() {
   const [variazione, setVariazione] = React.useState({ motivo: "", costo: "", durata: "" });
   const [approvatore, setApprovatore] = React.useState<Record<number, string>>({});
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per la governance dei costi." />;
-  if (!g) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project for cost governance." />;
+  if (!g) return <Vuoto messaggio="Loading…" />;
 
   // Percentuali in intero positivo (0..100), come nel database.
   const baselineAttive = g.baseline.filter((b) => !b.archiviata);
@@ -46,9 +48,9 @@ export function GovernanceScreen() {
 
   async function registraConsumo(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Consumo non registrato", () =>
+    const ok = await esegui("Consumption not recorded", () =>
       chiama(percorso!, "registra_consumo", { tipo: consumo.tipo, importo: Number(consumo.importo), data: consumo.data, nota: consumo.nota || null }),
-      "Consumo registrato",
+      "Consumption recorded",
     );
     if (ok) {
       setConsumo({ ...consumo, importo: "", data: "", nota: "" });
@@ -58,7 +60,7 @@ export function GovernanceScreen() {
 
   async function bloccaBaseline(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Baseline non creata", () => chiama(percorso!, "blocca_baseline_budget", { nome: baseline.nome, tipo: baseline.tipo }), "Baseline di budget bloccata");
+    const ok = await esegui("Baseline not created", () => chiama(percorso!, "blocca_baseline_budget", { nome: baseline.nome, tipo: baseline.tipo }), "Budget baseline locked");
     if (ok) {
       setBaseline({ nome: "", tipo: "startup" });
       await ricarica();
@@ -66,15 +68,15 @@ export function GovernanceScreen() {
   }
 
   async function archivia(id: number) {
-    const ok = await esegui("Baseline non archiviata", () => chiama(percorso!, "archivia_baseline", { id }), "Baseline archiviata");
+    const ok = await esegui("Baseline not archived", () => chiama(percorso!, "archivia_baseline", { id }), "Baseline archived");
     if (ok) await ricarica();
   }
 
   async function creaVariazione(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Variazione non creata", () =>
+    const ok = await esegui("Change request not created", () =>
       chiama(percorso!, "crea_change_request", { motivo: variazione.motivo, deltaCosto: numero(variazione.costo), deltaDurata: numero(variazione.durata) }),
-      "Richiesta di variazione registrata",
+      "Change request recorded",
     );
     if (ok) {
       setVariazione({ motivo: "", costo: "", durata: "" });
@@ -85,45 +87,45 @@ export function GovernanceScreen() {
   async function approva(id: number) {
     const nome = (approvatore[id] ?? "").trim();
     if (!nome) {
-      avviso("Indica chi approva la variazione");
+      avviso("Specify who is approving the change request");
       return;
     }
-    const ok = await esegui("Approvazione non riuscita", () => chiama(percorso!, "approva_change_request", { id, approvatore: nome }), "Variazione approvata");
+    const ok = await esegui("Approval failed", () => chiama(percorso!, "approva_change_request", { id, approvatore: nome }), "Change request approved");
     if (ok) await ricarica();
   }
 
   return (
     <div className="flex flex-col">
-      <Sezione titolo="Budget e riserve">
+      <Sezione titolo="Budget and reserves">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi etichetta="Budget dei WBS" valore={eur(g.budgetTotale)} nota={`${g.wbsConBudget} nodi con budget`} />
-          <Kpi etichetta="Contingency" valore={eur(contingencyBudget)} nota={`${g.contingencyPct} % del budget`} />
-          <Kpi etichetta="Contingency stanziata" valore={eur(g.contingencyStanziata)} nota={`usata ${eur(g.contingencyUsata)}`} />
-          <Kpi etichetta="Riserva di gestione" valore={eur(riservaBudget)} nota={`${g.riservaGestionePct} % — usata ${eur(g.riservaGestioneUsata)}`} />
+          <Kpi etichetta="WBS budget" valore={eur(g.budgetTotale)} nota={`${g.wbsConBudget} nodes with budget`} />
+          <Kpi etichetta="Contingency" valore={eur(contingencyBudget)} nota={`${g.contingencyPct}% of budget`} />
+          <Kpi etichetta="Allocated contingency" valore={eur(g.contingencyStanziata)} nota={`used ${eur(g.contingencyUsata)}`} />
+          <Kpi etichetta="Management reserve" valore={eur(riservaBudget)} nota={`${g.riservaGestionePct}% — used ${eur(g.riservaGestioneUsata)}`} />
         </div>
         {g.wbsConBudget === 0 && (
-          <p className="mt-3 text-sm text-semaforo-giallo">Nessun budget assegnato ai WBS: assegnalo nella schermata WBS per avere il BAC.</p>
+          <p className="mt-3 text-sm text-semaforo-giallo">No budget assigned to the WBS: assign it in the WBS screen to get the BAC.</p>
         )}
       </Sezione>
 
-      <Sezione titolo="Consumi delle riserve">
+      <Sezione titolo="Reserve consumption">
         {g.consumi.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessun consumo registrato.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No consumption recorded.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className={TESTA_TABELLA}>Data</th>
-                <th className={TESTA_TABELLA}>Riserva</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Importo</th>
-                <th className={TESTA_TABELLA}>Nota</th>
+                <th className={TESTA_TABELLA}>Date</th>
+                <th className={TESTA_TABELLA}>Reserve</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Amount</th>
+                <th className={TESTA_TABELLA}>Note</th>
               </tr>
             </thead>
             <tbody>
               {g.consumi.map((c) => (
                 <tr key={c.id}>
                   <td className={`${CELLA} tabular-num`}>{c.data}</td>
-                  <td className={CELLA}>{c.tipo}</td>
+                  <td className={CELLA}>{ETICHETTA_TIPO_CONSUMO[c.tipo] ?? c.tipo}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{eur(c.importo)}</td>
                   <td className={CELLA}>{c.nota ?? "—"}</td>
                 </tr>
@@ -132,36 +134,36 @@ export function GovernanceScreen() {
           </table>
         )}
         <form onSubmit={registraConsumo} className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
-          <Campo etichetta="Riserva">
+          <Campo etichetta="Reserve">
             <select className={CAMPO} value={consumo.tipo} onChange={(e) => setConsumo({ ...consumo, tipo: e.target.value })}>
-              {TIPI_CONSUMO.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TIPI_CONSUMO.map((t) => <option key={t} value={t}>{ETICHETTA_TIPO_CONSUMO[t] ?? t}</option>)}
             </select>
           </Campo>
-          <Campo etichetta="Importo (€)">
+          <Campo etichetta="Amount (€)">
             <input type="number" min="0" step="0.01" required className={CAMPO} value={consumo.importo} onChange={(e) => setConsumo({ ...consumo, importo: e.target.value })} />
           </Campo>
-          <Campo etichetta="Data">
+          <Campo etichetta="Date">
             <input type="date" required className={CAMPO} value={consumo.data} onChange={(e) => setConsumo({ ...consumo, data: e.target.value })} />
           </Campo>
-          <Campo etichetta="Nota">
+          <Campo etichetta="Note">
             <input className={CAMPO} value={consumo.nota} onChange={(e) => setConsumo({ ...consumo, nota: e.target.value })} />
           </Campo>
-          <Button type="submit"><Plus className="size-4" />Registra consumo</Button>
+          <Button type="submit"><Plus className="size-4" />Record consumption</Button>
         </form>
       </Sezione>
 
-      <Sezione titolo="Baseline di budget">
+      <Sezione titolo="Budget baseline">
         {baselineAttive.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessuna baseline attiva: bloccane una quando il budget dei WBS è definito.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No active baseline: lock one once the WBS budget is defined.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className={TESTA_TABELLA}>Nome</th>
-                <th className={TESTA_TABELLA}>Tipo</th>
-                <th className={TESTA_TABELLA}>Creata il</th>
+                <th className={TESTA_TABELLA}>Name</th>
+                <th className={TESTA_TABELLA}>Type</th>
+                <th className={TESTA_TABELLA}>Created on</th>
                 <th className={`${TESTA_TABELLA} text-right`}>BAC</th>
-                <th className={TESTA_TABELLA}>Stato</th>
+                <th className={TESTA_TABELLA}>Status</th>
                 <th className={TESTA_TABELLA} />
               </tr>
             </thead>
@@ -169,14 +171,14 @@ export function GovernanceScreen() {
               {baselineAttive.map((b) => (
                 <tr key={b.id}>
                   <td className={`${CELLA} font-medium`}>{b.nome}</td>
-                  <td className={CELLA}>{b.tipo}</td>
+                  <td className={CELLA}>{ETICHETTA_TIPO_BASELINE[b.tipo] ?? b.tipo}</td>
                   <td className={`${CELLA} tabular-num`}>{b.creataIl.slice(0, 10)}</td>
                   <td className={`${CELLA} tabular-num text-right`}>{eur(b.bacTotale)}</td>
-                  <td className={CELLA}>{b.bloccata ? <span className="inline-flex items-center gap-1"><Lock className="size-3" />bloccata</span> : "modificabile"}</td>
+                  <td className={CELLA}>{b.bloccata ? <span className="inline-flex items-center gap-1"><Lock className="size-3" />locked</span> : "editable"}</td>
                   <td className={CELLA}>
                     <Button size="sm" variant="ghost" onClick={() => archivia(b.id)}>
                       <Archive className="size-4" />
-                      Archivia
+                      Archive
                     </Button>
                   </td>
                 </tr>
@@ -185,36 +187,36 @@ export function GovernanceScreen() {
           </table>
         )}
         {archiviate > 0 && (
-          <p className="mb-4 text-xs text-muted-foreground">{archiviate} baseline archiviate: restano nel database con la loro data e il loro contenuto.</p>
+          <p className="mb-4 text-xs text-muted-foreground">{archiviate} archived baselines: they remain in the database with their date and content.</p>
         )}
         <form onSubmit={bloccaBaseline} className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
-          <Campo etichetta="Nome della baseline">
+          <Campo etichetta="Baseline name">
             <input className={CAMPO} required value={baseline.nome} onChange={(e) => setBaseline({ ...baseline, nome: e.target.value })} />
           </Campo>
-          <Campo etichetta="Tipo">
+          <Campo etichetta="Type">
             <select className={CAMPO} value={baseline.tipo} onChange={(e) => setBaseline({ ...baseline, tipo: e.target.value })}>
-              <option value="startup">startup</option>
-              <option value="stima">stima</option>
-              <option value="altra">altra</option>
+              <option value="startup">{ETICHETTA_TIPO_BASELINE.startup}</option>
+              <option value="stima">{ETICHETTA_TIPO_BASELINE.stima}</option>
+              <option value="altra">{ETICHETTA_TIPO_BASELINE.altra}</option>
             </select>
           </Campo>
-          <Button type="submit"><Lock className="size-4" />Blocca baseline dal budget dei WBS</Button>
+          <Button type="submit"><Lock className="size-4" />Lock baseline from the WBS budget</Button>
         </form>
       </Sezione>
 
-      <Sezione titolo="Richieste di variazione">
+      <Sezione titolo="Change requests">
         {g.changeRequest.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessuna variazione. Una baseline bloccata cambia solo con una variazione approvata.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No change requests. A locked baseline only changes through an approved change request.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className={TESTA_TABELLA}>#</th>
-                <th className={TESTA_TABELLA}>Richiesta il</th>
-                <th className={TESTA_TABELLA}>Motivo</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Δ costo</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Δ durata (gg)</th>
-                <th className={TESTA_TABELLA}>Approvazione</th>
+                <th className={TESTA_TABELLA}>Requested on</th>
+                <th className={TESTA_TABELLA}>Reason</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Δ cost</th>
+                <th className={`${TESTA_TABELLA} text-right`}>Δ duration (days)</th>
+                <th className={TESTA_TABELLA}>Approval</th>
               </tr>
             </thead>
             <tbody>
@@ -227,11 +229,11 @@ export function GovernanceScreen() {
                   <td className={`${CELLA} tabular-num text-right`}>{c.deltaDurata ?? "—"}</td>
                   <td className={CELLA}>
                     {c.approvataIl ? (
-                      <span>approvata da {c.approvataDa} il {c.approvataIl.slice(0, 10)}</span>
+                      <span>approved by {c.approvataDa} on {c.approvataIl.slice(0, 10)}</span>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <input className={`${CAMPO} w-40`} placeholder="Chi approva" value={approvatore[c.id] ?? ""} onChange={(e) => setApprovatore({ ...approvatore, [c.id]: e.target.value })} />
-                        <Button size="sm" variant="outline" onClick={() => approva(c.id)}>Approva</Button>
+                        <input className={`${CAMPO} w-40`} placeholder="Who is approving" value={approvatore[c.id] ?? ""} onChange={(e) => setApprovatore({ ...approvatore, [c.id]: e.target.value })} />
+                        <Button size="sm" variant="outline" onClick={() => approva(c.id)}>Approve</Button>
                       </div>
                     )}
                   </td>
@@ -242,17 +244,17 @@ export function GovernanceScreen() {
         )}
         <form onSubmit={creaVariazione} className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
           <div className="md:col-span-2">
-            <Campo etichetta="Motivo">
+            <Campo etichetta="Reason">
               <input className={CAMPO} required value={variazione.motivo} onChange={(e) => setVariazione({ ...variazione, motivo: e.target.value })} />
             </Campo>
           </div>
-          <Campo etichetta="Δ costo (€)">
+          <Campo etichetta="Δ cost (€)">
             <input type="number" step="0.01" className={CAMPO} value={variazione.costo} onChange={(e) => setVariazione({ ...variazione, costo: e.target.value })} />
           </Campo>
-          <Campo etichetta="Δ durata (gg)">
+          <Campo etichetta="Δ duration (days)">
             <input type="number" step="0.5" className={CAMPO} value={variazione.durata} onChange={(e) => setVariazione({ ...variazione, durata: e.target.value })} />
           </Campo>
-          <Button type="submit"><Plus className="size-4" />Richiedi variazione</Button>
+          <Button type="submit"><Plus className="size-4" />Request change</Button>
         </form>
       </Sezione>
     </div>

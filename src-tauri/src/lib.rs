@@ -62,20 +62,49 @@ fn apri_progetto(percorso: String) -> Result<ProgettoAperto, String> {
     Ok(ProgettoAperto::da_info(path, info))
 }
 
-/// Importa un export del piano (XML MSPDI, CSV o Excel) in un nuovo `.evmproj`.
+/// Passo 1 della procedura guidata di importazione: analisi rapida del file
+/// (formato, dimensione, colonne riconosciute), senza scrivere nulla.
 #[tauri::command]
-fn importa_piano(
+fn inspect_plan_file(percorso: String) -> Result<evm_db::import::PlanInspection, String> {
+    evm_db::import::inspect_plan_file(Path::new(&percorso))
+}
+
+/// Passo 3 della procedura guidata di importazione: anteprima completa del
+/// piano (conteggi, avvisi, stima del BAC), senza scrivere nulla.
+#[tauri::command]
+fn preview_plan_import(percorso: String) -> Result<evm_db::import::PlanPreview, String> {
+    evm_db::import::preview_plan_import(Path::new(&percorso))
+}
+
+/// Ultimo passo della procedura guidata: scrive il piano in un nuovo
+/// `.evmproj`, applicando riconciliazione del BAC, tipo/blocco della
+/// baseline e data di stato scelti nei passi precedenti.
+#[tauri::command]
+fn commit_plan_import(
     origine: String,
     destinazione: String,
     nome: String,
+    opzioni: evm_db::import::CommitOptions,
 ) -> Result<ImportoRisultato, String> {
     let destinazione_path = Path::new(&destinazione);
-    let esito = evm_db::import::importa_piano(Path::new(&origine), destinazione_path, &nome)?;
+    let esito = evm_db::import::commit_plan_import(Path::new(&origine), destinazione_path, &nome, &opzioni)?;
     let info = progetto::apri_progetto(destinazione_path)?;
     Ok(ImportoRisultato {
         progetto: ProgettoAperto::da_info(destinazione_path, info),
         avvisi: esito.warnings,
     })
+}
+
+/// Ri-sincronizza il progetto aperto da `percorso` con un nuovo export dello
+/// stesso piano: diff dei task, aggiornamento dei soli campi di sola
+/// lettura, nuovo status_snapshot (`source = 'resync'`).
+#[tauri::command]
+fn resync_plan(
+    percorso: String,
+    origine: String,
+    data_di_stato: Option<String>,
+) -> Result<evm_db::import::ResyncReport, String> {
+    evm_db::import::resync_plan(Path::new(&percorso), Path::new(&origine), data_di_stato)
 }
 
 /// Dati del modulo "Nuovo task" così come arrivano dalla UI.
@@ -467,7 +496,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             nuovo_progetto,
             apri_progetto,
-            importa_piano,
+            inspect_plan_file,
+            preview_plan_import,
+            commit_plan_import,
+            resync_plan,
             crea_task,
             elenca_task,
             dashboard,

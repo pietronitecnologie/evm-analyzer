@@ -11,7 +11,7 @@ const COMMANDS_BY_ID = new Map(COMMANDS.map((c) => [c.id, c]));
 export function MenuBar() {
   return (
     <nav
-      aria-label="Barra dei menu"
+      aria-label="Menu bar"
       className="flex h-8 items-center gap-0.5 border-b border-black/40 bg-zona-menu px-2 text-zona-menu-foreground"
     >
       {MENUS.map((menu) => (

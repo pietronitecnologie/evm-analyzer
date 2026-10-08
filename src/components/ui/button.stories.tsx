@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 const meta: Meta<typeof Button> = {
   title: "UI/Button",
   component: Button,
-  args: { children: "Conferma" },
+  args: { children: "Confirm" },
 };
 export default meta;
 
@@ -19,6 +19,6 @@ export const Secondary: Story = { args: { variant: "secondary" } };
 export const Outline: Story = { args: { variant: "outline" } };
 export const Ghost: Story = { args: { variant: "ghost" } };
 export const Destructive: Story = {
-  args: { variant: "destructive", children: "Respingi" },
+  args: { variant: "destructive", children: "Reject" },
 };
 export const Disabled: Story = { args: { disabled: true } };

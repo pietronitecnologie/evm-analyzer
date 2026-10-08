@@ -9,7 +9,7 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { type Perimetro, RUOLI, type Utente, chiama } from "@/lib/api";
+import { ETICHETTA_RUOLO, type Perimetro, RUOLI, type Utente, chiama } from "@/lib/api";
 import { Campo, Sezione, Vuoto } from "./comuni";
 import { CAMPO, CELLA, TESTA_TABELLA, esegui, usePercorso, useDati } from "@/lib/schermate";
 
@@ -26,17 +26,17 @@ export function PerimetriUtentiScreen() {
   const [nomeUtente, setNomeUtente] = React.useState("");
   const [ruoli, setRuoli] = React.useState<string[]>([]);
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per gestire perimetri e utenti." />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to manage scopes and users." />;
 
   async function creaPerimetro(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Perimetro non creato", () =>
+    const ok = await esegui("Scope not created", () =>
       chiama(percorso!, "crea_perimetro", {
         nome: nomePerimetro,
         codiceWbs,
         proprietarioUid: proprietario || null,
       }),
-      "Perimetro creato",
+      "Scope created",
     );
     if (ok) {
       setNomePerimetro("");
@@ -47,9 +47,9 @@ export function PerimetriUtentiScreen() {
 
   async function creaUtente(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Utente non creato", () =>
+    const ok = await esegui("User not created", () =>
       chiama(percorso!, "crea_utente", { uid, nome: nomeUtente, ruoli }),
-      "Utente creato",
+      "User created",
     );
     if (ok) {
       setUid("");
@@ -61,17 +61,17 @@ export function PerimetriUtentiScreen() {
 
   return (
     <div className="flex flex-col">
-      <Sezione titolo="Perimetri">
+      <Sezione titolo="Scopes">
         {!perimetri || perimetri.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessun perimetro definito.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No scope defined.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className={TESTA_TABELLA}>Nome</th>
+                <th className={TESTA_TABELLA}>Name</th>
                 <th className={TESTA_TABELLA}>WBS</th>
                 <th className={`${TESTA_TABELLA} text-right`}>Task</th>
-                <th className={TESTA_TABELLA}>Proprietario</th>
+                <th className={TESTA_TABELLA}>Owner</th>
               </tr>
             </thead>
             <tbody>
@@ -87,15 +87,15 @@ export function PerimetriUtentiScreen() {
           </table>
         )}
         <form onSubmit={creaPerimetro} className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
-          <Campo etichetta="Nome">
+          <Campo etichetta="Name">
             <input className={CAMPO} required value={nomePerimetro} onChange={(e) => setNomePerimetro(e.target.value)} />
           </Campo>
-          <Campo etichetta="Codice WBS (sottoalbero)">
-            <input className={CAMPO} required placeholder="es. 1" value={codiceWbs} onChange={(e) => setCodiceWbs(e.target.value)} />
+          <Campo etichetta="WBS code (subtree)">
+            <input className={CAMPO} required placeholder="e.g. 1" value={codiceWbs} onChange={(e) => setCodiceWbs(e.target.value)} />
           </Campo>
-          <Campo etichetta="Proprietario">
+          <Campo etichetta="Owner">
             <select className={CAMPO} value={proprietario} onChange={(e) => setProprietario(e.target.value)}>
-              <option value="">— nessuno —</option>
+              <option value="">— none —</option>
               {(utenti ?? []).map((u) => (
                 <option key={u.id} value={u.uid}>{u.nome}</option>
               ))}
@@ -103,21 +103,21 @@ export function PerimetriUtentiScreen() {
           </Campo>
           <Button type="submit">
             <Plus className="size-4" />
-            Crea perimetro
+            Create scope
           </Button>
         </form>
       </Sezione>
 
-      <Sezione titolo="Utenti">
+      <Sezione titolo="Users">
         {!utenti || utenti.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">Nessun utente nel progetto.</p>
+          <p className="mb-4 text-sm text-muted-foreground">No user in the project.</p>
         ) : (
           <table className="mb-4 w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className={TESTA_TABELLA}>Identificativo</th>
-                <th className={TESTA_TABELLA}>Nome</th>
-                <th className={TESTA_TABELLA}>Ruoli</th>
+                <th className={TESTA_TABELLA}>Identifier</th>
+                <th className={TESTA_TABELLA}>Name</th>
+                <th className={TESTA_TABELLA}>Roles</th>
               </tr>
             </thead>
             <tbody>
@@ -125,21 +125,21 @@ export function PerimetriUtentiScreen() {
                 <tr key={u.id}>
                   <td className={`${CELLA} tabular-num`}>{u.uid}</td>
                   <td className={CELLA}>{u.nome}</td>
-                  <td className={`${CELLA} text-xs`}>{u.ruoli.join(", ")}</td>
+                  <td className={`${CELLA} text-xs`}>{u.ruoli.map((r) => ETICHETTA_RUOLO[r] ?? r).join(", ")}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
         <form onSubmit={creaUtente} className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Campo etichetta="Identificativo">
+          <Campo etichetta="Identifier">
             <input className={CAMPO} required value={uid} onChange={(e) => setUid(e.target.value)} />
           </Campo>
-          <Campo etichetta="Nome">
+          <Campo etichetta="Name">
             <input className={CAMPO} required value={nomeUtente} onChange={(e) => setNomeUtente(e.target.value)} />
           </Campo>
           <fieldset className="flex flex-col gap-1 text-xs font-medium">
-            <legend className="mb-1">Ruoli</legend>
+            <legend className="mb-1">Roles</legend>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {RUOLI.map((r) => (
                 <label key={r} className="flex items-center gap-1 font-normal">
@@ -150,7 +150,7 @@ export function PerimetriUtentiScreen() {
                       setRuoli(e.target.checked ? [...ruoli, r] : ruoli.filter((x) => x !== r))
                     }
                   />
-                  {r}
+                  {ETICHETTA_RUOLO[r] ?? r}
                 </label>
               ))}
             </div>
@@ -158,7 +158,7 @@ export function PerimetriUtentiScreen() {
           <div className="md:col-span-3 flex justify-end">
             <Button type="submit">
               <Plus className="size-4" />
-              Aggiungi utente
+              Add user
             </Button>
           </div>
         </form>

@@ -973,6 +973,7 @@ mod tests {
                 source_file: "test",
                 file_hash: "x".into(),
             },
+            &crate::import::CommitOptions::default(),
         )
         .unwrap();
         // salva_piano crea il progetto con il piano: è l'ultimo inserito.

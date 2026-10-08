@@ -55,7 +55,7 @@ function mostraErrore(titolo: string, errore: unknown) {
 }
 
 function tipoRiga(t: TaskRiga): string {
-  if (t.riepilogo) return "Riepilogo";
+  if (t.riepilogo) return "Summary";
   if (t.milestone) return "Milestone";
   return "Task";
 }
@@ -72,7 +72,7 @@ export function TaskScreen() {
     try {
       setTask(await invoke<TaskRiga[]>("elenca_task", { percorso }));
     } catch (e) {
-      mostraErrore("Elenco dei task non disponibile", e);
+      mostraErrore("Task list unavailable", e);
     }
   }, [percorso]);
 
@@ -85,7 +85,7 @@ export function TaskScreen() {
         if (!annullato) setTask(elenco);
       })
       .catch((e) => {
-        if (!annullato) mostraErrore("Elenco dei task non disponibile", e);
+        if (!annullato) mostraErrore("Task list unavailable", e);
       });
     return () => {
       annullato = true;
@@ -95,7 +95,7 @@ export function TaskScreen() {
   if (!percorso) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-sm text-muted-foreground">
-        Apri o crea un progetto per gestire i task.
+        Open or create a project to manage tasks.
       </div>
     );
   }
@@ -118,11 +118,11 @@ export function TaskScreen() {
       setModulo(MODULO_VUOTO);
       await caricaTask();
       useToastStore.getState().push({
-        title: `Task ${creato.uid} creato`,
+        title: `Task ${creato.uid} created`,
         description: creato.nome,
       });
     } catch (e) {
-      mostraErrore("Task non creato", e);
+      mostraErrore("Task not created", e);
     } finally {
       setInviando(false);
     }
@@ -137,11 +137,11 @@ export function TaskScreen() {
 
       <form
         onSubmit={creaTask}
-        aria-label="Nuovo task"
+        aria-label="New task"
         className="grid grid-cols-2 gap-3 border-b border-border-strong bg-zona-navigazione p-4 md:grid-cols-6"
       >
         <label className="col-span-2 flex flex-col gap-1 text-xs font-medium md:col-span-2">
-          Nome
+          Name
           <input
             className={CAMPO}
             required
@@ -153,13 +153,13 @@ export function TaskScreen() {
           WBS
           <input
             className={CAMPO}
-            placeholder="es. 1.2"
+            placeholder="e.g. 1.2"
             value={modulo.codiceWbs}
             onChange={(e) => setModulo({ ...modulo, codiceWbs: e.target.value })}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Inizio
+          Start
           <input
             type="date"
             className={CAMPO}
@@ -168,7 +168,7 @@ export function TaskScreen() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Fine
+          Finish
           <input
             type="date"
             className={CAMPO}
@@ -177,7 +177,7 @@ export function TaskScreen() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Durata (giorni)
+          Duration (days)
           <input
             type="number"
             min="0"
@@ -198,7 +198,7 @@ export function TaskScreen() {
         <div className="col-span-2 flex justify-end md:col-span-6">
           <Button type="submit" disabled={inviando}>
             <Plus className="size-4" />
-            Nuovo task
+            New task
           </Button>
         </div>
       </form>
@@ -207,19 +207,19 @@ export function TaskScreen() {
         <RisorseSezione />
         {task.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
-            Nessun task. Compila il modulo qui sopra o importa un piano.
+            No task. Fill in the form above or import a plan.
           </p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 bg-zona-schede text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-semibold">UID</th>
-                <th className="px-3 py-2 font-semibold">Nome</th>
+                <th className="px-3 py-2 font-semibold">Name</th>
                 <th className="px-3 py-2 font-semibold">WBS</th>
-                <th className="px-3 py-2 font-semibold">Inizio</th>
-                <th className="px-3 py-2 font-semibold">Fine</th>
-                <th className="px-3 py-2 text-right font-semibold">Durata (g)</th>
-                <th className="px-3 py-2 font-semibold">Tipo</th>
+                <th className="px-3 py-2 font-semibold">Start</th>
+                <th className="px-3 py-2 font-semibold">Finish</th>
+                <th className="px-3 py-2 text-right font-semibold">Duration (days)</th>
+                <th className="px-3 py-2 font-semibold">Type</th>
               </tr>
             </thead>
             <tbody>

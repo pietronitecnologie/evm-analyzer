@@ -27,7 +27,7 @@ export function Toaster() {
           </div>
           <button
             type="button"
-            aria-label="Chiudi notifica"
+            aria-label="Dismiss notification"
             onClick={() => dismiss(t.id)}
             className="text-muted-foreground hover:text-foreground"
           >

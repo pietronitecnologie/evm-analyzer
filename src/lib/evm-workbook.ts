@@ -140,7 +140,7 @@ export function vistaEvmWorkbook(w: WorkbookImportato): VistaEvmWorkbook | null 
     }));
     avvisi.push(...risultato.warnings.map((x) => x.message));
   } catch (errore) {
-    if (w.sprint.length > 0) avvisi.push(`Agile non calcolabile: ${String(errore)}`);
+    if (w.sprint.length > 0) avvisi.push(`Agile metrics not calculable: ${String(errore)}`);
   }
 
   const contingenza = contingencyStatus(
@@ -159,7 +159,7 @@ export function vistaEvmWorkbook(w: WorkbookImportato): VistaEvmWorkbook | null 
     stima,
     nomi: w.attivita.map((a) => a.attivita ?? ""),
     baseMisura,
-    etichettaBase: conContingency ? "BAC con contingency" : "BAC senza contingency",
+    etichettaBase: conContingency ? "BAC with contingency" : "BAC without contingency",
     checkpoint,
     sprint,
     contingenza,

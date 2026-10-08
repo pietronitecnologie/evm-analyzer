@@ -25,8 +25,8 @@ export function CalendariScreen() {
   const [festivi, setFestivi] = React.useState<string[]>([]);
   const [nuovoFestivo, setNuovoFestivo] = React.useState("");
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per gestire i calendari di lavoro." />;
-  if (!schemi) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to manage work calendars." />;
+  if (!schemi) return <Vuoto messaggio="Loading…" />;
 
   function aggiungiFestivo() {
     if (!nuovoFestivo || festivi.includes(nuovoFestivo)) return;
@@ -36,9 +36,9 @@ export function CalendariScreen() {
 
   async function crea(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await esegui("Schema non creato", () =>
+    const ok = await esegui("Schema not created", () =>
       chiama(percorso!, "crea_calendario", { nome, maschera, festivi }),
-      "Schema di calendario creato",
+      "Calendar schema created",
     );
     if (ok) {
       setNome("");
@@ -49,9 +49,9 @@ export function CalendariScreen() {
   }
 
   async function imposta(id: number) {
-    const ok = await esegui("Schema non assegnato", () =>
+    const ok = await esegui("Schema not assigned", () =>
       chiama(percorso!, "imposta_calendario_predefinito", { calendarioId: id }),
-      "Schema assegnato al progetto",
+      "Schema assigned to the project",
     );
     if (ok) await ricarica();
   }
@@ -59,34 +59,34 @@ export function CalendariScreen() {
   async function ricalcola() {
     try {
       const n = await chiama<number>(percorso!, "ricalcola_durate");
-      useToastStore.getState().push({ title: `Durate ricalcolate per ${n} task` });
+      useToastStore.getState().push({ title: `Durations recalculated for ${n} tasks` });
       await ricarica();
     } catch (e) {
-      avviso("Ricalcolo non riuscito", e);
+      avviso("Recalculation failed", e);
     }
   }
 
   return (
     <div className="flex flex-col">
       <Sezione
-        titolo="Schemi di calendario"
+        titolo="Calendar schemas"
         azioni={
           <Button variant="outline" size="sm" onClick={ricalcola}>
             <RefreshCw className="size-4" />
-            Ricalcola durate dei task
+            Recalculate task durations
           </Button>
         }
       >
         {schemi.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessuno schema: il progetto usa lun–ven senza festivi.</p>
+          <p className="text-sm text-muted-foreground">No schema: the project uses Mon-Fri with no holidays.</p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className={TESTA_TABELLA}>Nome</th>
-                <th className={TESTA_TABELLA}>Giorni lavorativi</th>
-                <th className={TESTA_TABELLA}>Festivi</th>
-                <th className={TESTA_TABELLA}>Stato</th>
+                <th className={TESTA_TABELLA}>Name</th>
+                <th className={TESTA_TABELLA}>Working days</th>
+                <th className={TESTA_TABELLA}>Holidays</th>
+                <th className={TESTA_TABELLA}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -99,10 +99,10 @@ export function CalendariScreen() {
                   </td>
                   <td className={CELLA}>
                     {s.predefinito ? (
-                      <span className="font-semibold text-semaforo-verde">predefinito del progetto</span>
+                      <span className="font-semibold text-semaforo-verde">project default</span>
                     ) : (
                       <Button size="sm" variant="ghost" onClick={() => imposta(s.id)}>
-                        Usa per il progetto
+                        Use for this project
                       </Button>
                     )}
                   </td>
@@ -113,14 +113,14 @@ export function CalendariScreen() {
         )}
       </Sezione>
 
-      <Sezione titolo="Nuovo schema">
+      <Sezione titolo="New schema">
         <form onSubmit={crea} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Campo etichetta="Nome dello schema">
+            <Campo etichetta="Schema name">
               <input className={CAMPO} required value={nome} onChange={(e) => setNome(e.target.value)} />
             </Campo>
             <fieldset className="flex flex-col gap-1 text-xs font-medium md:col-span-2">
-              <legend className="mb-1">Giorni lavorativi</legend>
+              <legend className="mb-1">Working days</legend>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {GIORNI_SETTIMANA.map((g, i) => (
                   <label key={g} className="flex items-center gap-1 font-normal">
@@ -139,18 +139,18 @@ export function CalendariScreen() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium">Festivi (giorni non lavorativi anche se feriali)</span>
+            <span className="text-xs font-medium">Holidays (non-working days even if on a weekday)</span>
             <div className="flex items-end gap-2">
               <input
                 type="date"
                 className={`${CAMPO} w-48`}
                 value={nuovoFestivo}
                 onChange={(e) => setNuovoFestivo(e.target.value)}
-                aria-label="Data del festivo"
+                aria-label="Holiday date"
               />
               <Button type="button" variant="outline" size="sm" onClick={aggiungiFestivo}>
                 <Plus className="size-4" />
-                Aggiungi festivo
+                Add holiday
               </Button>
             </div>
             {festivi.length > 0 && (
@@ -160,7 +160,7 @@ export function CalendariScreen() {
                     <span className="tabular-num">{f}</span>
                     <button
                       type="button"
-                      aria-label={`Rimuovi ${f}`}
+                      aria-label={`Remove ${f}`}
                       onClick={() => setFestivi(festivi.filter((x) => x !== f))}
                       className="rounded p-0.5 hover:bg-zona-accento/10"
                     >
@@ -175,7 +175,7 @@ export function CalendariScreen() {
           <div className="flex justify-end">
             <Button type="submit">
               <Plus className="size-4" />
-              Crea schema
+              Create schema
             </Button>
           </div>
         </form>

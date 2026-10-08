@@ -33,5 +33,5 @@ export function toast(title: string, description?: string) {
 export function notImplemented(label: string) {
   useToastStore
     .getState()
-    .push({ title: label, description: "Disponibile in una fase successiva dello sviluppo." });
+    .push({ title: label, description: "Available in a later phase of development." });
 }

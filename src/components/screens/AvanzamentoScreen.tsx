@@ -28,9 +28,9 @@ interface Bozza {
 }
 
 const ETICHETTE_STATO: Record<string, string> = {
-  inviato: "in approvazione",
-  applicato: "approvato",
-  respinto: "respinto",
+  inviato: "pending approval",
+  applicato: "approved",
+  respinto: "rejected",
 };
 
 export function AvanzamentoScreen() {
@@ -52,8 +52,8 @@ export function AvanzamentoScreen() {
     return acDaOre(ore, costi);
   }
 
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per registrare l'avanzamento." />;
-  if (!righe) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to record progress." />;
+  if (!righe) return <Vuoto messaggio="Loading…" />;
 
   const valore = (r: RigaAvanzamento): Bozza =>
     bozze[r.uid] ?? {
@@ -70,7 +70,7 @@ export function AvanzamentoScreen() {
 
   async function registra(r: RigaAvanzamento) {
     const b = valore(r);
-    const ok = await esegui("Avanzamento non registrato", () =>
+    const ok = await esegui("Progress not recorded", () =>
       chiama(percorso!, "registra_avanzamento", {
         uid: r.uid,
         pct: Number(b.pct),
@@ -79,7 +79,7 @@ export function AvanzamentoScreen() {
         ac: b.ac === "" ? acDaOreTask(r.uid, b.ore === "" ? null : Number(b.ore)) : Number(b.ac),
         ore: b.ore === "" ? null : Number(b.ore),
       }),
-      `Inviato per approvazione: ${r.uid}`,
+      `Submitted for approval: ${r.uid}`,
     );
     if (ok) {
       setBozze((prev) => {
@@ -95,8 +95,8 @@ export function AvanzamentoScreen() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border-strong bg-zona-contesto px-4 py-2">
         <span className="text-sm text-muted-foreground">
-          Ogni proposta va in approvazione subito; il valore vigente cambia solo quando viene approvata.
-          L&apos;AC si calcola dalle ore consuntive se non lo inserisci a mano (vedi l&apos;icona accanto a «Ore consuntive»).
+          Every proposal goes to approval immediately; the current value changes only once it is approved.
+          AC is calculated from actual hours if you don&apos;t enter it by hand (see the icon next to &quot;Actual hours&quot;).
         </span>
       </div>
       <div className="flex-1 overflow-auto">
@@ -105,40 +105,40 @@ export function AvanzamentoScreen() {
             <tr>
               <th className={TESTA_TABELLA}>UID</th>
               <th className={TESTA_TABELLA}>Task</th>
-              <th className={`${TESTA_TABELLA} text-right`}>Vigente</th>
-              <th className={TESTA_TABELLA}>Nuovo %</th>
-              <th className={TESTA_TABELLA}>Inizio effettivo</th>
-              <th className={TESTA_TABELLA}>Fine effettiva</th>
+              <th className={`${TESTA_TABELLA} text-right`}>Current</th>
+              <th className={TESTA_TABELLA}>New %</th>
+              <th className={TESTA_TABELLA}>Actual start</th>
+              <th className={TESTA_TABELLA}>Actual finish</th>
               <th className={`${TESTA_TABELLA} text-right`}>
                 <span className="inline-flex items-center gap-1">
-                  Ore consuntive
+                  Actual hours
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span tabIndex={0} aria-label="Come funzionano le ore consuntive e l'AC" className="cursor-help rounded text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <span tabIndex={0} aria-label="How actual hours and AC work" className="cursor-help rounded text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <Info className="size-3.5" />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="z-50 max-w-sm rounded-md border border-border bg-popover p-3 text-left text-xs font-normal normal-case tracking-normal text-popover-foreground shadow-lg">
-                      <p className="font-semibold">Ore consuntive e AC</p>
-                      <p className="mt-1">Sono le ore di lavoro cumulate del task fino alla data di stato.</p>
+                      <p className="font-semibold">Actual hours and AC</p>
+                      <p className="mt-1">These are the task&apos;s cumulative work hours up to the status date.</p>
                       <p className="mt-1">
-                        Se non inserisci l&apos;AC a mano, il sistema lo calcola: <strong>AC = ore × tariffa media</strong>.
+                        If you don&apos;t enter AC by hand, the system calculates it: <strong>AC = hours × average rate</strong>.
                       </p>
                       <p className="mt-1">
-                        La tariffa media è ponderata per le unità delle risorse assegnate al task: Σ(unità × tariffa) ÷ Σ unità.
-                        Per ogni risorsa si usa il costo orario reale se verificato, altrimenti la tariffa importata.
+                        The average rate is weighted by the units of the resources assigned to the task: Σ(units × rate) ÷ Σ units.
+                        For each resource, the verified real hourly cost is used if available, otherwise the imported rate.
                       </p>
                       <p className="mt-1">
-                        Senza ore o senza risorse assegnate al task, l&apos;AC resta quello inserito a mano (o zero).
-                        Il valore inserito a mano ha sempre la precedenza.
+                        Without hours or without resources assigned to the task, AC remains whatever was entered by hand (or zero).
+                        A manually entered value always takes precedence.
                       </p>
-                      <p className="mt-1 text-muted-foreground">Il suggerimento grigio nel campo AC mostra il valore calcolato.</p>
+                      <p className="mt-1 text-muted-foreground">The grey placeholder in the AC field shows the calculated value.</p>
                     </TooltipContent>
                   </Tooltip>
                 </span>
               </th>
-              <th className={`${TESTA_TABELLA} text-right`}>AC cumulato (€)</th>
-              <th className={TESTA_TABELLA}>Stato ultima proposta</th>
+              <th className={`${TESTA_TABELLA} text-right`}>Cumulative AC (€)</th>
+              <th className={TESTA_TABELLA}>Latest proposal status</th>
               <th className={TESTA_TABELLA} />
             </tr>
           </thead>
@@ -174,7 +174,7 @@ export function AvanzamentoScreen() {
                       step="0.5"
                       className={`${CAMPO} w-28 text-right`}
                       value={b.ore}
-                      aria-label={`Ore consuntive di ${r.uid}`}
+                      aria-label={`Actual hours for ${r.uid}`}
                       onChange={(e) => modifica(r.uid, r, "ore", e.target.value)}
                     />
                   </td>
@@ -188,7 +188,7 @@ export function AvanzamentoScreen() {
                         acDaOreTask(r.uid, b.ore === "" ? null : Number(b.ore))?.toFixed(2) ?? (r.ac ? String(r.ac) : "0,00")
                       }
                       value={b.ac}
-                      aria-label={`AC cumulato di ${r.uid}`}
+                      aria-label={`Cumulative AC for ${r.uid}`}
                       onChange={(e) => modifica(r.uid, r, "ac", e.target.value)}
                     />
                   </td>
@@ -197,12 +197,12 @@ export function AvanzamentoScreen() {
                       {r.statoUltimaVoce ? ETICHETTE_STATO[r.statoUltimaVoce] ?? r.statoUltimaVoce : "—"}
                     </span>
                     {r.statoUltimaVoce === "respinto" && r.notaUltimaVoce && (
-                      <p className="mt-0.5 text-semaforo-rosso">Motivo: {r.notaUltimaVoce}</p>
+                      <p className="mt-0.5 text-semaforo-rosso">Reason: {r.notaUltimaVoce}</p>
                     )}
                   </td>
                   <td className={CELLA}>
                     <Button size="sm" variant="ghost" disabled={!modificata} onClick={() => registra(r)}>
-                      Invia per approvazione
+                      Submit for approval
                     </Button>
                   </td>
                 </tr>

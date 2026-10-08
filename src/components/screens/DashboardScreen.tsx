@@ -22,37 +22,37 @@ const eur = (v: number | null) =>
 export function DashboardScreen() {
   const percorso = usePercorso();
   const [d] = useDati<Dashboard>("dashboard", percorso);
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per vedere la dashboard." />;
-  if (!d) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to see the dashboard." />;
+  if (!d) return <Vuoto messaggio="Loading…" />;
 
   return (
     <div className="flex flex-col gap-6 p-4">
       <EvmWorkbookSezione percorso={percorso} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Indicatore etichetta="Task di lavoro" valore={String(d.taskTotali)} />
-        <Indicatore etichetta="Task critici" valore={String(d.taskCritici)} />
+        <Indicatore etichetta="Work tasks" valore={String(d.taskTotali)} />
+        <Indicatore etichetta="Critical tasks" valore={String(d.taskCritici)} />
         <Indicatore etichetta="Milestone" valore={String(d.milestone)} />
-        <Indicatore etichetta="BAC" valore={eur(d.bacTotale)} nota="baseline di partenza" />
+        <Indicatore etichetta="BAC" valore={eur(d.bacTotale)} nota="starting baseline" />
         <Indicatore
-          etichetta="Avanzamento medio"
+          etichetta="Average progress"
           valore={d.avanzamentoMedioPct === null ? "—" : `${d.avanzamentoMedioPct.toFixed(1)} %`}
-          nota="media dei task di lavoro"
+          nota="average of work tasks"
         />
-        <Indicatore etichetta="Data di stato" valore={d.dataDiStato ?? "—"} />
-        <Indicatore etichetta="Anomalie" valore={String(d.anomalie.length)} nota="da correggere nel piano" />
+        <Indicatore etichetta="Status date" valore={d.dataDiStato ?? "—"} />
+        <Indicatore etichetta="Anomalies" valore={String(d.anomalie.length)} nota="to fix in the plan" />
       </div>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold">Anomalie</h2>
+        <h2 className="mb-2 text-sm font-semibold">Anomalies</h2>
         {d.anomalie.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessuna anomalia rilevata.</p>
+          <p className="text-sm text-muted-foreground">No anomalies detected.</p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className={TESTA_TABELLA}>UID</th>
                 <th className={TESTA_TABELLA}>Task</th>
-                <th className={TESTA_TABELLA}>Problema</th>
+                <th className={TESTA_TABELLA}>Issue</th>
               </tr>
             </thead>
             <tbody>

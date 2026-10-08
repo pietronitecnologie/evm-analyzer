@@ -42,15 +42,15 @@ function Kpi({ etichetta, valore, nota }: { etichetta: string; valore: React.Rea
 function UltimoCheckpoint({ r }: { r: RigaCheckpoint }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Kpi etichetta="PV" valore={eur(r.pv)} nota={`alla data ${r.data}`} />
+      <Kpi etichetta="PV" valore={eur(r.pv)} nota={`as of ${r.data}`} />
       <Kpi etichetta="EV" valore={eur(r.ev)} />
       <Kpi etichetta="AC" valore={eur(r.ac)} />
       <Kpi etichetta="CPI" valore={<Indice valore={r.cpi} luce={r.cpiLight} motivi={r.motivi} />} nota="EV ÷ AC" />
       <Kpi etichetta="SPI" valore={<Indice valore={r.spi} luce={r.spiLight} motivi={r.motivi} />} nota="EV ÷ PV" />
       <Kpi etichetta="CV / SV" valore={`${eur(r.cv)} / ${eur(r.sv)}`} />
-      <Kpi etichetta="EAC" valore={eur(r.eac)} nota={`ottimistica ${eur(r.eacOttimistica)}`} />
+      <Kpi etichetta="EAC" valore={eur(r.eac)} nota={`optimistic ${eur(r.eacOttimistica)}`} />
       <Kpi etichetta="VAC" valore={eur(r.vac)} />
-      <Kpi etichetta="TCPI" valore={r.tcpi === null ? "—" : num(r.tcpi)} nota="efficienza richiesta sul residuo" />
+      <Kpi etichetta="TCPI" valore={r.tcpi === null ? "—" : num(r.tcpi)} nota="efficiency required on the remainder" />
       <Kpi etichetta="ETC" valore={eur(r.etc)} />
     </div>
   );
@@ -62,30 +62,30 @@ function Stima({ v }: { v: VistaEvmWorkbook }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi etichetta={`BAC (${v.etichettaBase})`} valore={eur(v.baseMisura)} />
-        <Kpi etichetta="BAC con contingency" valore={eur(s.bacTotal)} />
-        <Kpi etichetta="BAC senza contingency" valore={eur(s.direct + s.indirect)} />
-        <Kpi etichetta="Budget approvato" valore={eur(s.budgetApproved)} nota="BAC + management reserve" />
-        <Kpi etichetta="Effort" valore={`${num(s.effortDays)} gg-persona`} nota={`σ progetto ${num(s.sigmaProject)} gg`} />
+        <Kpi etichetta="BAC with contingency" valore={eur(s.bacTotal)} />
+        <Kpi etichetta="BAC without contingency" valore={eur(s.direct + s.indirect)} />
+        <Kpi etichetta="Approved budget" valore={eur(s.budgetApproved)} nota="BAC + management reserve" />
+        <Kpi etichetta="Effort" valore={`${num(s.effortDays)} person-days`} nota={`project σ ${num(s.sigmaProject)} days`} />
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
-        <span>Diretto: <strong className="tabular-num">{eur(s.direct)}</strong></span>
-        <span>Indiretto: <strong className="tabular-num">{eur(s.indirect)}</strong></span>
+        <span>Direct: <strong className="tabular-num">{eur(s.direct)}</strong></span>
+        <span>Indirect: <strong className="tabular-num">{eur(s.indirect)}</strong></span>
         <span>Contingency: <strong className="tabular-num">{eur(s.contingency)}</strong></span>
-        <span>Riserva di gestione: <strong className="tabular-num">{eur(s.mgmtReserve)}</strong></span>
+        <span>Management reserve: <strong className="tabular-num">{eur(s.mgmtReserve)}</strong></span>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 text-sm">
-        <span>Range BAC ±1σ: <span className="tabular-num">{eur(s.bacRange.low1)} – {eur(s.bacRange.high1)}</span> <span className="text-xs text-muted-foreground">(68%)</span></span>
-        <span>Range BAC ±2σ: <span className="tabular-num">{eur(s.bacRange.low2)} – {eur(s.bacRange.high2)}</span> <span className="text-xs text-muted-foreground">(95%)</span></span>
+        <span>BAC range ±1σ: <span className="tabular-num">{eur(s.bacRange.low1)} – {eur(s.bacRange.high1)}</span> <span className="text-xs text-muted-foreground">(68%)</span></span>
+        <span>BAC range ±2σ: <span className="tabular-num">{eur(s.bacRange.low2)} – {eur(s.bacRange.high2)}</span> <span className="text-xs text-muted-foreground">(95%)</span></span>
       </div>
       <div className="max-h-72 overflow-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
               <th className={TESTA_TABELLA}>ID</th>
-              <th className={TESTA_TABELLA}>Attività</th>
-              <th className={`${TESTA_TABELLA} text-right`}>PERT (gg)</th>
-              <th className={`${TESTA_TABELLA} text-right`}>σ (gg)</th>
-              <th className={`${TESTA_TABELLA} text-right`}>Costo diretto</th>
+              <th className={TESTA_TABELLA}>Activity</th>
+              <th className={`${TESTA_TABELLA} text-right`}>PERT (days)</th>
+              <th className={`${TESTA_TABELLA} text-right`}>σ (days)</th>
+              <th className={`${TESTA_TABELLA} text-right`}>Direct cost</th>
             </tr>
           </thead>
           <tbody>
@@ -112,13 +112,13 @@ export function EvmWorkbookSezione({ percorso }: { percorso: string | null }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Sezione titolo="EVM del workbook — stima e budget">
+      <Sezione titolo="Workbook EVM — estimate and budget">
         <Stima v={vista} />
       </Sezione>
 
-      <Sezione titolo="Monitoraggio per checkpoint">
+      <Sezione titolo="Checkpoint monitoring">
         {vista.checkpoint.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessun checkpoint nel monitoraggio.</p>
+          <p className="text-sm text-muted-foreground">No checkpoint in monitoring.</p>
         ) : (
           <div className="flex flex-col gap-4">
             <UltimoCheckpoint r={vista.checkpoint[vista.checkpoint.length - 1]} />
@@ -126,7 +126,7 @@ export function EvmWorkbookSezione({ percorso }: { percorso: string | null }) {
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr>
-                    {["Data", "% pian.", "% reale", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "TCPI"].map((t) => (
+                    {["Date", "% plan.", "% actual", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "TCPI"].map((t) => (
                       <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}>{t}</th>
                     ))}
                   </tr>
@@ -155,11 +155,11 @@ export function EvmWorkbookSezione({ percorso }: { percorso: string | null }) {
       </Sezione>
 
       {vista.sprint.length > 0 && (
-        <Sezione titolo="Agile — costo per SP di baseline (non circolare)">
+        <Sezione titolo="Agile — baseline cost per SP (non-circular)">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                {["Sprint", "Costo per SP", "EV agile", "PV agile", "AC", "CPI agile", "SPI agile"].map((t) => (
+                {["Sprint", "Cost per SP", "Agile EV", "Agile PV", "AC", "Agile CPI", "Agile SPI"].map((t) => (
                   <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}>{t}</th>
                 ))}
               </tr>
@@ -181,12 +181,12 @@ export function EvmWorkbookSezione({ percorso }: { percorso: string | null }) {
         </Sezione>
       )}
 
-      <Sezione titolo="Riserve">
+      <Sezione titolo="Reserves">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi etichetta="Contingency a budget" valore={eur(vista.stima.contingency)} />
-          <Kpi etichetta="Contingency stanziata" valore={eur(vista.contingenza.allocatedTotal)} nota="somma per rischio" />
-          <Kpi etichetta="Contingency utilizzata" valore={eur(vista.contingenza.used)} nota={`residua ${eur(vista.contingenza.residual)}`} />
-          <Kpi etichetta="Riserva di gestione" valore={eur(vista.riservaGestione.residual)} nota="disponibile" />
+          <Kpi etichetta="Budgeted contingency" valore={eur(vista.stima.contingency)} />
+          <Kpi etichetta="Allocated contingency" valore={eur(vista.contingenza.allocatedTotal)} nota="sum per risk" />
+          <Kpi etichetta="Used contingency" valore={eur(vista.contingenza.used)} nota={`remaining ${eur(vista.contingenza.residual)}`} />
+          <Kpi etichetta="Management reserve" valore={eur(vista.riservaGestione.residual)} nota="available" />
         </div>
         {vista.avvisi.length > 0 && (
           <ul className="mt-4 list-disc pl-5 text-sm text-semaforo-giallo">

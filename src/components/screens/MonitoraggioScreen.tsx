@@ -18,7 +18,7 @@ const eur = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT"
 const num = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 function Indice({ valore, luce, motivo }: { valore: number | null; luce: EvmOutput["cpiLight"]; motivo?: string }) {
-  if (valore === null) return <span className="text-muted-foreground" title={motivo ?? "non definito"}>—</span>;
+  if (valore === null) return <span className="text-muted-foreground" title={motivo ?? "not defined"}>—</span>;
   return (
     <span className={`tabular-num font-medium ${classeSemaforo(luce)}`} title={motivo}>
       {num(valore)} <span className="text-xs">({luce})</span>
@@ -40,16 +40,16 @@ function Ultimo({ p, bac }: { p: PuntoVista; bac: number }) {
   const motivo = p.evm.warnings.map((w) => w.message).join("; ");
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Kpi etichetta={<TermineEvm sigla="BAC" />} valore={eur(bac)} nota="budget dei WBS" />
-      <Kpi etichetta={<TermineEvm sigla="PV" />} valore={eur(p.pv)} nota={`al ${p.data}`} />
+      <Kpi etichetta={<TermineEvm sigla="BAC" />} valore={eur(bac)} nota="WBS budget" />
+      <Kpi etichetta={<TermineEvm sigla="PV" />} valore={eur(p.pv)} nota={`as of ${p.data}`} />
       <Kpi etichetta={<TermineEvm sigla="EV" />} valore={eur(p.ev)} />
       <Kpi etichetta={<TermineEvm sigla="AC" />} valore={eur(p.ac)} />
       <Kpi etichetta={<><TermineEvm sigla="CV" /> / <TermineEvm sigla="SV" /></>} valore={`${eur(p.evm.cv)} / ${eur(p.evm.sv)}`} />
       <Kpi etichetta={<TermineEvm sigla="CPI" />} valore={<Indice valore={p.evm.cpi} luce={p.evm.cpiLight} motivo={motivo} />} nota="EV ÷ AC" />
       <Kpi etichetta={<TermineEvm sigla="SPI" />} valore={<Indice valore={p.evm.spi} luce={p.evm.spiLight} motivo={motivo} />} nota="EV ÷ PV" />
-      <Kpi etichetta={<TermineEvm sigla="EAC" />} valore={eur(p.evm.eac)} nota={`ottimistica ${eur(p.evm.eacOptimistic)}`} />
+      <Kpi etichetta={<TermineEvm sigla="EAC" />} valore={eur(p.evm.eac)} nota={`optimistic ${eur(p.evm.eacOptimistic)}`} />
       <Kpi etichetta={<TermineEvm sigla="VAC" />} valore={eur(p.evm.vac)} />
-      <Kpi etichetta={<TermineEvm sigla="TCPI" />} valore={p.evm.tcpi === null ? "—" : num(p.evm.tcpi)} nota="efficienza richiesta sul residuo" />
+      <Kpi etichetta={<TermineEvm sigla="TCPI" />} valore={p.evm.tcpi === null ? "—" : num(p.evm.tcpi)} nota="efficiency required on the remainder" />
     </div>
   );
 }
@@ -58,38 +58,38 @@ export function MonitoraggioScreen() {
   const percorso = usePercorso();
   const [dati] = useDati<DatiMonitoraggio>("dati_monitoraggio", percorso);
   const vista = React.useMemo(() => (dati ? vistaMonitoraggio(dati) : null), [dati]);
-  if (!percorso) return <Vuoto messaggio="Apri o crea un progetto per vedere il monitoraggio EVM." />;
-  if (!dati || !vista) return <Vuoto messaggio="Caricamento…" />;
+  if (!percorso) return <Vuoto messaggio="Open or create a project to see EVM monitoring." />;
+  if (!dati || !vista) return <Vuoto messaggio="Loading…" />;
 
   const ultimo = vista.punti[vista.punti.length - 1];
   const nessunDato = vista.punti.length === 0 && dati.checkpoint.length === 0;
   if (nessunDato) {
     return (
-      <Vuoto messaggio="Nessuna data di stato: registra un avanzamento nella schermata Avanzamento, oppure importa un workbook con il monitoraggio." />
+      <Vuoto messaggio="No status date: record progress in the Progress screen, or import a workbook with monitoring data." />
     );
   }
 
   return (
     <div className="flex flex-col">
       {ultimo ? (
-        <Sezione titolo={`Ultima data di stato: ${ultimo.data}`}>
+        <Sezione titolo={`Latest status date: ${ultimo.data}`}>
           <Ultimo p={ultimo} bac={vista.bac} />
         </Sezione>
       ) : (
-        <Sezione titolo="Monitoraggio">
-          <p className="text-sm text-muted-foreground">Nessuna data di stato dall'app: per ora mostro solo i checkpoint del workbook.</p>
+        <Sezione titolo="Monitoring">
+          <p className="text-sm text-muted-foreground">No status date from the app: for now only the workbook checkpoints are shown.</p>
         </Sezione>
       )}
 
-      <Sezione titolo="Serie per data di stato (dal registro dell'app)">
+      <Sezione titolo="Series by status date (from the app's log)">
         {vista.punti.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessun avanzamento registrato.</p>
+          <p className="text-sm text-muted-foreground">No progress recorded.</p>
         ) : (
           <div className="max-h-96 overflow-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  {["Data", "Origine", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "TCPI"].map((t) => (
+                  {["Date", "Source", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "TCPI"].map((t) => (
                     <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}><TermineEvm sigla={t} /></th>
                   ))}
                 </tr>
@@ -116,7 +116,7 @@ export function MonitoraggioScreen() {
       </Sezione>
 
       {ultimo && (
-        <Sezione titolo={`Per nodo WBS alla data ${ultimo.data}`}>
+        <Sezione titolo={`By WBS node as of ${ultimo.data}`}>
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
@@ -147,14 +147,14 @@ export function MonitoraggioScreen() {
         </Sezione>
       )}
 
-      <Sezione titolo="Checkpoint del workbook">
+      <Sezione titolo="Workbook checkpoints">
         {dati.checkpoint.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessun checkpoint importato dal workbook.</p>
+          <p className="text-sm text-muted-foreground">No checkpoint imported from the workbook.</p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                {["Data", "Nota", "% pianificato", "% reale", "AC"].map((t) => (
+                {["Date", "Note", "% planned", "% actual", "AC"].map((t) => (
                   <th key={t} className={`${TESTA_TABELLA} text-right first:text-left`}>{t}</th>
                 ))}
               </tr>
@@ -175,7 +175,7 @@ export function MonitoraggioScreen() {
       </Sezione>
 
       {vista.avvisi.length > 0 && (
-        <Sezione titolo="Avvisi">
+        <Sezione titolo="Warnings">
           <ul className="list-disc pl-5 text-sm text-semaforo-giallo">
             {vista.avvisi.map((a, i) => (
               <li key={i}>{a.message}</li>
