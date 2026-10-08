@@ -9,7 +9,7 @@
 import { FolderOpen, Import, PackagePlus, Sheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { TaskScreen } from "@/components/screens/TaskScreen";
+import { TaskRisorseScreen } from "@/components/screens/TaskRisorseScreen";
 import { AvanzamentoScreen } from "@/components/screens/AvanzamentoScreen";
 import { ApprovazioniScreen } from "@/components/screens/ApprovazioniScreen";
 import { DashboardScreen } from "@/components/screens/DashboardScreen";
@@ -75,7 +75,7 @@ function HomeScreen() {
 
 export function ScreenPlaceholder({ screenId, title }: { screenId: string; title: string }) {
   if (screenId === "home") return <HomeScreen />;
-  if (screenId === "task-risorse") return <TaskScreen />;
+  if (screenId === "task-risorse") return <TaskRisorseScreen />;
   if (screenId === "dashboard") return <DashboardScreen />;
   if (screenId === "wbs") return <WbsScreen />;
   if (screenId === "gantt") return <GanttScreen />;

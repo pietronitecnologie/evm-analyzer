@@ -151,6 +151,14 @@ fn elenca_task(percorso: String) -> Result<Vec<TaskRiga>, String> {
     task::elenca_task(&conn, id)
 }
 
+/// Elenco dei task con dati di pianificazione/baseline per la scheda Task e risorse.
+#[tauri::command]
+fn task_evm_elenco(percorso: String) -> Result<Vec<task::TaskEvmRiga>, String> {
+    let conn = evm_db::open_and_migrate(Path::new(&percorso)).map_err(|e| e.to_string())?;
+    let id = progetto_id(&conn)?;
+    task::elenco_evm(&conn, id)
+}
+
 /// Apre il progetto e restituisce la connessione con l'id del progetto.
 fn apri_con_id(percorso: &str) -> Result<(rusqlite::Connection, i64), String> {
     let conn = evm_db::open_and_migrate(Path::new(percorso)).map_err(|e| e.to_string())?;
@@ -422,6 +430,20 @@ fn governance(percorso: String) -> Result<controllo::Governance, String> {
     controllo::governance(&conn, id)
 }
 
+/// Elenco delle baseline, per il selettore di baseline della barra di contesto.
+#[tauri::command]
+fn baseline_elenco(percorso: String) -> Result<Vec<controllo::BaselineRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::elenco_baseline(&conn, id)
+}
+
+/// Elenco delle date di stato, per il selettore della barra di contesto.
+#[tauri::command]
+fn snapshot_elenco(percorso: String) -> Result<Vec<controllo::SnapshotRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::elenco_snapshot(&conn, id)
+}
+
 #[tauri::command]
 fn crea_change_request(percorso: String, motivo: String, delta_costo: Option<f64>, delta_durata: Option<f64>) -> Result<i64, String> {
     let (conn, id) = apri_con_id(&percorso)?;
@@ -483,6 +505,12 @@ fn crea_assegnazione(percorso: String, task_uid: String, risorsa_id: i64, unita:
 }
 
 #[tauri::command]
+fn imposta_unita_assegnazione(percorso: String, id: i64, unita: f64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    risorse::imposta_unita_assegnazione(&conn, pid, id, unita)
+}
+
+#[tauri::command]
 fn elimina_assegnazione(percorso: String, id: i64) -> Result<(), String> {
     let (conn, pid) = apri_con_id(&percorso)?;
     risorse::elimina_assegnazione(&conn, pid, id)
@@ -502,6 +530,7 @@ pub fn run() {
             resync_plan,
             crea_task,
             elenca_task,
+            task_evm_elenco,
             dashboard,
             wbs_elenco,
             crea_wbs,
@@ -532,6 +561,8 @@ pub fn run() {
             imposta_budget_wbs,
             dati_monitoraggio,
             governance,
+            baseline_elenco,
+            snapshot_elenco,
             crea_change_request,
             approva_change_request,
             blocca_baseline_budget,
@@ -542,6 +573,7 @@ pub fn run() {
             imposta_costo_reale,
             assegnazioni_elenco,
             crea_assegnazione,
+            imposta_unita_assegnazione,
             elimina_assegnazione
         ])
         .run(tauri::generate_context!())

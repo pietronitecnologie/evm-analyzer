@@ -51,6 +51,10 @@ export interface PuntoMonitoraggio {
   perWbs: Record<string, EvmOutput>;
   /** Somme PV/EV/AC/BAC per nodo WBS. */
   perWbsMisure: Record<string, EvmInput>;
+  /** Indici per task (uid): ogni task è già la propria riga, nessun raggruppamento. */
+  perTask: Record<string, EvmOutput>;
+  /** PV/EV/AC/BAC del singolo task. */
+  perTaskMisure: Record<string, EvmInput>;
 }
 
 export interface MonitoraggioResult {
@@ -128,13 +132,14 @@ export function monitoraggioEvm(
   const ordinati = [...snapshots].sort((a, b) => isoToDays(a.date) - isoToDays(b.date));
   for (const snap of ordinati) {
     const perUid = new Map(snap.righe.map((r) => [r.uid, r]));
-    const righeEvm: (EvmInput & { wbs: string })[] = [];
+    const righeEvm: (EvmInput & { wbs: string; uid: string })[] = [];
     for (const [uid, budget] of Object.entries(budgetTask)) {
       const t = tasksPerUid.get(uid);
       if (!t || t.wbs === null) continue;
       const r = perUid.get(uid);
       righeEvm.push({
         wbs: t.wbs,
+        uid,
         bac: budget,
         pv: pvLineareTask(budget, t.start, t.finish, snap.date),
         ev: budget * (r?.pct ?? 0),
@@ -149,7 +154,24 @@ export function monitoraggioEvm(
     for (const codice of gruppi.keys()) {
       perWbsMisure[codice] = sumEvm(righeEvm.filter((x) => x.wbs === codice));
     }
-    punti.push({ date: snap.date, pv: totale.pv, ev: totale.ev, ac: totale.ac, evm: evm({ ...totale, bac }, params), perWbs, perWbsMisure });
+    // Un task è già la propria riga: nessun raggruppamento, solo evm() riga per riga.
+    const perTask: Record<string, EvmOutput> = {};
+    const perTaskMisure: Record<string, EvmInput> = {};
+    for (const riga of righeEvm) {
+      perTask[riga.uid] = evm(riga, params);
+      perTaskMisure[riga.uid] = riga;
+    }
+    punti.push({
+      date: snap.date,
+      pv: totale.pv,
+      ev: totale.ev,
+      ac: totale.ac,
+      evm: evm({ ...totale, bac }, params),
+      perWbs,
+      perWbsMisure,
+      perTask,
+      perTaskMisure,
+    });
   }
   return { bac, budgetTask, punti, warnings };
 }

@@ -218,6 +218,13 @@ export interface BaselineRiga {
   bacTotale: number | null;
 }
 
+export interface SnapshotRiga {
+  id: number;
+  statusDate: string;
+  label: string | null;
+  source: string;
+}
+
 export interface ChangeRequestRiga {
   id: number;
   richiestaIl: string;
@@ -263,4 +270,35 @@ export interface AssegnazioneRiga {
   risorsaId: number;
   risorsaNome: string;
   unita: number;
+}
+
+export interface TaskRiga {
+  id: number;
+  uid: string;
+  nome: string;
+  wbs: string | null;
+  inizio: string | null;
+  fine: string | null;
+  durataGiorni: number | null;
+  milestone: boolean;
+  riepilogo: boolean;
+}
+
+/** Riga della scheda Task e risorse (Fase 5, §3.3): pianificazione e baseline. */
+export interface TaskEvmRiga {
+  id: number;
+  uid: string;
+  nome: string;
+  wbs: string | null;
+  filone: string | null;
+  metodoEv: string | null;
+  inizioPianificato: string | null;
+  finePianificata: string | null;
+  inizioBaseline: string | null;
+  fineBaseline: string | null;
+  pctReale: number | null;
+  floatDays: number | null;
+  critico: boolean;
+  riepilogo: boolean;
+  milestone: boolean;
 }

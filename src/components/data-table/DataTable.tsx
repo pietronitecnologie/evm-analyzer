@@ -26,6 +26,7 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
   type ColumnOrderState,
+  type ColumnPinningState,
   type ColumnSizingState,
   flexRender,
   getCoreRowModel,
@@ -139,10 +140,18 @@ export function DataTable<TData extends { id: string }>({
     return data.filter((row) => filters.every((f) => f.predicate(row)));
   }, [data, quickFilters, activeQuickFilters]);
 
+  // Congelamento colonne: stato nativo di TanStack (non solo CSS), così
+  // `column.getStart("left")` dà lo scarto giusto quando sono congelate più
+  // colonne insieme (si sommano le une alle altre, non restano tutte a 0).
+  const columnPinning: ColumnPinningState = React.useMemo(
+    () => ({ left: pinnedColumnIds }),
+    [pinnedColumnIds],
+  );
+
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, columnFilters, columnVisibility, columnOrder, columnSizing },
+    state: { sorting, columnFilters, columnVisibility, columnOrder, columnSizing, columnPinning },
     getRowId: (row) => row.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -341,10 +350,10 @@ export function DataTable<TData extends { id: string }>({
                       return (
                         <div
                           key={header.id}
-                          style={{ width: header.getSize() }}
+                          style={{ width: header.getSize(), left: pinned ? header.column.getStart("left") : undefined }}
                           className={cn(
                             "relative flex h-8 shrink-0 items-center border-r border-border px-2 text-xs font-semibold text-muted-foreground",
-                            pinned && "sticky left-0 z-20 bg-card",
+                            pinned && "sticky z-20 bg-card",
                           )}
                         >
                           <DraggableHeader id={header.column.id}>
@@ -386,10 +395,10 @@ export function DataTable<TData extends { id: string }>({
                 return (
                   <div
                     key={column.id}
-                    style={{ width: column.getSize() }}
+                    style={{ width: column.getSize(), left: pinned ? column.getStart("left") : undefined }}
                     className={cn(
                       "shrink-0 border-r border-border px-1 py-1",
-                      pinned && "sticky left-0 z-20 bg-background",
+                      pinned && "sticky z-20 bg-background",
                     )}
                   >
                     {meta?.filterable !== false && column.getCanFilter() && (
@@ -441,15 +450,17 @@ export function DataTable<TData extends { id: string }>({
                         editingCell?.rowId === row.id && editingCell.columnId === cell.column.id;
                       const editable = Boolean(meta?.editable) && kind !== "calcolato";
 
+                      const pinnedLeft = pinned ? cell.column.getStart("left") : undefined;
+
                       if (!meta?.editable) {
                         return (
                           <div
                             key={cell.id}
-                            style={{ width: cell.column.getSize() }}
+                            style={{ width: cell.column.getSize(), left: pinnedLeft }}
                             className={cn(
                               "flex shrink-0 items-center border-r border-border px-2 text-sm",
                               meta?.align === "right" && "justify-end tabular-num",
-                              pinned && "sticky left-0 z-10 bg-background",
+                              pinned && "sticky z-10 bg-background",
                             )}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -460,10 +471,10 @@ export function DataTable<TData extends { id: string }>({
                       return (
                         <div
                           key={cell.id}
-                          style={{ width: cell.column.getSize() }}
+                          style={{ width: cell.column.getSize(), left: pinnedLeft }}
                           className={cn(
                             "shrink-0 border-r border-border",
-                            pinned && "sticky left-0 z-10 bg-background",
+                            pinned && "sticky z-10 bg-background",
                           )}
                         >
                           <EditableCell

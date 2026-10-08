@@ -17,14 +17,21 @@ const eur = (v: number) => v.toLocaleString("it-IT", { style: "currency", curren
 const num = (v: number, d = 2) => v.toLocaleString("it-IT", { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (v: number) => `${(v * 100).toLocaleString("it-IT", { maximumFractionDigits: 2 })} %`;
 
+const ETICHETTA_LUCE: Record<TrafficLight, string> = {
+  verde: "green",
+  giallo: "yellow",
+  rosso: "red",
+  nd: "n/a",
+};
+
 /** Indice con semaforo: `—` con il motivo nel tooltip se non definito. */
 function Indice({ valore, luce, motivi }: { valore: number | null; luce: TrafficLight; motivi: string[] }) {
   if (valore === null) {
-    return <span className="text-muted-foreground" title={motivi.join("; ") || "non definito"}>—</span>;
+    return <span className="text-muted-foreground" title={motivi.join("; ") || "not defined"}>—</span>;
   }
   return (
     <span className={`tabular-num font-medium ${classeSemaforo(luce)}`}>
-      {num(valore)} <span className="text-xs">({luce})</span>
+      {num(valore)} <span className="text-xs">({ETICHETTA_LUCE[luce]})</span>
     </span>
   );
 }

@@ -153,7 +153,7 @@ export function checkQ006(tasks: QTask[], statusDate: ISODate): Anomaly[] {
 export function checkQ007(resources: QResource[]): Anomaly[] {
   return resources
     .filter((r) => r.rate === null)
-    .map((r) => ana("avviso", "Q007", `Risorsa ${r.name} senza tariffa`, undefined, "§2.3"));
+    .map((r) => ana("avviso", "Q007", `Resource ${r.name} has no rate`, undefined, "§2.3"));
 }
 
 /** Q008 — PctPianificato o AC decrescenti tra check-point. */
@@ -199,7 +199,7 @@ export function checkQ012(deviazionePct: number | null | undefined): Anomaly[] {
 export function checkQ013(resources: QResource[]): Anomaly[] {
   return resources
     .filter((r) => r.rate !== null && (r.realHourlyCost === undefined || r.realHourlyCost === null))
-    .map((r) => ana("info", "Q013", `Costo orario non verificato per ${r.name}: possibile sotto-stima`, undefined, "§6-bis.7"));
+    .map((r) => ana("info", "Q013", `Unverified hourly cost for ${r.name}: possible underestimate`, undefined, "§6-bis.7"));
 }
 
 /** Q014 — metodo cambiato tra status date. */

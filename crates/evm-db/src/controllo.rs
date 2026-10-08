@@ -174,6 +174,32 @@ pub fn dati_monitoraggio(conn: &Connection, pid: i64) -> Esito<DatiMonitoraggio>
     Ok(DatiMonitoraggio { wbs, task, snapshot, checkpoint })
 }
 
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotRiga {
+    pub id: i64,
+    pub status_date: String,
+    pub label: Option<String>,
+    pub source: String,
+}
+
+/// Elenco delle date di stato del progetto, più recenti prima. Usato dal
+/// selettore di data di stato della barra di contesto (Fase 5); `dati_monitoraggio`
+/// legge già gli stessi id internamente ma non li espone nel suo `SnapshotMon`.
+pub fn elenco_snapshot(conn: &Connection, pid: i64) -> Esito<Vec<SnapshotRiga>> {
+    let mut st = conn
+        .prepare("SELECT id, status_date, label, source FROM status_snapshot WHERE project_id = ?1 ORDER BY status_date DESC, id DESC")
+        .map_err(e)?;
+    let righe = st
+        .query_map([pid], |r| {
+            Ok(SnapshotRiga { id: r.get(0)?, status_date: r.get(1)?, label: r.get(2)?, source: r.get(3)? })
+        })
+        .map_err(e)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(e)?;
+    Ok(righe)
+}
+
 // --------------------------------------------------------------- Governance
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -196,6 +222,30 @@ pub struct BaselineRiga {
     pub bloccata: bool,
     pub archiviata: bool,
     pub bac_totale: Option<f64>,
+}
+
+/// Elenco delle baseline del progetto, più recenti prima dell'id. Usata sia da
+/// `governance()` sia dal selettore di baseline della barra di contesto (Fase 5).
+pub fn elenco_baseline(conn: &Connection, pid: i64) -> Esito<Vec<BaselineRiga>> {
+    let mut st = conn
+        .prepare("SELECT id, name, kind, created_at, locked, bac_total, archiviata FROM baseline WHERE project_id = ?1 ORDER BY id")
+        .map_err(e)?;
+    let righe = st
+        .query_map([pid], |r| {
+            Ok(BaselineRiga {
+                id: r.get(0)?,
+                nome: r.get(1)?,
+                tipo: r.get(2)?,
+                creata_il: r.get(3)?,
+                bloccata: r.get::<_, i64>(4)? != 0,
+                bac_totale: r.get(5)?,
+                archiviata: r.get::<_, i64>(6)? != 0,
+            })
+        })
+        .map_err(e)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(e)?;
+    Ok(righe)
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -267,24 +317,7 @@ pub fn governance(conn: &Connection, pid: i64) -> Esito<Governance> {
         .map_err(e)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(e)?;
-    let mut st = conn
-        .prepare("SELECT id, name, kind, created_at, locked, bac_total, archiviata FROM baseline WHERE project_id = ?1 ORDER BY id")
-        .map_err(e)?;
-    let baseline = st
-        .query_map([pid], |r| {
-            Ok(BaselineRiga {
-                id: r.get(0)?,
-                nome: r.get(1)?,
-                tipo: r.get(2)?,
-                creata_il: r.get(3)?,
-                bloccata: r.get::<_, i64>(4)? != 0,
-                bac_totale: r.get(5)?,
-                archiviata: r.get::<_, i64>(6)? != 0,
-            })
-        })
-        .map_err(e)?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(e)?;
+    let baseline = elenco_baseline(conn, pid)?;
     let mut st = conn
         .prepare("SELECT id, requested_at, reason, delta_cost, delta_duration_days, approved_at, approved_by FROM change_request WHERE project_id = ?1 ORDER BY id")
         .map_err(e)?;
@@ -461,5 +494,37 @@ mod tests {
         assert_eq!(d.wbs.len(), 2);
         assert!(d.snapshot.is_empty());
         assert!(d.checkpoint.is_empty());
+    }
+
+    #[test]
+    fn elenco_baseline_coincide_con_quello_dentro_governance() {
+        let (_d, conn, pid) = progetto();
+        imposta_budget_wbs(&conn, pid, "1.1", Some(12000.0)).unwrap();
+        blocca_baseline_budget(&conn, pid, "Startup", "startup").unwrap();
+        let elenco = elenco_baseline(&conn, pid).unwrap();
+        let g = governance(&conn, pid).unwrap();
+        assert_eq!(elenco, g.baseline, "stessa query, stesso risultato");
+        assert_eq!(elenco[0].nome, "Startup");
+    }
+
+    #[test]
+    fn elenco_snapshot_espone_gli_id_in_ordine_decrescente() {
+        let (_d, conn, pid) = progetto();
+        conn.execute(
+            "INSERT INTO status_snapshot (project_id, status_date, label, source) VALUES (?1, '2026-01-10', NULL, 'manuale')",
+            [pid],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO status_snapshot (project_id, status_date, label, source) VALUES (?1, '2026-02-10', 'Chiusura mese', 'resync')",
+            [pid],
+        )
+        .unwrap();
+        let elenco = elenco_snapshot(&conn, pid).unwrap();
+        assert_eq!(elenco.len(), 2);
+        assert_eq!(elenco[0].status_date, "2026-02-10", "più recente prima");
+        assert_eq!(elenco[0].label.as_deref(), Some("Chiusura mese"));
+        assert_eq!(elenco[0].source, "resync");
+        assert!(elenco[0].id > elenco[1].id);
     }
 }

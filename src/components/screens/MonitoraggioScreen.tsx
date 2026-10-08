@@ -5,36 +5,14 @@
 // valore arriva dal motore (lib/monitoraggio.ts). Mostra anche i checkpoint del workbook.
 
 import * as React from "react";
-import type { EvmOutput } from "@evm-analyzer/engine";
 
-import { classeSemaforo } from "@/lib/evm-workbook";
 import { vistaMonitoraggio, type PuntoVista } from "@/lib/monitoraggio";
 import type { DatiMonitoraggio } from "@/lib/api";
 import { CELLA, TESTA_TABELLA, usePercorso, useDati } from "@/lib/schermate";
 import { Sezione, Vuoto } from "./comuni";
+import { Indice, Kpi } from "./kpi";
+import { eur, num } from "@/lib/format";
 import { TermineEvm } from "./TermineEvm";
-
-const eur = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }));
-const num = (v: number | null) => (v === null ? "—" : v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-
-function Indice({ valore, luce, motivo }: { valore: number | null; luce: EvmOutput["cpiLight"]; motivo?: string }) {
-  if (valore === null) return <span className="text-muted-foreground" title={motivo ?? "not defined"}>—</span>;
-  return (
-    <span className={`tabular-num font-medium ${classeSemaforo(luce)}`} title={motivo}>
-      {num(valore)} <span className="text-xs">({luce})</span>
-    </span>
-  );
-}
-
-function Kpi({ etichetta, valore, nota }: { etichetta: React.ReactNode; valore: React.ReactNode; nota?: string }) {
-  return (
-    <div className="rounded-md border border-border-strong bg-card p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{etichetta}</p>
-      <p className="tabular-num mt-1 text-lg font-semibold">{valore}</p>
-      {nota && <p className="mt-0.5 text-xs text-muted-foreground">{nota}</p>}
-    </div>
-  );
-}
 
 function Ultimo({ p, bac }: { p: PuntoVista; bac: number }) {
   const motivo = p.evm.warnings.map((w) => w.message).join("; ");

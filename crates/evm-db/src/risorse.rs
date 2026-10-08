@@ -204,6 +204,23 @@ pub fn crea_assegnazione(conn: &Connection, pid: i64, task_uid: &str, risorsa_id
     Ok(conn.last_insert_rowid())
 }
 
+/// Modifica le unità di un'assegnazione esistente (1 = 100%).
+pub fn imposta_unita_assegnazione(conn: &Connection, pid: i64, id: i64, unita: f64) -> Esito<()> {
+    if !unita.is_finite() || unita <= 0.0 {
+        return Err("le unità devono essere maggiori di zero (1 = 100%)".into());
+    }
+    let n = conn
+        .execute(
+            "UPDATE assignment SET units = ?3 WHERE id = ?1 AND task_id IN (SELECT id FROM task WHERE project_id = ?2)",
+            params![id, pid, unita],
+        )
+        .map_err(e)?;
+    if n == 0 {
+        return Err("assegnazione non trovata".into());
+    }
+    Ok(())
+}
+
 pub fn elimina_assegnazione(conn: &Connection, pid: i64, id: i64) -> Esito<()> {
     let n = conn
         .execute(
@@ -258,6 +275,18 @@ mod tests {
         assert_eq!(risorse(&conn, pid).unwrap()[0].unita, 0.5);
         elimina_assegnazione(&conn, pid, a).unwrap();
         assert!(assegnazioni(&conn, pid).unwrap().is_empty());
+    }
+
+    #[test]
+    fn imposta_unita_valida_e_scrive() {
+        let (_d, conn, pid) = progetto();
+        let r = crea_risorsa(&conn, pid, "Ingegnere", None, Some(60.0), None).unwrap();
+        let a = crea_assegnazione(&conn, pid, "1", r, 0.5).unwrap();
+        assert!(imposta_unita_assegnazione(&conn, pid, a, 0.0).is_err(), "unità nulle");
+        assert!(imposta_unita_assegnazione(&conn, pid, a, -1.0).is_err(), "unità negative");
+        assert!(imposta_unita_assegnazione(&conn, pid, a + 999, 1.0).is_err(), "assegnazione inesistente");
+        imposta_unita_assegnazione(&conn, pid, a, 1.0).unwrap();
+        assert_eq!(assegnazioni(&conn, pid).unwrap()[0].unita, 1.0);
     }
 
     #[test]

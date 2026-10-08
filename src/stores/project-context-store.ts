@@ -15,8 +15,14 @@ interface ProjectContextState {
   percorso: string | null;
   statusDate: string;
   statusDateState: StatoStatusDate;
+  /** Null = latest status date (no explicit selection). */
+  snapshotId: number | null;
   perimetro: string;
+  /** Null = whole project (no scope selected). */
+  scopeId: number | null;
   baseline: string;
+  /** Null = no explicit baseline selected (figures use the default "startup" baseline). */
+  baselineId: number | null;
   evBaseMode: BaseEvMode;
   userName: string;
   userRole: string;
@@ -31,16 +37,24 @@ interface ProjectContextState {
     percorso: string;
     statusDate: string;
   }) => void;
+  setSnapshot: (id: number | null, label: string, stato?: StatoStatusDate) => void;
+  setScope: (id: number | null, label: string) => void;
+  setBaseline: (id: number | null, label: string) => void;
+  setEvBaseMode: (mode: BaseEvMode) => void;
 }
 
 export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   projectName: "No project open",
   percorso: null,
-  impostaProgetto: (progetto) => set(progetto),
+  impostaProgetto: (progetto) =>
+    set({ ...progetto, snapshotId: null, scopeId: null, baselineId: null, perimetro: "Whole project", baseline: "Startup" }),
   statusDate: "—",
   statusDateState: "bozza",
+  snapshotId: null,
   perimetro: "Whole project",
+  scopeId: null,
   baseline: "Startup",
+  baselineId: null,
   evBaseMode: "bac_senza_contingency",
   userName: "—",
   userRole: "—",
@@ -50,4 +64,9 @@ export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   planSyncHash: null,
   anomalyCount: 0,
   saved: true,
+  setSnapshot: (snapshotId, statusDate, statusDateState) =>
+    set({ snapshotId, statusDate, ...(statusDateState ? { statusDateState } : {}) }),
+  setScope: (scopeId, perimetro) => set({ scopeId, perimetro }),
+  setBaseline: (baselineId, baseline) => set({ baselineId, baseline }),
+  setEvBaseMode: (evBaseMode) => set({ evBaseMode }),
 }));

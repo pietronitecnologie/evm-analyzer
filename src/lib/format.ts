@@ -48,6 +48,14 @@ export function formatIndexIt(value: number | null | undefined): string {
   return indexFormatter.format(value);
 }
 
+/** Valuta compatta per le card KPI (nessun decimale): — se non definito. */
+export const eur = (v: number | null): string =>
+  v === null ? NON_CALCOLABILE : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+/** Indice a 2 decimali (CPI/SPI e simili): — se non definito. */
+export const num = (v: number | null): string =>
+  v === null ? NON_CALCOLABILE : v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export function formatDateIt(value: string | Date | null | undefined): string {
   if (!value) return NON_CALCOLABILE;
   const date = typeof value === "string" ? new Date(value) : value;

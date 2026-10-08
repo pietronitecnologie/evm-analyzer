@@ -77,6 +77,10 @@ describe("serie di monitoraggio", () => {
     expect(p.perWbs["2.1"].cv).toBeCloseTo(-100, 6);
     expect(p.perWbs["2.2"].cpi).toBeCloseTo(1 / 3, 9);
     expect(p.perWbsMisure["2.1"]).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500 });
+    // Un solo task per nodo in questa fixture: perTask coincide con perWbs riga per riga.
+    expect(p.perTaskMisure.A).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500, wbs: "2.1", uid: "A" });
+    expect(p.perTask.A.cv).toBeCloseTo(-100, 6);
+    expect(p.perTask.B.cpi).toBeCloseTo(1 / 3, 9);
   });
 
   it("i punti sono ordinati per data e un progetto senza avanzamenti ha EV zero", () => {

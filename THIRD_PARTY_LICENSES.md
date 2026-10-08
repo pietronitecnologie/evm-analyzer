@@ -44,13 +44,14 @@ significativo.
 | tailwindcss, @tailwindcss/vite | MIT (usa internamente `lightningcss`, MPL-2.0) |
 | lucide-react | ISC |
 | @tauri-apps/api, @tauri-apps/plugin-opener | MIT OR Apache-2.0 (a scelta) |
+| echarts (grafici Fase 5: curva S, trend CPI/SPI) | Apache-2.0 (transitive: `zrender` BSD-3-Clause, `tslib` 0BSD) |
 
 Strumenti di sviluppo (non distribuiti nel binario finale): Vite, Storybook,
 TypeScript, @vitejs/plugin-react — tutti MIT.
 
 Riepilogo automatico (`license-checker --production --summary`): MIT (96),
-MPL-2.0 (4, da `lightningcss`), ISC (3), Apache-2.0 (2), Apache-2.0 OR MIT
-(1), MIT OR Apache-2.0 (1), BSD-3-Clause (1), 0BSD (1).
+MPL-2.0 (4, da `lightningcss`), ISC (3), Apache-2.0 (3, incl. `echarts`), Apache-2.0 OR MIT
+(1), MIT OR Apache-2.0 (1), BSD-3-Clause (2, incl. `zrender`), 0BSD (2, incl. `tslib`).
 
 ## Backend (Rust / Cargo)
 

@@ -472,3 +472,154 @@ su piani da 2.000/20.000 task.
     `baseline_changed_locked` (corrisponde all'anomalia critica Q016 della specifica). Il
     riallineamento della gerarchia WBS ai nuovi codici non è automatico in questo
     incremento: lo spostamento è solo segnalato nel report, non applicato alla tabella `wbs`.
+
+## Fase 5, incremento 1 — selettori di contesto reali e Dashboard (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md)
+
+Ambito: rendere reali i tre selettori della barra di contesto (baseline, data di stato,
+perimetro — prima pulsanti decorativi sopra stringhe statiche, senza id) e trasformare la
+Dashboard dalla griglia piatta di 7 indicatori in quella della specifica (riga KPI, curva S,
+trend CPI/SPI, top scostamenti, copertura, riserve), riusando `dati_monitoraggio` +
+`vistaMonitoraggio` (già collaudati da `MonitoraggioScreen`) invece di costruire una nuova
+pipeline `AnalysisDataset`/Web Worker. Grafici con **ECharts**, calcolo EVM ancora sul thread
+principale: entrambe scelte esplicite dell'utente per questo incremento (vedi sotto).
+
+72. **Nessuna pipeline `get_analysis_dataset`/Web Worker in questo incremento.** `dati_monitoraggio`
+    (già esposto, già usato da `MonitoraggioScreen`) copre per intero i bisogni della Dashboard
+    (PV/EV/AC/indici per data di stato, a livello di progetto e di nodo WBS); costruire un
+    dataset unificato più ricco (per WBS/risorsa/filone, parametrizzato per baseline) resta
+    rimandato a quando le schermate WBS/Task/Gantt lo richiederanno davvero — altrimenti sarebbe
+    una pipeline parallela che duplica `dati_monitoraggio` senza bisogno. Il motore EVM gira
+    ancora sul thread principale, come in tutte le altre schermate: nessun Web Worker in questo
+    incremento (scelta esplicita, da rivedere quando un dataset/calcolo pesante lo richiederà,
+    es. Gantt a 20.000 righe o Monte Carlo).
+
+73. **Il selettore di baseline non incide ancora sui calcoli.** `elenco_baseline`
+    (`controllo.rs`, estratta dalla query già usata da `governance()`) e `elenco_snapshot`
+    (nuova, piccola) alimentano i menu della barra di contesto e scrivono `baselineId`/
+    `snapshotId` nello store; la Dashboard **usa** `snapshotId` per scegliere il punto da
+    evidenziare (altrimenti l'ultimo), ma `dati_monitoraggio` resta legato alla baseline
+    `kind = 'startup'` più recente indipendentemente da `baselineId`. Va corretto quando
+    `dati_monitoraggio` sarà parametrizzato per baseline (incremento WBS/Task).
+
+74. **Copertura: pesata sul costo di baseline dei task, non sul conteggio.** `coperturaTaskPct`
+    (`src/lib/monitoraggio.ts`) divide la somma del costo di baseline dei task non-riepilogo con
+    WBS assegnata presenti nell'ultimo snapshot per la somma dello stesso costo su tutti i task
+    pesabili; `0` se non c'è ancora nessuna data di stato. È un proxy (il budget del nodo WBS non
+    si distribuisce sempre 1:1 per costo di baseline del task — vedi `allocaBudgetTask` nel
+    motore), non il calcolo esatto del §2 della specifica, ma coerente con come il motore stesso
+    alloca il budget.
+
+75. **Il filtro per perimetro è lato frontend.** Scegliere un perimetro nella barra di contesto
+    filtra `dati_monitoraggio.wbs`/`.task` al sottoalbero del codice WBS radice del perimetro
+    (da `perimetri_elenco`) prima di chiamare `vistaMonitoraggio`/`coperturaTaskPct`, invece di
+    aggiungere un parametro di perimetro al comando Tauri — sufficiente perché `dati_monitoraggio`
+    già restituisce l'intero progetto e il filtro è puramente per codice. I perimetri non basati
+    su WBS (`rule_kind` diverso da `'wbs'`) non filtrano nulla in questo incremento.
+
+76. **Grafici ECharts senza tema ECharts separato.** `src/components/charts/EChart.tsx` legge i
+    colori dai design token dell'app (`src/components/charts/tema.ts`, `getComputedStyle` sulle
+    variabili CSS di `globals.css`) invece di registrare un tema ECharts a parte: i grafici
+    seguono automaticamente il chiaro/scuro. Il grafico si ricrea (dispose + init) al cambio
+    tema anziché fare un repaint parziale: più semplice, costo trascurabile alla scala di questi
+    grafici. Colori PV/EV/AC (grigio tratteggiato/teal/arancione) fissi, come da specifica §3.1,
+    non derivati da token (nessun token esistente per teal/arancione).
+
+## Fase 5, incremento 2 — albero WBS con indici EVM (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.2)
+
+Ambito: trasformare `WbsScreen` da elenco piatto (rientro per conteggio dei punti nel codice,
+nessuna gerarchia reale) nell'albero della specifica, con indici EVM a ogni livello, livello
+massimo, filtro "solo fuori soglia", ordinamento per scostamento e riga dei totali. Nessuna
+modifica al backend: `wbs_elenco` e `dati_monitoraggio` bastavano già.
+
+77. **Indici EVM per nodo riepilogo: nuovo rollup lato frontend, non nel motore.**
+    `monitoraggioEvm`/`perWbs` calcolano gli indici solo per i codici WBS con task assegnati
+    direttamente — un nodo riepilogo senza task propri (es. `"1"` quando tutto il lavoro sta
+    sotto `"1.1"`/`"1.2"`) non compare affatto. `evmPerNodoWbs` (`src/lib/monitoraggio.ts`)
+    colma questo per ogni nodo: somma `perWbsMisure` dei codici uguali o discendenti, poi
+    applica `evm()` una sola volta sul totale — stessa logica di `rollup()` nel motore
+    (`packages/engine/src/evm.ts`), solo applicata anche ai nodi padre. Un nodo senza alcun
+    task nel sottoalbero ottiene zeri e indici `null` (mai `NaN`).
+
+78. **Ordinamento numerico dei codici WBS lato frontend, non in SQL.** La query di
+    `wbs_elenco` (`schermate.rs`) ordina ancora `ORDER BY w.code`, lessicale (`"1.10"` prima
+    di `"1.2"`). `costruisciAlbero` (`src/lib/wbs-albero.ts`) riordina ogni livello con un
+    confronto numerico dei segmenti del codice dopo aver ricevuto i dati — non si è toccato
+    il backend perché l'ordinamento per l'albero deve comunque avvenire dopo aver ricostruito
+    la gerarchia (il genitore non è adiacente ai figli in un ordine lessicale piatto).
+
+79. **"Ordina per scostamento" abbandona la gerarchia.** Quando attivo, la schermata mostra
+    un elenco piatto di tutti i nodi dell'ambito corrente (foglie e riepiloghi, tutti con
+    indici grazie a `evmPerNodoWbs`) ordinato per `|CV|` decrescente, con un avviso che la
+    gerarchia è nascosta — non si è tentato un ibrido albero+ordinamento globale, che avrebbe
+    richiesto riordinare i figli di ogni nodo in base a un criterio non locale (lo scostamento
+    confrontabile solo guardando tutto l'albero, non un singolo livello).
+
+80. **Il livello massimo non svuota lo stato di espansione.** Impostare "Max level" filtra le
+    righe appiattite per profondità dopo l'espansione (`appiattisciVisibile`), senza toccare
+    quali nodi sono espansi: un nodo oltre il livello resta "espanso" nello stato anche se le
+    sue righe sono nascoste dal filtro. Scelta deliberata per evitare che cambiare il livello
+    e poi tornare ad "All" faccia perdere le scelte di espandi/comprimi dell'utente.
+
+## Fase 5, incremento 3 — Task/Risorse/Assegnazioni con EVM per task (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.3)
+
+Ambito: tre schede (Task, Risorse, Assegnazioni) su `DataTable` al posto delle due liste
+piatte di `TaskScreen.tsx`/`RisorseSezione.tsx` (ora eliminati); indici EVM per task; nessuna
+modifica di schema.
+
+81. **EVM per task: nuova chiave nel motore, nessuna formula nuova.** `monitoraggioEvm`
+    (`packages/engine/src/monitoring.ts`) costruiva già una riga `EvmInput` per task
+    (`righeEvm`) prima di raggrupparla per nodo WBS in `perWbs`. Taggare ogni riga anche con
+    `uid` ed esporre `perTask`/`perTaskMisure` in parallelo a `perWbs`/`perWbsMisure` (stessa
+    forma, nessun raggruppamento necessario: un task è già la propria riga) rende l'EVM per
+    task disponibile ovunque sia già disponibile quello per WBS, con lo stesso `evm()`.
+
+82. **Nuova query `task::elenco_evm`, nessuna migrazione.** `ev_method`, `weight_pct`,
+    `workstream_id`, `float_days`, `is_critical` erano già colonne di `task` non selezionate
+    da nessuna query esistente; le date di baseline vengono da `baseline_task` (baseline
+    `kind = 'startup'` più recente, stesso criterio di `dati_monitoraggio`); `pct_reale` dalla
+    data di stato più recente del progetto (`status_snapshot`/`snapshot_task`), `None` se il
+    task non vi compare mai (non `0`: "mai registrato" e "registrato a zero" sono stati
+    diversi). Δ fine si calcola nel frontend da `inizioBaseline`/`fineBaseline` vs
+    pianificate, non nella query.
+
+83. **Totali come striscia di `Kpi` sopra la tabella, non una riga `DataTable`.** Stessa
+    scelta già fatta per la Dashboard e la WBS (decisioni 73-76, 78): costruire una riga di
+    piè di pagina che segua l'ordine/larghezza/visibilità dinamici delle colonne di
+    `DataTable` è una funzionalità a sé; la striscia KPI dà la stessa informazione riusando
+    `src/components/screens/kpi.tsx`.
+
+84. **`DataTable`: congelamento multi-colonna corretto, resto deliberatamente non toccato.**
+    Il vecchio `pinnedColumnIds` applicava `sticky left-0` a ogni colonna congelata,
+    sovrapponendole con più di una colonna congelata — la scheda Task ne congela tre
+    (UID/WBS/Nome). Corretto passando lo stato nativo `columnPinning` di TanStack e usando
+    `column.getStart("left")` per lo scarto cumulato invece della classe fissa. Menu
+    contestuale, selezione riga, esportazione CSV, raggruppamento restano assenti
+    (documentato, non dimenticato): nessuna delle tre schede di questo incremento li richiede
+    ancora.
+
+85. **Ore/costo reale per risorsa e assegnazione: rimandati, bloccati su un vuoto a monte.**
+    `progress_entry.actual_work_h` si cattura all'invio dell'avanzamento ma `schermate.rs`'s
+    `approva()` non lo copia mai in `snapshot_task` (che non ha nemmeno una colonna per le ore
+    consuntive) — quindi oggi non esiste da nessuna parte un'ora consuntiva per task
+    interrogabile dopo l'approvazione, tantomeno ripartita per risorsa quando più risorse sono
+    assegnate allo stesso task. Le schede Risorse/Assegnazioni mostrano quindi solo ore/costo
+    *pianificati* (durata del task × 8 h/giorno, invariato dalla decisione 64) più "Fonte
+    tariffa"/"Costo orario reale" (già esistenti). Sbloccare le colonne Ore reali/AC/
+    Utilizzo % richiede: una colonna ore-consuntive su `snapshot_task` + migrazione,
+    `approva()` aggiornata per scriverla, e una nuova funzione di ripartizione per risorsa
+    (pesata sulle unità, analoga a `costoPianificatoAssegnazione`) — non ancora scritta.
+
+86. **`imposta_unita_assegnazione`, nuovo comando.** Mancava un modo per cambiare le unità di
+    un'assegnazione esistente (solo creazione/eliminazione esistevano); necessario per rendere
+    la colonna "Units %" modificabile in linea nella scheda Assegnazioni. Stessa validazione
+    di `crea_assegnazione` (unità > 0) e stesso vincolo di perimetro per progetto di
+    `elimina_assegnazione`.
+
+87. **Scoperto, non introdotto qui: i messaggi delle regole di qualità (`Q001`-`Q031` in
+    `packages/engine/src/quality.ts`, più `checkMethodChange`/`checkLoeShare`/`checkCadence`
+    in `ev-methods.ts`) sono ancora in italiano.** Sono stringhe generate a runtime (template
+    letterali), non testo JSX statico: la traduzione dell'interfaccia di ottobre 2026 non
+    poteva trovarle con una ricerca testuale. Tradotti qui solo i due che la scheda Risorse
+    mostra davvero (`checkQ007`, `checkQ013`, già verificato che nessun test asserisce sul
+    testo del messaggio) — gli altri ~20 restano in italiano e vanno tradotti in un passaggio
+    dedicato quando una schermata li renderà (Qualità dati, Fase 6, è la prima candidata).

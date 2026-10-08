@@ -184,6 +184,80 @@ pub fn elenca_task(conn: &Connection, project_id: i64) -> Result<Vec<TaskRiga>, 
     Ok(righe)
 }
 
+/// Riga del task per la scheda "Task e risorse" (Fase 5, §3.3): colonne di
+/// pianificazione e baseline; gli indici EVM (BAC/PV/EV/AC/CV/SV/CPI/SPI) si
+/// calcolano nel motore a partire da `dati_monitoraggio`, non qui.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskEvmRiga {
+    pub id: i64,
+    pub uid: String,
+    pub nome: String,
+    pub wbs: Option<String>,
+    pub filone: Option<String>,
+    pub metodo_ev: Option<String>,
+    pub inizio_pianificato: Option<String>,
+    pub fine_pianificata: Option<String>,
+    pub inizio_baseline: Option<String>,
+    pub fine_baseline: Option<String>,
+    /// Frazione 0..1, `None` se non ancora registrato in nessuna data di stato.
+    pub pct_reale: Option<f64>,
+    pub float_days: Option<f64>,
+    pub critico: bool,
+    pub riepilogo: bool,
+    pub milestone: bool,
+}
+
+/// Elenco dei task con i dati di pianificazione/baseline per la scheda Task e risorse.
+/// La baseline usata è la più recente di tipo `startup` (stessa convenzione di
+/// `dati_monitoraggio`); `pct_reale` viene dalla data di stato più recente del progetto.
+pub fn elenco_evm(conn: &Connection, project_id: i64) -> Result<Vec<TaskEvmRiga>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.id, t.uid_source, t.name, w.code, ws.name, t.ev_method,
+                    t.start_planned, t.finish_planned,
+                    (SELECT bt.start FROM baseline_task bt JOIN baseline b ON b.id = bt.baseline_id
+                     WHERE bt.task_id = t.id AND b.kind = 'startup' ORDER BY b.id DESC LIMIT 1),
+                    (SELECT bt.finish FROM baseline_task bt JOIN baseline b ON b.id = bt.baseline_id
+                     WHERE bt.task_id = t.id AND b.kind = 'startup' ORDER BY b.id DESC LIMIT 1),
+                    (SELECT st.pct_complete FROM snapshot_task st
+                     JOIN status_snapshot s ON s.id = st.snapshot_id
+                     WHERE st.task_id = t.id AND s.project_id = ?1
+                     ORDER BY s.status_date DESC, s.id DESC LIMIT 1),
+                    t.float_days, t.is_critical, t.is_summary, t.is_milestone
+             FROM task t
+             LEFT JOIN wbs w ON w.id = t.wbs_id
+             LEFT JOIN workstream ws ON ws.id = t.workstream_id
+             WHERE t.project_id = ?1
+             ORDER BY CAST(t.uid_source AS INTEGER), t.uid_source",
+        )
+        .map_err(|e| e.to_string())?;
+    let righe = stmt
+        .query_map([project_id], |r| {
+            Ok(TaskEvmRiga {
+                id: r.get(0)?,
+                uid: r.get(1)?,
+                nome: r.get(2)?,
+                wbs: r.get(3)?,
+                filone: r.get(4)?,
+                metodo_ev: r.get(5)?,
+                inizio_pianificato: r.get(6)?,
+                fine_pianificata: r.get(7)?,
+                inizio_baseline: r.get(8)?,
+                fine_baseline: r.get(9)?,
+                pct_reale: r.get(10)?,
+                float_days: r.get(11)?,
+                critico: r.get::<_, i64>(12)? != 0,
+                riepilogo: r.get::<_, i64>(13)? != 0,
+                milestone: r.get::<_, i64>(14)? != 0,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+    Ok(righe)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,5 +364,63 @@ mod tests {
         };
         assert!(crea_task(&mut conn, pid, &wbs_ignoto).is_err());
         assert!(elenca_task(&conn, pid).unwrap().is_empty());
+    }
+
+    #[test]
+    fn elenco_evm_risolve_baseline_e_avanzamento_senza_fallire_su_task_spogli() {
+        let (_dir, mut conn, pid) = progetto_con_wbs();
+        let scavo = crea_task(
+            &mut conn,
+            pid,
+            &NuovoTask {
+                nome: "Scavo".into(),
+                codice_wbs: Some("1".into()),
+                inizio: Some("2026-01-05".into()),
+                fine: Some("2026-01-09".into()),
+                durata_giorni: Some(5.0),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let _spoglio = crea_task(&mut conn, pid, &NuovoTask { nome: "Senza dati".into(), ..Default::default() }).unwrap();
+
+        conn.execute(
+            "INSERT INTO baseline (project_id, name, kind, created_at, locked) VALUES (?1, 'Startup', 'startup', '2026-01-01T00:00:00Z', 0)",
+            [pid],
+        )
+        .unwrap();
+        let baseline_id = conn.last_insert_rowid();
+        let task_id: i64 = conn
+            .query_row("SELECT id FROM task WHERE uid_source = ?1 AND project_id = ?2", params![scavo.uid, pid], |r| r.get(0))
+            .unwrap();
+        conn.execute(
+            "INSERT INTO baseline_task (baseline_id, task_id, start, finish, cost) VALUES (?1, ?2, '2026-01-05', '2026-01-09', 1000)",
+            params![baseline_id, task_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO status_snapshot (project_id, status_date, source) VALUES (?1, '2026-01-10', 'manuale')",
+            [pid],
+        )
+        .unwrap();
+        let snap_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO snapshot_task (snapshot_id, task_id, pct_complete) VALUES (?1, ?2, 0.5)",
+            params![snap_id, task_id],
+        )
+        .unwrap();
+
+        let elenco = elenco_evm(&conn, pid).unwrap();
+        assert_eq!(elenco.len(), 2);
+        let scavo = elenco.iter().find(|r| r.uid == "1").unwrap();
+        assert_eq!(scavo.inizio_baseline.as_deref(), Some("2026-01-05"));
+        assert_eq!(scavo.fine_baseline.as_deref(), Some("2026-01-09"));
+        assert_eq!(scavo.pct_reale, Some(0.5));
+        assert!(!scavo.riepilogo);
+
+        let spoglio = elenco.iter().find(|r| r.uid == "2").unwrap();
+        assert_eq!(spoglio.inizio_baseline, None);
+        assert_eq!(spoglio.pct_reale, None, "mai registrato: None, non 0");
+        assert_eq!(spoglio.filone, None);
     }
 }
