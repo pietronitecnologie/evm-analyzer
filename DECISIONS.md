@@ -765,3 +765,97 @@ infrastruttura di simulazione.
     usa la sua stringa data come ancora: approssimazione onesta (la linea cade sul
     punto osservato più vicino al vero ES), preferita a un asse a tempo continuo
     che avrebbe richiesto riscrivere anche `curvaS`/`trendIndici` per coerenza.
+
+## Fase 5, incremento 6 — Monte Carlo e Agile/Flow (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.6/§3.9)
+
+Ambito: la scheda Monte Carlo (prevista sia in Forecast sia in Agile/Flow, "stessi
+controlli e salvataggio") e la nuova schermata `AgileFlowScreen` (nav id `agile-flow`,
+già previsto ma non cablato) con le schede Sprint, Velocity, Flow, Monte Carlo.
+
+99. **Nessun Web Worker né chunking per Monte Carlo: misurato, non solo deciso.**
+    La decisione 72 aveva esplicitamente rimandato questa scelta a quando "Gantt a
+    20.000 righe o Monte Carlo" l'avessero richiesta. Misurato con
+    `simulateVelocity` (nessuna modifica al motore): 5.000 iterazioni (il default
+    di specifica) girano in ~13ms, 200.000 in ~250ms — sempre sul thread
+    principale, senza un progresso reale da mostrare in più di uno o due frame.
+    `MonteCarloPanel` (`src/components/screens/MonteCarloPanel.tsx`) non ha quindi
+    barra di avanzamento né Annulla (la specifica li richiede assumendo un calcolo
+    più pesante di quanto sia in pratica): il pulsante Esegui si disabilita solo
+    per la breve durata della chiamata sincrona. `MAX_ITERAZIONI = 200_000`
+    (`lib/montecarlo.ts`) tiene il caso peggiore nello stesso ordine di grandezza
+    misurato, così l'assunzione resta valida anche se l'utente alza le iterazioni
+    oltre il default.
+
+100. **Monte Carlo è un'unica infrastruttura condivisa, non tre algoritmi.** Lo
+     schema di `monte_carlo_run` prevede un `kind` con tre valori possibili
+     (`velocity`, `throughput`, `durata_costo`), ma la specifica del tab Monte
+     Carlo di Forecast parla delle stesse "finestra velocity/throughput" del tab
+     di Agile/Flow — non di un terzo algoritmo basato su un burn rate EVM
+     classico (che richiederebbe una formula non specificata: quale storico di
+     "progresso per periodo" usare, come tradurre un backlog in € in periodi).
+     Si è scelto di non costruirlo: `MonteCarloPanel` (`src/components/screens/
+     MonteCarloPanel.tsx`) usa solo `simulateVelocity`, alimentato da due fonti —
+     velocity degli sprint o throughput dei periodi di flusso — scelte
+     dall'utente con un selettore, mostrato identico sia nella scheda Monte Carlo
+     di Forecast sia in quella di Agile/Flow (`lib/montecarlo.ts::costruisciFonti`,
+     usato da entrambe le schermate). Il tipo `durata_costo` resta nel CHECK dello
+     schema (per non restringerlo) ma nessun codice lo scrive: se in futuro servirà
+     un vero Monte Carlo sui costi EVM, è una formula da definire, non un'estensione
+     di questo codice.
+
+101. **`monte_carlo_run.result_json` porta solo il riassunto (percentili e
+     istogramma), non le `periods`/`costs` grezze di ogni iterazione.** Bastano a
+     ri-mostrare una run passata (tabella, istogramma, frase guida) senza
+     ricalcolo, e restano piccoli anche a 200.000 iterazioni — le migliaia di
+     numeri grezzi per iterazione non servono a nessuna vista già costruita.
+     Riprodurre esattamente una run (stessi numeri iterazione per iterazione) resta
+     possibile lanciandola di nuovo con lo stesso seed, parametri e storico
+     (mulberry32 è deterministico, decisione 40): non serve conservare l'output
+     completo per questo. Nessun permesso richiesto per salvare una run: a
+     differenza di Baseline/Change request (decisione 88-89), la specifica non
+     riserva Monte Carlo al coordinatore del piano.
+
+102. **`project_params.backlog_sp`, nuova colonna, inserimento a mano.**
+     `agileMetrics` del motore richiede un totale di SP residui per calcolare
+     sprint residui/EAC tempo/EAC costo, ma nessuna tabella lo portava: gli sprint
+     hanno SP pianificati/completati per sprint già fatto, non un backlog totale
+     ancora da fare, e nessuna fonte di import lo fornisce. Si imposta nella
+     scheda Sprint di Agile/Flow (`imposta_backlog_sp`); se assente (`null`, non
+     `0`: "non impostato" è diverso da "backlog esaurito"), la UI mostra `—` su
+     sprint residui/EAC invece di un forecast fuorviante "già finito" — l'adattatore
+     (`lib/agile.ts::metricheAgili`) calcola comunque con 0 così velocity/costo
+     per SP/CPI agile restano disponibili senza quel dato.
+
+103. **`kanban_flow`: inserimento manuale, Cumulative Flow Diagram deferito.**
+     La tabella esisteva dalla Fase 1 ma nessun foglio del workbook la esporta
+     (il foglio "Agile" non ha un Kanban, decisione già presa in Fase 3) e nessun
+     codice la leggeva/scriveva: qui si aggiungono `flusso_elenco`/
+     `crea_periodo_flusso`/`elimina_periodo_flusso` (`crates/evm-db/src/agile.rs`)
+     con un modulo di inserimento a mano nella scheda Flow — unica via possibile
+     senza un'integrazione con una board Kanban reale, fuori ambito. Throughput/
+     cycle time/WIP osservato-vs-teorico (Legge di Little) e l'avviso
+     FLOW_WIP_EXCESS usano direttamente queste righe (`kanban_flow` porta già gli
+     aggregati che `littleWip`/`diagnoseWip` del motore si aspettano). Il
+     **Cumulative Flow Diagram resta fuori**: `cumulativeFlow()` del motore
+     richiede conteggi grezzi per stato (`backlog`/`inProgress`/`done`), che
+     questa tabella non ha (solo gli aggregati `throughput`/`cycle_time_days`/
+     `wip_observed`) e che nessuna fonte di dati fornisce oggi — aggiungerli
+     richiederebbe un'altra migrazione e un'altra UI di inserimento a mano senza
+     che nulla li alimenti automaticamente; rimandato a quando un dato reale
+     (import o integrazione) li renderà significativi.
+
+104. **`FLOW_WIP_LIMIT`/`checkWipLimits` non costruito: non richiesto da questo
+     paragrafo della specifica.** Il bullet "Flusso" di §3.9 cita solo
+     FLOW_WIP_EXCESS; i limiti WIP per stato (e la loro tabella di
+     configurazione) sono una funzionalità del motore distinta, non menzionata
+     qui — non è un deferimento, è semplicemente fuori ambito di questo
+     incremento.
+
+105. **Tabella Sprint fedele alle colonne della specifica, anche quando ripetono
+     un valore costante.** "Velocity" (= SP completati dello stesso sprint),
+     "Velocity media" e "Costo/SP di baseline" sono gli stessi valori su ogni riga
+     (la media e il costo/SP sono per progetto, non per sprint) — si mostrano
+     comunque come colonne proprie invece di deduplicarle, perché la specifica le
+     elenca esplicitamente nella tabella. Backlog residuo/Sprint residui/EAC
+     tempo/EAC costo sono invece valori di progetto non per-sprint: striscia di
+     `Kpi` sopra la tabella, stessa scelta della decisione 83.

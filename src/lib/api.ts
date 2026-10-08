@@ -272,6 +272,50 @@ export interface RigaBaselineScope {
   nota: string | null;
 }
 
+export interface SprintRiga {
+  numero: number;
+  inizio: string | null;
+  fine: string | null;
+  spPianificati: number | null;
+  spCompletati: number | null;
+  costo: number | null;
+}
+
+export interface ParametriAgile {
+  sprintDays: number;
+  teamCostPerSprint: number | null;
+  velocityWindow: number;
+  plannedSpPerSprint: number | null;
+  baselineCostPerSp: number | null;
+  backlogSp: number | null;
+}
+
+export interface DatiAgile {
+  sprint: SprintRiga[];
+  parametri: ParametriAgile;
+}
+
+export interface PeriodoFlusso {
+  id: number;
+  inizioPeriodo: string;
+  finePeriodo: string;
+  throughput: number | null;
+  cycleTimeGiorni: number | null;
+  wipOsservato: number | null;
+}
+
+export type TipoMonteCarlo = "velocity" | "throughput";
+
+export interface EsecuzioneMonteCarlo {
+  id: number;
+  tipo: TipoMonteCarlo;
+  nIter: number;
+  seed: number;
+  parametriJson: string;
+  risultatoJson: string;
+  creatoIl: string;
+}
+
 export interface Governance {
   budgetTotale: number;
   wbsConBudget: number;

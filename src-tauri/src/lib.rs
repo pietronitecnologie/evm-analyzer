@@ -4,8 +4,10 @@
 use std::path::Path;
 
 use evm_db::progetto::{self, ProjectInfo};
+use evm_db::agile;
 use evm_db::calendario;
 use evm_db::controllo;
+use evm_db::montecarlo;
 use evm_db::risorse;
 use evm_db::export::{self, CacheExport, OpzioniExport};
 use evm_db::workbook::{self, WorkbookImportato};
@@ -563,6 +565,66 @@ fn elimina_assegnazione(percorso: String, id: i64) -> Result<(), String> {
     risorse::elimina_assegnazione(&conn, pid, id)
 }
 
+// ------------------------------------------------------------------- Agile/Flow
+
+#[tauri::command]
+fn agile_dati(percorso: String) -> Result<agile::DatiAgile, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    agile::dati_agile(&conn, id)
+}
+
+#[tauri::command]
+fn imposta_backlog_sp(percorso: String, backlog_sp: Option<f64>) -> Result<(), String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    agile::imposta_backlog_sp(&conn, id, backlog_sp)
+}
+
+#[tauri::command]
+fn flusso_elenco(percorso: String) -> Result<Vec<agile::PeriodoFlusso>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    agile::flusso_elenco(&conn, id)
+}
+
+#[tauri::command]
+fn crea_periodo_flusso(
+    percorso: String,
+    inizio_periodo: String,
+    fine_periodo: String,
+    throughput: Option<f64>,
+    cycle_time_giorni: Option<f64>,
+    wip_osservato: Option<f64>,
+) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    agile::crea_periodo_flusso(&conn, id, &inizio_periodo, &fine_periodo, throughput, cycle_time_giorni, wip_osservato)
+}
+
+#[tauri::command]
+fn elimina_periodo_flusso(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::elimina_periodo_flusso(&conn, pid, id)
+}
+
+// ------------------------------------------------------------------- Monte Carlo
+
+#[tauri::command]
+fn monte_carlo_salva(
+    percorso: String,
+    tipo: String,
+    n_iter: i64,
+    seed: i64,
+    parametri_json: String,
+    risultato_json: String,
+) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    montecarlo::monte_carlo_salva(&conn, id, &tipo, n_iter, seed, &parametri_json, &risultato_json)
+}
+
+#[tauri::command]
+fn monte_carlo_elenco(percorso: String, tipo: Option<String>) -> Result<Vec<montecarlo::EsecuzioneMonteCarlo>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    montecarlo::monte_carlo_elenco(&conn, id, tipo.as_deref())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -618,6 +680,13 @@ pub fn run() {
             confronta_baseline,
             baseline_scope_elenco,
             imposta_baseline_scope,
+            agile_dati,
+            imposta_backlog_sp,
+            flusso_elenco,
+            crea_periodo_flusso,
+            elimina_periodo_flusso,
+            monte_carlo_salva,
+            monte_carlo_elenco,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

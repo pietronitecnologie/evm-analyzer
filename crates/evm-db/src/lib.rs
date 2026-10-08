@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
+pub mod agile;
 pub mod calendario;
 pub mod controllo;
+pub mod montecarlo;
 pub mod risorse;
 pub mod import;
 pub mod migrations;

@@ -22,6 +22,7 @@ import { MonitoraggioScreen } from "@/components/screens/MonitoraggioScreen";
 import { GovernanceScreen } from "@/components/screens/GovernanceScreen";
 import { BaselineCrScreen } from "@/components/screens/BaselineCrScreen";
 import { ForecastScreen } from "@/components/screens/ForecastScreen";
+import { AgileFlowScreen } from "@/components/screens/AgileFlowScreen";
 import { NAV_ITEMS_BY_ID } from "@/lib/navigation";
 import { runCommand } from "@/lib/commands";
 
@@ -90,6 +91,7 @@ export function ScreenPlaceholder({ screenId, title }: { screenId: string; title
   if (screenId === "governance-costi") return <GovernanceScreen />;
   if (screenId === "baseline-cr") return <BaselineCrScreen />;
   if (screenId === "forecast") return <ForecastScreen />;
+  if (screenId === "agile-flow") return <AgileFlowScreen />;
 
   const Icon = NAV_ITEMS_BY_ID[screenId]?.icon;
 

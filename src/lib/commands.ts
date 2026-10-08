@@ -141,6 +141,12 @@ const progettoCommands: Command[] = [
     run: () => useLayoutStore.getState().openScreen("forecast", "Forecast"),
   },
   {
+    id: "analisi.monte-carlo",
+    label: "Monte Carlo…",
+    group: "Analysis",
+    run: () => useLayoutStore.getState().openScreen("forecast", "Forecast"),
+  },
+  {
     id: "progetto.calendari",
     label: "Working calendars…",
     group: "Project",
@@ -196,7 +202,6 @@ const placeholderCommands: Command[] = [
   placeholder("feed.wizard", "MS Project feed wizard…", "Feed"),
   placeholder("feed.verifica", "Check for update (load new export)…", "Feed"),
   placeholder("feed.storico", "Feed history", "Feed"),
-  placeholder("analisi.monte-carlo", "Monte Carlo…", "Analysis"),
   placeholder("analisi.qualita-dati", "Run data quality checks", "Analysis"),
   placeholder("strumenti.utenti", "User and scope management", "Tools"),
   placeholder("strumenti.log-importazione", "Import log", "Tools"),

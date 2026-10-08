@@ -50,6 +50,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0007_baseline_change_request",
         sql: include_str!("../migrations/0007_baseline_change_request.sql"),
     },
+    Migration {
+        version: 8,
+        name: "0008_backlog_agile",
+        sql: include_str!("../migrations/0008_backlog_agile.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.
