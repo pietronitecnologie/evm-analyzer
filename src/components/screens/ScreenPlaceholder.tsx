@@ -20,6 +20,7 @@ import { WbsScreen } from "@/components/screens/WbsScreen";
 import { CalendariScreen } from "@/components/screens/CalendariScreen";
 import { MonitoraggioScreen } from "@/components/screens/MonitoraggioScreen";
 import { GovernanceScreen } from "@/components/screens/GovernanceScreen";
+import { BaselineCrScreen } from "@/components/screens/BaselineCrScreen";
 import { NAV_ITEMS_BY_ID } from "@/lib/navigation";
 import { runCommand } from "@/lib/commands";
 
@@ -86,6 +87,7 @@ export function ScreenPlaceholder({ screenId, title }: { screenId: string; title
   if (screenId === "calendari") return <CalendariScreen />;
   if (screenId === "monitoraggio") return <MonitoraggioScreen />;
   if (screenId === "governance-costi") return <GovernanceScreen />;
+  if (screenId === "baseline-cr") return <BaselineCrScreen />;
 
   const Icon = NAV_ITEMS_BY_ID[screenId]?.icon;
 

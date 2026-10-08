@@ -8,10 +8,10 @@
 
 import * as React from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Bell, ChevronDown, Search, UserRound } from "lucide-react";
+import { Bell, ChevronDown, Search } from "lucide-react";
 
 import { StatoBadge } from "@/components/ui/stato-badge";
-import type { BaselineRiga, Perimetro, SnapshotRiga } from "@/lib/api";
+import { ETICHETTA_RUOLO, type BaselineRiga, type Perimetro, type SnapshotRiga, type Utente } from "@/lib/api";
 import { usePercorso, useDati } from "@/lib/schermate";
 import { useLayoutStore } from "@/stores/layout-store";
 import { useProjectContextStore } from "@/stores/project-context-store";
@@ -90,6 +90,7 @@ export function ContextBar() {
   const [baseline] = useDati<BaselineRiga[]>("baseline_elenco", percorso);
   const [snapshot] = useDati<SnapshotRiga[]>("snapshot_elenco", percorso);
   const [perimetri] = useDati<Perimetro[]>("perimetri_elenco", percorso);
+  const [utenti] = useDati<Utente[]>("utenti_elenco", percorso);
 
   return (
     <div className="flex h-10 flex-wrap items-center gap-1 border-b border-border-strong bg-zona-contesto px-2">
@@ -160,11 +161,19 @@ export function ContextBar() {
             </span>
           )}
         </button>
-        <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm">
-          <UserRound className="size-4" />
-          <span className="font-medium">{ctx.userName}</span>
-          <span className="text-muted-foreground">({ctx.userRole})</span>
-        </div>
+        <ContextSelector label="Acting as" value={ctx.userName}>
+          <VoceSelettore selezionata={ctx.attoreId === null} onSelect={() => ctx.setAttore(null, "—", [])}>
+            None
+          </VoceSelettore>
+          {(utenti ?? [])
+            .filter((u) => u.attivo)
+            .map((u) => (
+              <VoceSelettore key={u.id} selezionata={ctx.attoreId === u.id} onSelect={() => ctx.setAttore(u.id, u.nome, u.ruoli)}>
+                {u.nome} <span className="text-muted-foreground">({u.ruoli.map((r) => ETICHETTA_RUOLO[r] ?? r).join(", ")})</span>
+              </VoceSelettore>
+            ))}
+          {(utenti ?? []).length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No user yet.</p>}
+        </ContextSelector>
       </div>
     </div>
   );

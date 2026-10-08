@@ -623,3 +623,100 @@ modifica di schema.
     mostra davvero (`checkQ007`, `checkQ013`, già verificato che nessun test asserisce sul
     testo del messaggio) — gli altri ~20 restano in italiano e vanno tradotti in un passaggio
     dedicato quando una schermata li renderà (Qualità dati, Fase 6, è la prima candidata).
+
+## Fase 5, incremento 4 — Baseline e change request (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.5)
+
+Ambito: nuova schermata `BaselineCrScreen` (nav id `baseline-cr`, già previsto ma non
+cablato — decisioni 88-93) con le quattro schede della specifica — Baseline, Confronto,
+Change request, Scope — al posto delle tabelle Baseline/Change request finora dentro
+`GovernanceScreen` (che resta solo per budget/riserve/consumi, decisione 92).
+
+88. **"Agire come" invece di un vero login.** La specifica richiede che le azioni di
+    gestione su queste schede siano riservate a chi ha il ruolo `coordinatore_piano`,
+    ma l'app non aveva alcun concetto di utente corrente: `userName`/`userRole` nello
+    store di contesto erano segnaposto statici mai scritti. Si introduce un selettore
+    "Acting as" nella barra di contesto (`ContextBar.tsx`, accanto a stato/perimetro/
+    baseline), che sceglie un `user_profile` esistente (da `utenti_elenco`, già
+    presente dalla Fase 4-quater) e scrive il suo id in `attoreId` nello store
+    (`project-context-store.ts`). Nessuna password: è lo stesso livello di fiducia
+    già implicito in tutta l'app (desktop locale, un progetto alla volta). Le funzioni
+    di backend che richiedono il ruolo (`blocca_baseline_budget`, `archivia_baseline`,
+    `approva_change_request`, `rifiuta_change_request`, `imposta_baseline_scope` in
+    `controllo.rs`) ricevono `attore_id: Option<i64>` e lo verificano lato server con
+    `richiede_coordinatore_piano` (controlla `user_role`, restituisce il nome per
+    "creata da"/"approvata da": niente più campo di testo libero per quello,
+    l'autore tracciato è sempre l'utente verificato) — non solo un pulsante
+    disabilitato in UI, come richiesto esplicitamente dal test di specifica §5.7
+    ("verifica anche backend").
+
+89. **Creare una change request resta aperto a chiunque; solo decidere/bloccare è
+    riservato.** La frase sui permessi nella specifica è scritta sotto la sola scheda
+    Scope ("gestione solo coordinatore_piano"), ma il test §5.7 generalizza a
+    "azioni di gestione" sulle schermate Baseline/Change request. Si è interpretato
+    "gestione" come: bloccare/archiviare una baseline, approvare/respingere una CR,
+    modificare lo scope — tutte azioni che cambiano cosa è bloccato o chi è
+    approvato. *Proporre* una variazione (`crea_change_request`, richiede solo
+    richiedente+motivo, nessun `attore_id`) resta invece aperto a chiunque, speculare
+    al rapporto invia/approva già esistente tra Avanzamento e Approvazioni — un
+    project engineer può chiedere una variazione, solo il coordinatore del piano la
+    decide.
+
+90. **Una change request parte sempre dalla baseline corrente.** `baseline_from_id`
+    esisteva nello schema ma non veniva mai scritto. `crea_change_request` lo imposta
+    ora automaticamente all'ultima baseline bloccata e non archiviata del progetto
+    (`baseline_corrente`, ordine per id decrescente) e rifiuta la richiesta se non ce
+    n'è una ("blocca prima una baseline di budget") — coerente con "nessuna nuova
+    baseline senza change request" (non si propone una variazione nel vuoto).
+
+91. **L'approvazione crea una baseline di soli importi, non riclona i task.**
+    "Approvata ⇒ crea la nuova baseline collegata" (specifica) è implementato in
+    `approva_change_request` clonando `bac_direct`/`bac_indirect`/`bac_contingency`
+    della baseline di partenza con il Δ costo della CR applicato al diretto, con
+    `kind = 'altra'` — stessa natura di `blocca_baseline_budget`, nessuna riga
+    `baseline_task`/`baseline_timephased`. Riclonare anche i dati a livello di task
+    richiederebbe una logica di "nuovo import di piano" che nessuna change request
+    oggi fornisce (il piano si aggiorna solo da un nuovo export, Fase 4 §6); è una
+    baseline di budget come le altre, confrontabile ma senza dettaglio di task (vedi
+    93 sul Confronto). `baseline_to_id` e lo stato della CR si aggiornano nella stessa
+    transazione del nuovo insert.
+
+92. **`approved_at`/`approved_by` significano ora "decisa il/da", per entrambi gli
+    esiti.** Aggiungere uno `status` esplicito (`pending`/`approved`/`rejected`,
+    migrazione `0007_baseline_change_request.sql`) invece di dedurlo da
+    `approved_at IS NULL` com'era prima permette lo stato "respinta" richiesto dalla
+    colonna "Stato" della specifica. Non si sono rinominate le colonne (SQLite
+    richiederebbe ricreare la tabella, come già fatto una volta per `status_snapshot`
+    in 0006): si riusano per il rigetto, con lo stesso significato "chi/quando ha
+    deciso" — lo `status` disambigua quale decisione sia stata presa. Le righe
+    esistenti con `approved_at` non nullo sono state retro-popolate a `status =
+    'approved'` nella migrazione.
+
+93. **Il Confronto ha senso solo tra baseline con dati di task.** `confronta_baseline`
+    (nuova funzione in `controllo.rs`) aggrega `baseline_task.cost`/`start`/`finish`
+    per nodo WBS tra due baseline a scelta — ma quella tabella si popola solo
+    all'importazione di un piano (`import/mod.rs`), non da `blocca_baseline_budget`
+    né dall'approvazione di una CR (decisione 91). Confrontare due baseline "di soli
+    importi" produce quindi zero/— su ogni riga: comportamento accettato (nessun
+    errore, nessun valore fittizio), perché l'uso previsto dalla specifica stessa
+    ("es. stima vs startup") confronta due baseline nate da un import, che hanno
+    sempre `baseline_task`.
+
+94. **Lo scope di baseline resta modificabile anche a baseline bloccata.**
+    `baseline_scope` non ha (e non riceve qui) un trigger di immutabilità come
+    `baseline`/`baseline_task`: l'inclusione/esclusione di un nodo WBS e la sua nota
+    sono per natura una revisione successiva al blocco (altrimenti la scheda Scope
+    non avrebbe senso su una baseline già bloccata, che è il caso normale). La sola
+    protezione è il permesso `coordinatore_piano` (decisione 88); "incluso" di
+    default quando non c'è ancora una riga in `baseline_scope` per quel nodo
+    (`COALESCE(bs.included, 1)`), così la tabella parte già coerente senza dover
+    inizializzare una riga per ogni WBS alla creazione della baseline.
+
+95. **Tabelle Baseline/Confronto/Change request/Scope su `DataTable`, non `<table>`
+    semplice come la vecchia `GovernanceScreen`.** Coerente con il resto della Fase 5
+    (decisione 84 e seguenti): questa è una schermata della specifica UI_ANALISI, non
+    la `GovernanceScreen` pre-Fase-5 (che resta con le sole sezioni budget/riserve/
+    consumi, fuori ambito di questa specifica). Confronto e Scope leggono con
+    `useDatiCon` (nuovo hook in `lib/schermate.ts`, parallelo a `useDati` ma per
+    comandi con argomenti che cambiano, es. le due baseline scelte) invece del
+    pattern a zero argomenti usato finora: primo caso in app di un comando Tauri
+    richiamato con parametri scelti dall'utente dopo il montaggio della schermata.

@@ -213,8 +213,12 @@ export interface BaselineRiga {
   nome: string;
   tipo: string;
   creataIl: string;
+  creataDa: string | null;
   bloccata: boolean;
   archiviata: boolean;
+  bacDiretto: number | null;
+  bacIndiretto: number | null;
+  bacContingency: number | null;
   bacTotale: number | null;
 }
 
@@ -225,14 +229,47 @@ export interface SnapshotRiga {
   source: string;
 }
 
+export type StatoChangeRequest = "pending" | "approved" | "rejected";
+
 export interface ChangeRequestRiga {
   id: number;
   richiestaIl: string;
+  richiestaDa: string | null;
   motivo: string;
   deltaCosto: number | null;
   deltaDurata: number | null;
+  deltaScope: string | null;
+  stato: StatoChangeRequest;
   approvataIl: string | null;
   approvataDa: string | null;
+  baselineDaId: number | null;
+  baselineAId: number | null;
+}
+
+export interface RigaConfrontoBaseline {
+  codice: string;
+  nome: string;
+  costoA: number;
+  costoB: number;
+  deltaCosto: number;
+  deltaCostoPct: number | null;
+  durataA: number | null;
+  durataB: number | null;
+  deltaDurata: number | null;
+  inizioA: string | null;
+  inizioB: string | null;
+  fineA: string | null;
+  fineB: string | null;
+  deltaInizio: number | null;
+  deltaFine: number | null;
+}
+
+export interface RigaBaselineScope {
+  wbsId: number;
+  codice: string;
+  nome: string;
+  incluso: boolean;
+  nota: string | null;
 }
 
 export interface Governance {

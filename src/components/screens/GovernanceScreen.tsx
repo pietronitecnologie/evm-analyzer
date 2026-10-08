@@ -2,21 +2,19 @@
 // Copyright (C) 2026 Pietroni Tecnologie
 
 // Governance costi: budget dei WBS, contingency e riserva di gestione (stanziate e
-// consumate), baseline di budget (bloccabile), richieste di variazione con approvazione
-// tracciata. Le baseline bloccate non si modificano: serve una variazione approvata.
+// consumate). Baseline di budget e change request si gestiscono ora nella schermata
+// dedicata "Baseline and change requests" (BaselineCrScreen, specifica Fase 5 §3.5).
 
 import * as React from "react";
-import { Archive, Lock, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { chiama, ETICHETTA_TIPO_CONSUMO, TIPI_CONSUMO, type Governance } from "@/lib/api";
-import { CAMPO, CELLA, TESTA_TABELLA, avviso, esegui, useDati, usePercorso } from "@/lib/schermate";
+import { CAMPO, CELLA, TESTA_TABELLA, esegui, useDati, usePercorso } from "@/lib/schermate";
 import { Campo, Sezione, Vuoto } from "./comuni";
 
 const eur = (v: number | null | undefined) =>
   v === null || v === undefined ? "—" : v.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
-
-const ETICHETTA_TIPO_BASELINE: Record<string, string> = { startup: "Startup", stima: "Estimate", altra: "Other" };
 
 function Kpi({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
   return (
@@ -32,19 +30,13 @@ export function GovernanceScreen() {
   const percorso = usePercorso();
   const [g, ricarica] = useDati<Governance>("governance", percorso);
   const [consumo, setConsumo] = React.useState({ tipo: TIPI_CONSUMO[0] as string, importo: "", data: "", nota: "" });
-  const [baseline, setBaseline] = React.useState({ nome: "", tipo: "startup" });
-  const [variazione, setVariazione] = React.useState({ motivo: "", costo: "", durata: "" });
-  const [approvatore, setApprovatore] = React.useState<Record<number, string>>({});
 
   if (!percorso) return <Vuoto messaggio="Open or create a project for cost governance." />;
   if (!g) return <Vuoto messaggio="Loading…" />;
 
   // Percentuali in intero positivo (0..100), come nel database.
-  const baselineAttive = g.baseline.filter((b) => !b.archiviata);
-  const archiviate = g.baseline.length - baselineAttive.length;
   const contingencyBudget = (g.budgetTotale * g.contingencyPct) / 100;
   const riservaBudget = (g.budgetTotale * g.riservaGestionePct) / 100;
-  const numero = (v: string) => (v === "" ? null : Number(v));
 
   async function registraConsumo(e: React.FormEvent) {
     e.preventDefault();
@@ -56,42 +48,6 @@ export function GovernanceScreen() {
       setConsumo({ ...consumo, importo: "", data: "", nota: "" });
       await ricarica();
     }
-  }
-
-  async function bloccaBaseline(e: React.FormEvent) {
-    e.preventDefault();
-    const ok = await esegui("Baseline not created", () => chiama(percorso!, "blocca_baseline_budget", { nome: baseline.nome, tipo: baseline.tipo }), "Budget baseline locked");
-    if (ok) {
-      setBaseline({ nome: "", tipo: "startup" });
-      await ricarica();
-    }
-  }
-
-  async function archivia(id: number) {
-    const ok = await esegui("Baseline not archived", () => chiama(percorso!, "archivia_baseline", { id }), "Baseline archived");
-    if (ok) await ricarica();
-  }
-
-  async function creaVariazione(e: React.FormEvent) {
-    e.preventDefault();
-    const ok = await esegui("Change request not created", () =>
-      chiama(percorso!, "crea_change_request", { motivo: variazione.motivo, deltaCosto: numero(variazione.costo), deltaDurata: numero(variazione.durata) }),
-      "Change request recorded",
-    );
-    if (ok) {
-      setVariazione({ motivo: "", costo: "", durata: "" });
-      await ricarica();
-    }
-  }
-
-  async function approva(id: number) {
-    const nome = (approvatore[id] ?? "").trim();
-    if (!nome) {
-      avviso("Specify who is approving the change request");
-      return;
-    }
-    const ok = await esegui("Approval failed", () => chiama(percorso!, "approva_change_request", { id, approvatore: nome }), "Change request approved");
-    if (ok) await ricarica();
   }
 
   return (
@@ -149,112 +105,6 @@ export function GovernanceScreen() {
             <input className={CAMPO} value={consumo.nota} onChange={(e) => setConsumo({ ...consumo, nota: e.target.value })} />
           </Campo>
           <Button type="submit"><Plus className="size-4" />Record consumption</Button>
-        </form>
-      </Sezione>
-
-      <Sezione titolo="Budget baseline">
-        {baselineAttive.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">No active baseline: lock one once the WBS budget is defined.</p>
-        ) : (
-          <table className="mb-4 w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className={TESTA_TABELLA}>Name</th>
-                <th className={TESTA_TABELLA}>Type</th>
-                <th className={TESTA_TABELLA}>Created on</th>
-                <th className={`${TESTA_TABELLA} text-right`}>BAC</th>
-                <th className={TESTA_TABELLA}>Status</th>
-                <th className={TESTA_TABELLA} />
-              </tr>
-            </thead>
-            <tbody>
-              {baselineAttive.map((b) => (
-                <tr key={b.id}>
-                  <td className={`${CELLA} font-medium`}>{b.nome}</td>
-                  <td className={CELLA}>{ETICHETTA_TIPO_BASELINE[b.tipo] ?? b.tipo}</td>
-                  <td className={`${CELLA} tabular-num`}>{b.creataIl.slice(0, 10)}</td>
-                  <td className={`${CELLA} tabular-num text-right`}>{eur(b.bacTotale)}</td>
-                  <td className={CELLA}>{b.bloccata ? <span className="inline-flex items-center gap-1"><Lock className="size-3" />locked</span> : "editable"}</td>
-                  <td className={CELLA}>
-                    <Button size="sm" variant="ghost" onClick={() => archivia(b.id)}>
-                      <Archive className="size-4" />
-                      Archive
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {archiviate > 0 && (
-          <p className="mb-4 text-xs text-muted-foreground">{archiviate} archived baselines: they remain in the database with their date and content.</p>
-        )}
-        <form onSubmit={bloccaBaseline} className="grid grid-cols-1 items-end gap-3 md:grid-cols-4">
-          <Campo etichetta="Baseline name">
-            <input className={CAMPO} required value={baseline.nome} onChange={(e) => setBaseline({ ...baseline, nome: e.target.value })} />
-          </Campo>
-          <Campo etichetta="Type">
-            <select className={CAMPO} value={baseline.tipo} onChange={(e) => setBaseline({ ...baseline, tipo: e.target.value })}>
-              <option value="startup">{ETICHETTA_TIPO_BASELINE.startup}</option>
-              <option value="stima">{ETICHETTA_TIPO_BASELINE.stima}</option>
-              <option value="altra">{ETICHETTA_TIPO_BASELINE.altra}</option>
-            </select>
-          </Campo>
-          <Button type="submit"><Lock className="size-4" />Lock baseline from the WBS budget</Button>
-        </form>
-      </Sezione>
-
-      <Sezione titolo="Change requests">
-        {g.changeRequest.length === 0 ? (
-          <p className="mb-4 text-sm text-muted-foreground">No change requests. A locked baseline only changes through an approved change request.</p>
-        ) : (
-          <table className="mb-4 w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className={TESTA_TABELLA}>#</th>
-                <th className={TESTA_TABELLA}>Requested on</th>
-                <th className={TESTA_TABELLA}>Reason</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Δ cost</th>
-                <th className={`${TESTA_TABELLA} text-right`}>Δ duration (days)</th>
-                <th className={TESTA_TABELLA}>Approval</th>
-              </tr>
-            </thead>
-            <tbody>
-              {g.changeRequest.map((c) => (
-                <tr key={c.id}>
-                  <td className={`${CELLA} tabular-num`}>{c.id}</td>
-                  <td className={`${CELLA} tabular-num`}>{c.richiestaIl.slice(0, 10)}</td>
-                  <td className={CELLA}>{c.motivo}</td>
-                  <td className={`${CELLA} tabular-num text-right`}>{eur(c.deltaCosto)}</td>
-                  <td className={`${CELLA} tabular-num text-right`}>{c.deltaDurata ?? "—"}</td>
-                  <td className={CELLA}>
-                    {c.approvataIl ? (
-                      <span>approved by {c.approvataDa} on {c.approvataIl.slice(0, 10)}</span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input className={`${CAMPO} w-40`} placeholder="Who is approving" value={approvatore[c.id] ?? ""} onChange={(e) => setApprovatore({ ...approvatore, [c.id]: e.target.value })} />
-                        <Button size="sm" variant="outline" onClick={() => approva(c.id)}>Approve</Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <form onSubmit={creaVariazione} className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
-          <div className="md:col-span-2">
-            <Campo etichetta="Reason">
-              <input className={CAMPO} required value={variazione.motivo} onChange={(e) => setVariazione({ ...variazione, motivo: e.target.value })} />
-            </Campo>
-          </div>
-          <Campo etichetta="Δ cost (€)">
-            <input type="number" step="0.01" className={CAMPO} value={variazione.costo} onChange={(e) => setVariazione({ ...variazione, costo: e.target.value })} />
-          </Campo>
-          <Campo etichetta="Δ duration (days)">
-            <input type="number" step="0.5" className={CAMPO} value={variazione.durata} onChange={(e) => setVariazione({ ...variazione, durata: e.target.value })} />
-          </Campo>
-          <Button type="submit"><Plus className="size-4" />Request change</Button>
         </form>
       </Sezione>
     </div>

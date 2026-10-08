@@ -445,27 +445,74 @@ fn snapshot_elenco(percorso: String) -> Result<Vec<controllo::SnapshotRiga>, Str
 }
 
 #[tauri::command]
-fn crea_change_request(percorso: String, motivo: String, delta_costo: Option<f64>, delta_durata: Option<f64>) -> Result<i64, String> {
+fn crea_change_request(
+    percorso: String,
+    richiedente: String,
+    motivo: String,
+    delta_costo: Option<f64>,
+    delta_durata: Option<f64>,
+    delta_scope: Option<String>,
+) -> Result<i64, String> {
     let (conn, id) = apri_con_id(&percorso)?;
-    controllo::crea_change_request(&conn, id, &motivo, delta_costo, delta_durata)
+    controllo::crea_change_request(&conn, id, &richiedente, &motivo, delta_costo, delta_durata, delta_scope.as_deref())
 }
 
 #[tauri::command]
-fn approva_change_request(percorso: String, id: i64, approvatore: String) -> Result<(), String> {
+fn approva_change_request(percorso: String, attore_id: Option<i64>, id: i64) -> Result<i64, String> {
+    let (mut conn, pid) = apri_con_id(&percorso)?;
+    controllo::approva_change_request(&mut conn, pid, attore_id, id)
+}
+
+#[tauri::command]
+fn rifiuta_change_request(percorso: String, attore_id: Option<i64>, id: i64) -> Result<(), String> {
     let (conn, pid) = apri_con_id(&percorso)?;
-    controllo::approva_change_request(&conn, pid, id, &approvatore)
+    controllo::rifiuta_change_request(&conn, pid, attore_id, id)
 }
 
 #[tauri::command]
-fn archivia_baseline(percorso: String, id: i64) -> Result<(), String> {
+fn archivia_baseline(percorso: String, attore_id: Option<i64>, id: i64) -> Result<(), String> {
     let (conn, pid) = apri_con_id(&percorso)?;
-    controllo::archivia_baseline(&conn, pid, id)
+    controllo::archivia_baseline(&conn, pid, attore_id, id)
 }
 
 #[tauri::command]
-fn blocca_baseline_budget(percorso: String, nome: String, tipo: String) -> Result<i64, String> {
+fn blocca_baseline_budget(
+    percorso: String,
+    attore_id: Option<i64>,
+    nome: String,
+    tipo: String,
+    bac_indiretto: f64,
+    bac_contingency: f64,
+) -> Result<i64, String> {
     let (conn, id) = apri_con_id(&percorso)?;
-    controllo::blocca_baseline_budget(&conn, id, &nome, &tipo)
+    controllo::blocca_baseline_budget(&conn, id, attore_id, &nome, &tipo, bac_indiretto, bac_contingency)
+}
+
+/// Confronto per WBS tra due baseline (specifica Fase 5 §3.5, tab Confronto).
+#[tauri::command]
+fn confronta_baseline(percorso: String, baseline_a: i64, baseline_b: i64) -> Result<Vec<controllo::RigaConfrontoBaseline>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::confronta_baseline(&conn, id, baseline_a, baseline_b)
+}
+
+/// Scope della baseline (tab Scope): quali nodi WBS sono inclusi/esclusi.
+#[tauri::command]
+fn baseline_scope_elenco(percorso: String, baseline_id: i64) -> Result<Vec<controllo::RigaBaselineScope>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::baseline_scope_elenco(&conn, id, baseline_id)
+}
+
+#[tauri::command]
+fn imposta_baseline_scope(
+    percorso: String,
+    attore_id: Option<i64>,
+    baseline_id: i64,
+    wbs_id: i64,
+    incluso: bool,
+    nota: Option<String>,
+) -> Result<(), String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    controllo::imposta_baseline_scope(&conn, id, attore_id, baseline_id, wbs_id, incluso, nota.as_deref())
 }
 
 #[tauri::command]
@@ -565,8 +612,12 @@ pub fn run() {
             snapshot_elenco,
             crea_change_request,
             approva_change_request,
+            rifiuta_change_request,
             blocca_baseline_budget,
             archivia_baseline,
+            confronta_baseline,
+            baseline_scope_elenco,
+            imposta_baseline_scope,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

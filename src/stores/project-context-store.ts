@@ -24,8 +24,11 @@ interface ProjectContextState {
   /** Null = no explicit baseline selected (figures use the default "startup" baseline). */
   baselineId: number | null;
   evBaseMode: BaseEvMode;
+  /** Null = nessun utente attivo selezionato ("acting as", sez. 8.2): le azioni riservate a un ruolo restano disabilitate. */
+  attoreId: number | null;
   userName: string;
   userRole: string;
+  userRuoli: string[];
   notificationCount: number;
   coveragePct: number | null;
   planSynced: boolean;
@@ -41,13 +44,25 @@ interface ProjectContextState {
   setScope: (id: number | null, label: string) => void;
   setBaseline: (id: number | null, label: string) => void;
   setEvBaseMode: (mode: BaseEvMode) => void;
+  setAttore: (id: number | null, nome: string, ruoli: string[]) => void;
 }
 
 export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   projectName: "No project open",
   percorso: null,
   impostaProgetto: (progetto) =>
-    set({ ...progetto, snapshotId: null, scopeId: null, baselineId: null, perimetro: "Whole project", baseline: "Startup" }),
+    set({
+      ...progetto,
+      snapshotId: null,
+      scopeId: null,
+      baselineId: null,
+      perimetro: "Whole project",
+      baseline: "Startup",
+      attoreId: null,
+      userName: "—",
+      userRole: "—",
+      userRuoli: [],
+    }),
   statusDate: "—",
   statusDateState: "bozza",
   snapshotId: null,
@@ -56,8 +71,10 @@ export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   baseline: "Startup",
   baselineId: null,
   evBaseMode: "bac_senza_contingency",
+  attoreId: null,
   userName: "—",
   userRole: "—",
+  userRuoli: [],
   notificationCount: 0,
   coveragePct: null,
   planSynced: true,
@@ -69,4 +86,10 @@ export const useProjectContextStore = create<ProjectContextState>()((set) => ({
   setScope: (scopeId, perimetro) => set({ scopeId, perimetro }),
   setBaseline: (baselineId, baseline) => set({ baselineId, baseline }),
   setEvBaseMode: (evBaseMode) => set({ evBaseMode }),
+  setAttore: (attoreId, nome, ruoli) =>
+    set(
+      attoreId === null
+        ? { attoreId: null, userName: "—", userRole: "—", userRuoli: [] }
+        : { attoreId, userName: nome, userRole: ruoli.join(" / "), userRuoli: ruoli },
+    ),
 }));

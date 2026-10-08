@@ -70,6 +70,48 @@ export function useDati<T>(
   return [dati, ricarica];
 }
 
+/**
+ * Come `useDati`, ma per comandi parametrizzati (es. confronto tra due baseline
+ * scelte dall'utente): ricarica quando cambiano gli argomenti. `null` = non ancora
+ * pronto (es. selettore vuoto), nessuna chiamata.
+ */
+export function useDatiCon<T>(
+  comando: string,
+  percorso: string | null,
+  argomenti: Record<string, unknown> | null,
+): [T | null, () => Promise<void>] {
+  const [dati, setDati] = React.useState<T | null>(null);
+  const chiave = argomenti ? JSON.stringify(argomenti) : null;
+
+  const ricarica = React.useCallback(async () => {
+    if (!percorso || !argomenti) return;
+    try {
+      setDati(await chiama<T>(percorso, comando, argomenti));
+    } catch (e) {
+      avviso(`Loading failed (${comando})`, e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comando, percorso, chiave]);
+
+  React.useEffect(() => {
+    if (!percorso || !argomenti) return;
+    let annullato = false;
+    chiama<T>(percorso, comando, argomenti)
+      .then((d) => {
+        if (!annullato) setDati(d);
+      })
+      .catch((e) => {
+        if (!annullato) avviso(`Loading failed (${comando})`, e);
+      });
+    return () => {
+      annullato = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comando, percorso, chiave]);
+
+  return [dati, ricarica];
+}
+
 /** Esegue una scrittura: mostra l'esito e restituisce true se è andata a buon fine. */
 export async function esegui(
   titolo: string,
