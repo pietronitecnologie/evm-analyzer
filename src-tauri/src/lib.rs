@@ -9,6 +9,7 @@ use evm_db::calendario;
 use evm_db::controllo;
 use evm_db::filoni;
 use evm_db::montecarlo;
+use evm_db::qualita;
 use evm_db::risorse;
 use evm_db::export::{self, CacheExport, OpzioniExport};
 use evm_db::workbook::{self, WorkbookImportato};
@@ -678,6 +679,49 @@ fn crea_gate(
     filoni::crea_gate(&conn, id, da_filone_id, a_filone_id, descrizione.as_deref(), data_gate.as_deref(), buffer_giorni)
 }
 
+// ------------------------------------------------------------------- Qualità dati
+
+#[tauri::command]
+fn elenco_problemi(percorso: String) -> Result<Vec<qualita::ProblemaRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    qualita::elenco_problemi(&conn, id)
+}
+
+#[tauri::command]
+fn conteggio_problemi(percorso: String) -> Result<qualita::ConteggioProblemi, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    qualita::conteggio_problemi(&conn, id)
+}
+
+#[tauri::command]
+fn ricalcola_problemi(
+    percorso: String,
+    snapshot_id: Option<i64>,
+    source: String,
+    problemi: Vec<qualita::NuovoProblema>,
+) -> Result<qualita::RiepilogoRicalcolo, String> {
+    let (mut conn, id) = apri_con_id(&percorso)?;
+    qualita::ricalcola_problemi(&mut conn, id, snapshot_id, &source, problemi)
+}
+
+#[tauri::command]
+fn accetta_problema(percorso: String, attore_id: Option<i64>, id: i64, motivo: String) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    qualita::accetta_problema(&conn, pid, attore_id, id, &motivo)
+}
+
+#[tauri::command]
+fn riapri_problema(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    qualita::riapri_problema(&conn, pid, id)
+}
+
+#[tauri::command]
+fn marca_snapshot_finale(percorso: String, attore_id: Option<i64>, snapshot_id: i64, motivo_override: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    qualita::marca_snapshot_finale(&conn, pid, attore_id, snapshot_id, motivo_override.as_deref())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -746,6 +790,12 @@ pub fn run() {
             assegna_task_a_filone,
             elenco_gate,
             crea_gate,
+            elenco_problemi,
+            conteggio_problemi,
+            ricalcola_problemi,
+            accetta_problema,
+            riapri_problema,
+            marca_snapshot_finale,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

@@ -6,6 +6,7 @@ pub mod calendario;
 pub mod controllo;
 pub mod filoni;
 pub mod montecarlo;
+pub mod qualita;
 pub mod risorse;
 pub mod import;
 pub mod migrations;

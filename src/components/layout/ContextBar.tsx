@@ -97,11 +97,11 @@ export function ContextBar() {
       <ContextSelector label="Project" value={ctx.projectName} />
 
       <ContextSelector label="Status date" value={ctx.statusDate}>
-        <VoceSelettore selezionata={ctx.snapshotId === null} onSelect={() => ctx.setSnapshot(null, snapshot?.[0]?.statusDate ?? "—")}>
+        <VoceSelettore selezionata={ctx.snapshotId === null} onSelect={() => ctx.setSnapshot(null, snapshot?.[0]?.statusDate ?? "—", snapshot?.[0]?.state)}>
           Latest
         </VoceSelettore>
         {(snapshot ?? []).map((s) => (
-          <VoceSelettore key={s.id} selezionata={ctx.snapshotId === s.id} onSelect={() => ctx.setSnapshot(s.id, s.statusDate)}>
+          <VoceSelettore key={s.id} selezionata={ctx.snapshotId === s.id} onSelect={() => ctx.setSnapshot(s.id, s.statusDate, s.state)}>
             {s.statusDate} {s.label ? `— ${s.label}` : ""}
           </VoceSelettore>
         ))}

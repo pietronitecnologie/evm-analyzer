@@ -48,6 +48,7 @@ interface ProjectContextState {
   setSnapshot: (id: number | null, label: string, stato?: StatoStatusDate) => void;
   setScope: (id: number | null, label: string) => void;
   setBaseline: (id: number | null, label: string) => void;
+  setAnomalyCount: (n: number) => void;
   setEvBaseMode: (mode: BaseEvMode) => void;
   setAttore: (id: number | null, nome: string, ruoli: string[]) => void;
 }
@@ -69,6 +70,7 @@ export const useProjectContextStore = create<ProjectContextState>()((set) => ({
       userName: "—",
       userRole: "—",
       userRuoli: [],
+      anomalyCount: 0,
     }),
   statusDate: "—",
   statusDateState: "bozza",
@@ -99,4 +101,5 @@ export const useProjectContextStore = create<ProjectContextState>()((set) => ({
         ? { attoreId: null, userName: "—", userRole: "—", userRuoli: [] }
         : { attoreId, userName: nome, userRole: ruoli.join(" / "), userRuoli: ruoli },
     ),
+  setAnomalyCount: (anomalyCount) => set({ anomalyCount }),
 }));

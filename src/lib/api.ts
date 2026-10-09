@@ -207,6 +207,66 @@ export interface GateRiga {
   bufferGiorni: number;
 }
 
+// -------------------------------------------------------------- Qualità dati
+
+export type GravitaProblema = "info" | "avviso" | "critico";
+export type CategoriaProblema =
+  | "baseline"
+  | "metodo_ev"
+  | "costi"
+  | "date"
+  | "perimetro"
+  | "import"
+  | "avanzamento"
+  | "riserve"
+  | "agile"
+  | "flusso";
+export type StatoProblema = "aperta" | "accettata" | "risolta";
+export type FonteProblema = "motore" | "import_workbook" | "import_piano" | "avanzamento" | "resync";
+
+export interface NuovoProblema {
+  code: string;
+  severity: GravitaProblema;
+  category: CategoriaProblema;
+  taskUid: string | null;
+  wbsCodice: string | null;
+  scopeId: number | null;
+  message: string;
+  suggestion: string | null;
+}
+
+export interface ProblemaRiga {
+  id: number;
+  snapshotId: number | null;
+  code: string;
+  severity: GravitaProblema;
+  category: CategoriaProblema;
+  taskUid: string | null;
+  wbsCodice: string | null;
+  scopeId: number | null;
+  message: string;
+  suggestion: string | null;
+  state: StatoProblema;
+  acceptedBy: string | null;
+  acceptedReason: string | null;
+  acceptedAt: string | null;
+  resolvedAt: string | null;
+  source: FonteProblema;
+  createdAt: string;
+}
+
+export interface RiepilogoRicalcolo {
+  nuove: number;
+  riaperte: number;
+  risolte: number;
+}
+
+export interface ConteggioProblemi {
+  critici: number;
+  avvisi: number;
+  info: number;
+}
+
 export interface SnapshotMon {
   data: string;
   etichetta: string | null;
@@ -256,6 +316,9 @@ export interface SnapshotRiga {
   statusDate: string;
   label: string | null;
   source: string;
+  state: "bozza" | "provvisorio" | "finale";
+  finalOverrideBy: string | null;
+  finalOverrideReason: string | null;
 }
 
 export type StatoChangeRequest = "pending" | "approved" | "rejected";

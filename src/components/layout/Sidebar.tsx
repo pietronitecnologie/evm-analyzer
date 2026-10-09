@@ -17,13 +17,7 @@ export function Sidebar() {
   const activeScreenId = tabs.find((t) => t.id === activeTabId)?.screenId;
 
   return (
-    <aside
-      aria-label="Navigation sidebar"
-      className={cn(
-        "flex flex-col border-r border-border-strong bg-zona-navigazione transition-[width] duration-150",
-        collapsed ? "w-12" : "w-56",
-      )}
-    >
+    <aside aria-label="Navigation sidebar" className="flex h-full w-full flex-col overflow-hidden bg-zona-navigazione">
       <div className="flex-1 overflow-y-auto py-2">
         {NAV_GROUPS.map((group) => (
           <div key={group.id} className="mb-3">

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Pietroni Tecnologie
 
 import * as React from "react";
-import { Group, Panel } from "react-resizable-panels";
+import { Group, Panel, Separator, useDefaultLayout, type PanelImperativeHandle } from "react-resizable-panels";
 
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { ContextBar } from "@/components/layout/ContextBar";
@@ -27,6 +27,20 @@ export function AppShell() {
   const tabs = useLayoutStore((s) => s.tabs);
   const activeTabId = useLayoutStore((s) => s.activeTabId);
   const openScreen = useLayoutStore((s) => s.openScreen);
+  const sidebarCollapsed = useLayoutStore((s) => s.sidebarCollapsed);
+
+  // Larghezza della barra laterale ridimensionabile trascinando il separatore: ricordata
+  // da react-resizable-panels stesso (localStorage), non dallo store di layout — solo le
+  // vere trascinature dell'utente si salvano (onlySaveAfterUserInteractions), non le
+  // collassate/espanse programmatiche sotto, che restano un concetto separato
+  // (sidebarCollapsed, già persistito a parte).
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "app-shell", onlySaveAfterUserInteractions: true });
+  const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
+
+  React.useEffect(() => {
+    if (sidebarCollapsed) sidebarPanelRef.current?.collapse();
+    else sidebarPanelRef.current?.expand();
+  }, [sidebarCollapsed]);
 
   React.useEffect(() => {
     if (tabs.length === 0) openScreen("home", "Home");
@@ -60,24 +74,25 @@ export function AppShell() {
         <MenuBar />
         <ContextBar />
         <div className="flex-1 overflow-hidden">
-          <Group orientation="horizontal" style={{ height: "100%" }}>
-            <Panel id="workspace" minSize={15} defaultSize={100}>
-              <div className="flex h-full">
-                <Sidebar />
-                <div className="flex flex-1 flex-col overflow-hidden">
-                  <DocumentTabs />
-                  <div className="flex-1 overflow-auto bg-zona-area" role="tabpanel">
-                    {activeTab ? (
-                      <ScreenPlaceholder
-                        screenId={activeTab.screenId}
-                        title={activeTab.title}
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        No tab open. Use Ctrl+K to open a screen.
-                      </div>
-                    )}
-                  </div>
+          <Group orientation="horizontal" style={{ height: "100%" }} defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+            <Panel id="sidebar" panelRef={sidebarPanelRef} collapsible collapsedSize={48} defaultSize={224} minSize={180} maxSize={420}>
+              <Sidebar />
+            </Panel>
+            <Separator className="w-1 shrink-0 cursor-col-resize bg-border-strong hover:bg-accent" />
+            <Panel id="workspace" minSize={300}>
+              <div className="flex h-full flex-1 flex-col overflow-hidden">
+                <DocumentTabs />
+                <div className="flex-1 overflow-auto bg-zona-area" role="tabpanel">
+                  {activeTab ? (
+                    <ScreenPlaceholder
+                      screenId={activeTab.screenId}
+                      title={activeTab.title}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      No tab open. Use Ctrl+K to open a screen.
+                    </div>
+                  )}
                 </div>
               </div>
             </Panel>

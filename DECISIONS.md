@@ -1059,3 +1059,84 @@ evidenza del perimetro, tooltip con SPI. La matematica di scala/frecce di
      I task fuori dal perimetro scelto nella barra di contesto si attenuano
      (`opacity-40`) invece di essere rimossi dalla vista — "gli altri attenuati",
      non filtrati, come nella specifica — sia nella tabella che sulla timeline.
+
+## Fase 6, incremento 1 — Registro unico delle anomalie e schermata Qualità dati (SPEC_FASE_6_QUALITA_REPORT_RILASCIO.md §1)
+
+Ambito: solo il sottoinsieme richiesto (qualità dati, poi report, poi prestazioni — non
+backup/sicurezza §4, installer §5, documentazione §6, e2e §7, criteri di accettazione
+formali §8, tutti rimandati). `data_quality_issue` persiste ciò che il motore calcola già
+da tempo per schermata (program.ts, buffers.ts, flow.ts, agile.ts, monitoring.ts,
+quality.ts) ma che finora restava transitorio — nessuna persistenza, nessuna
+accettazione, nessuno storico.
+
+124. **Solo i codici con un input già assemblato correttamente da qualche schermata; il
+     resto è deferito, non indovinato.** Wired: `WBS_NO_BUDGET`/`WBS_BUDGET_UNALLOCABLE`
+     (monitoraggioEvm), `LOE_SHARE`/`GATE_NO_BUFFER` (programRollup via
+     `costruisciProgramma`), `FLOW_WIP_EXCESS` (avvisoWip), `RES_CONT_NO_RISK`/
+     `RES_CONT_MISMATCH`/`RES_MR_UNAPPROVED`/`BUFFER_NO_PROGRESS` (buffers.ts via
+     lib/riserve.ts), `AGILE_COST_PER_SP_DERIVED`/`VEL_EMPTY`/`VEL_SHORT`/`VEL_ZERO`
+     (agileMetrics), `Q007`/`Q013` (checkQ007/checkQ013, già usati da TaskRisorseScreen),
+     e gli avvisi EVM di progetto (`EVM_CPI_UNDEFINED` ecc., da `testata.evm.warnings`,
+     **solo a livello di progetto**, non per ogni task/nodo WBS — centinaia di "CPI non
+     definito" per task con AC=0 sarebbero rumore, non anomalie). Esclusi qui:
+     `Q001`-`Q006`, `Q008`-`Q011`, `Q014`-`Q016`, `Q020`-`Q021`, `Q030`-`Q031` (richiedono
+     uno storico per task — metodo EV nel tempo, % soggettiva nel tempo, variazioni di
+     baseline senza change request — che nessuna pipeline assembla ancora); `XL_*`/
+     `PLAN_*` (import, oggi solo stringhe libere o senza un campo `code` pulito da
+     estrarre); `V001`-`V016` (**non esistono**: le validazioni di invio avanzamento
+     della Fase 4-bis non sono mai state scritte — `registra_avanzamento` fa solo
+     controlli banali di intervallo). `FLOW_WIP_LIMIT` escluso anche lui: richiede limiti
+     WIP per stato che nessuna tabella porta.
+
+125. **Ricalcolo idempotente: confronto fatto in Rust su una mappa chiave→riga esistente,
+     non con un `INSERT ... ON CONFLICT` che referenzia la stessa riga che aggiorna.**
+     Un `UPSERT` con `CASE WHEN data_quality_issue.state = ...` dentro il proprio
+     `ON CONFLICT DO UPDATE` avrebbe dovuto distinguere "era aperta", "era accettata" e
+     "era risolta" per decidere se riaprire — fattibile in SQL con una tabella temp per
+     ricordare lo stato precedente, ma più fragile da verificare che farlo in Rust:
+     `ricalcola_problemi` legge prima le righe aperte/accettate di quella fonte+snapshot
+     in una mappa `(code, task_id, wbs_id) → id`, poi per ogni anomalia fresca: se è nella
+     mappa non tocca lo stato (solo testo/gravità, nel caso il catalogo cambi); se non
+     c'è ma esiste una riga `risolta` con la stessa chiave la riapre; altrimenti inserisce.
+     Quel che resta nella mappa a fine giro (prodotto prima, non più ora) diventa
+     `risolta`. Le `accettata` il cui input sparisce **non** diventano mai `risolta` in
+     questo giro (restano accettate "per sempre" se non riappaiono) — la specifica lo
+     vorrebbe, ma farlo bene richiederebbe ricordare lo stato precedente anche per le
+     accettate con la stessa complessità del punto sopra: rimandato.
+
+126. **Il ricalcolo è manuale (pulsante «Recalculate»), non automatico dopo ogni evento.**
+     La specifica lo vorrebbe agganciato a "import, approvazione, cambio status date,
+     risoluzione" — collegare `ricalcola_problemi` a ogni punto di scrittura dell'app
+     (import piano/workbook, approvazione avanzamento, resync, decine di comandi già
+     scritti nelle fasi precedenti) è un'integrazione a sé, non contenuta in questo
+     incremento. La schermata Qualità dati resta corretta finché l'utente la apre e
+     preme Ricalcola; non si aggiorna da sola in sottofondo.
+
+127. **`richiede_uno_dei_ruoli`, nuovo helper per "supervisore o coordinatore_piano".**
+     `richiede_coordinatore_piano` (decisione 88) controllava un solo ruolo fisso;
+     "Accetta con motivo" della specifica è per due ruoli alternativi. Nuova funzione in
+     `controllo.rs` con una query `IN (?,?,...)` costruita dal numero di ruoli passati,
+     non duplicando la query a ruolo singolo. "Riapri" non richiede invece alcun ruolo:
+     la specifica elenca la restrizione di ruolo solo per "Accetta con motivo", non per
+     "Riapri" — letta alla lettera, non un'omissione.
+
+128. **Stato finale della data di stato: nuove colonne su `status_snapshot`, non una
+     tabella a parte.** `state` (`bozza`/`provvisorio`/`finale`) più
+     `final_override_by`/`final_override_reason` per quando il coordinatore forza il
+     finale con anomalie critiche aperte. Il tipo `StatoStatusDate` nel frontend esisteva
+     già dalla Fase 1 (`"bozza"|"provvisorio"|"finale"`) ma nessun backend lo riempiva e
+     `ContextBar` non passava mai lo `stato` a `setSnapshot` — colmato qui (`s.state` ora
+     passato), non introdotto da zero. `marca_snapshot_finale` blocca se ci sono critiche
+     aperte per quello snapshot, a meno di un motivo non vuoto **e** del ruolo
+     coordinatore_piano insieme (non basta l'uno o l'altro).
+
+129. **Il conteggio delle anomalie nella barra di stato si aggiorna da sé (poll ogni
+     15 s), non spinto dalla schermata Qualità dati.** `ctx.anomalyCount` era un campo
+     segnaposto dalla Fase 1, mai scritto. `StatusBar` resta montata per tutta la sessione
+     di un progetto (a differenza delle schede), quindi è lei stessa a richiamare
+     `conteggio_problemi` — se l'aggiornamento fosse spinto dalla schermata Qualità dati
+     (come inizialmente impostato, poi scartato), il numero resterebbe fermo a zero/
+     all'ultimo valore ogni volta che quella schermata non è aperta, che è la situazione
+     normale. Nessun canale di invalidazione immediato tra schede: fino a 15 s di
+     scarto tra un'azione (ricalcola/accetta/riapri) e l'aggiornamento del numero in
+     barra, accettato come compromesso rispetto a un bus di eventi tra componenti.

@@ -187,6 +187,12 @@ pub struct SnapshotRiga {
     pub status_date: String,
     pub label: Option<String>,
     pub source: String,
+    /// `bozza` | `provvisorio` | `finale` (specifica Fase 6 §1.3: una finale con
+    /// anomalie critiche aperte richiede l'approvazione del coordinatore del piano,
+    /// vedi `qualita::marca_snapshot_finale`).
+    pub state: String,
+    pub final_override_by: Option<String>,
+    pub final_override_reason: Option<String>,
 }
 
 /// Elenco delle date di stato del progetto, più recenti prima. Usato dal
@@ -194,11 +200,22 @@ pub struct SnapshotRiga {
 /// legge già gli stessi id internamente ma non li espone nel suo `SnapshotMon`.
 pub fn elenco_snapshot(conn: &Connection, pid: i64) -> Esito<Vec<SnapshotRiga>> {
     let mut st = conn
-        .prepare("SELECT id, status_date, label, source FROM status_snapshot WHERE project_id = ?1 ORDER BY status_date DESC, id DESC")
+        .prepare(
+            "SELECT id, status_date, label, source, state, final_override_by, final_override_reason
+             FROM status_snapshot WHERE project_id = ?1 ORDER BY status_date DESC, id DESC",
+        )
         .map_err(e)?;
     let righe = st
         .query_map([pid], |r| {
-            Ok(SnapshotRiga { id: r.get(0)?, status_date: r.get(1)?, label: r.get(2)?, source: r.get(3)? })
+            Ok(SnapshotRiga {
+                id: r.get(0)?,
+                status_date: r.get(1)?,
+                label: r.get(2)?,
+                source: r.get(3)?,
+                state: r.get(4)?,
+                final_override_by: r.get(5)?,
+                final_override_reason: r.get(6)?,
+            })
         })
         .map_err(e)?
         .collect::<rusqlite::Result<Vec<_>>>()
@@ -292,6 +309,27 @@ pub(crate) fn richiede_coordinatore_piano(conn: &Connection, attore_id: Option<i
         .map_err(e)?;
     if ha_ruolo == 0 {
         return Err(format!("{nome} non ha il ruolo di coordinatore del piano"));
+    }
+    Ok(nome)
+}
+
+/// Come [`richiede_coordinatore_piano`], ma accetta l'utente se ha **uno qualsiasi** dei
+/// ruoli indicati (specifica Fase 6 §1.3: "Accetta con motivo" è per `supervisore` o
+/// `coordinatore_piano`, non il solo coordinatore).
+pub(crate) fn richiede_uno_dei_ruoli(conn: &Connection, attore_id: Option<i64>, ruoli: &[&str]) -> Esito<String> {
+    let id = attore_id.ok_or_else(|| "azione riservata a ruoli specifici: seleziona l'utente attivo".to_string())?;
+    let nome: String = conn
+        .query_row("SELECT display_name FROM user_profile WHERE id = ?1 AND active = 1", [id], |r| r.get(0))
+        .map_err(|_| "utente attivo non trovato".to_string())?;
+    let segnaposto = ruoli.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!("SELECT COUNT(*) FROM user_role WHERE user_profile_id = ? AND role IN ({segnaposto})");
+    let mut parametri: Vec<&dyn rusqlite::ToSql> = vec![&id];
+    for r in ruoli {
+        parametri.push(r);
+    }
+    let ha_ruolo: i64 = conn.query_row(&sql, parametri.as_slice(), |r| r.get(0)).map_err(e)?;
+    if ha_ruolo == 0 {
+        return Err(format!("{nome} non ha nessuno dei ruoli richiesti ({})", ruoli.join(", ")));
     }
     Ok(nome)
 }

@@ -1,15 +1,43 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
+import * as React from "react";
 import { AlertTriangle, Check, RefreshCw, Save } from "lucide-react";
 
+import { chiama, type ConteggioProblemi } from "@/lib/api";
 import { formatPercentIt, NON_CALCOLABILE } from "@/lib/format";
 import { useLayoutStore } from "@/stores/layout-store";
 import { useProjectContextStore } from "@/stores/project-context-store";
 
+/** Ogni quanto si aggiorna il conteggio: la barra di stato resta montata per tutta la
+ * sessione di un progetto, a differenza delle schermate — non c'è un evento React da
+ * ascoltare quando l'utente accetta/risolve un'anomalia da un'altra schermata. */
+const INTERVALLO_CONTEGGIO_MS = 15_000;
+
 export function StatusBar() {
   const ctx = useProjectContextStore();
   const openScreen = useLayoutStore((s) => s.openScreen);
+  const percorso = ctx.percorso;
+  const setAnomalyCount = useProjectContextStore((s) => s.setAnomalyCount);
+
+  React.useEffect(() => {
+    if (!percorso) return;
+    let annullato = false;
+    async function aggiorna() {
+      try {
+        const c = await chiama<ConteggioProblemi>(percorso!, "conteggio_problemi");
+        if (!annullato) setAnomalyCount(c.critici + c.avvisi + c.info);
+      } catch {
+        // La barra di stato non mostra errori: il conteggio resta quello precedente.
+      }
+    }
+    void aggiorna();
+    const timer = setInterval(aggiorna, INTERVALLO_CONTEGGIO_MS);
+    return () => {
+      annullato = true;
+      clearInterval(timer);
+    };
+  }, [percorso, setAnomalyCount]);
 
   return (
     <div className="flex h-6 items-center gap-4 border-t border-black/40 bg-zona-stato px-3 text-xs text-zona-stato-foreground">
