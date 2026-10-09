@@ -11,7 +11,9 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ETICHETTA_RUOLO, type Perimetro, RUOLI, type Utente, chiama } from "@/lib/api";
 import { Campo, Sezione, Vuoto } from "./comuni";
-import { CAMPO, CELLA, TESTA_TABELLA, esegui, usePercorso, useDati } from "@/lib/schermate";
+import { CAMPO, CELLA, TESTA_TABELLA, avviso, esegui, usePercorso, useDati } from "@/lib/schermate";
+import { useProjectContextStore } from "@/stores/project-context-store";
+import { useToastStore } from "@/stores/toast-store";
 
 export function PerimetriUtentiScreen() {
   const percorso = usePercorso();
@@ -24,7 +26,11 @@ export function PerimetriUtentiScreen() {
 
   const [uid, setUid] = React.useState("");
   const [nomeUtente, setNomeUtente] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [ruoli, setRuoli] = React.useState<string[]>([]);
+  const [resetPer, setResetPer] = React.useState<number | null>(null);
+  const [nuovaPassword, setNuovaPassword] = React.useState("");
+  const attoreId = useProjectContextStore((s) => s.attoreId);
 
   if (!percorso) return <Vuoto messaggio="Open or create a project to manage scopes and users." />;
 
@@ -48,14 +54,27 @@ export function PerimetriUtentiScreen() {
   async function creaUtente(e: React.FormEvent) {
     e.preventDefault();
     const ok = await esegui("User not created", () =>
-      chiama(percorso!, "crea_utente", { uid, nome: nomeUtente, ruoli }),
+      chiama(percorso!, "crea_utente", { uid, nome: nomeUtente, password, ruoli }),
       "User created",
     );
     if (ok) {
       setUid("");
       setNomeUtente("");
+      setPassword("");
       setRuoli([]);
       await ricaricaUtenti();
+    }
+  }
+
+  async function reimpostaPassword(e: React.FormEvent, userId: number) {
+    e.preventDefault();
+    try {
+      await chiama(percorso!, "reimposta_password", { attoreId, userId, nuova: nuovaPassword });
+      useToastStore.getState().push({ title: "Password reset" });
+      setResetPer(null);
+      setNuovaPassword("");
+    } catch (e) {
+      avviso("Password not reset", e);
     }
   }
 
@@ -118,6 +137,7 @@ export function PerimetriUtentiScreen() {
                 <th className={TESTA_TABELLA}>Identifier</th>
                 <th className={TESTA_TABELLA}>Name</th>
                 <th className={TESTA_TABELLA}>Roles</th>
+                <th className={TESTA_TABELLA} />
               </tr>
             </thead>
             <tbody>
@@ -126,17 +146,40 @@ export function PerimetriUtentiScreen() {
                   <td className={`${CELLA} tabular-num`}>{u.uid}</td>
                   <td className={CELLA}>{u.nome}</td>
                   <td className={`${CELLA} text-xs`}>{u.ruoli.map((r) => ETICHETTA_RUOLO[r] ?? r).join(", ")}</td>
+                  <td className={CELLA}>
+                    {resetPer === u.id ? (
+                      <form onSubmit={(e) => void reimpostaPassword(e, u.id)} className="flex items-center gap-1">
+                        <input
+                          className={`${CAMPO} w-32`}
+                          type="password"
+                          required
+                          minLength={4}
+                          autoFocus
+                          placeholder="New password"
+                          value={nuovaPassword}
+                          onChange={(e) => setNuovaPassword(e.target.value)}
+                        />
+                        <Button size="sm" type="submit">Save</Button>
+                        <Button size="sm" type="button" variant="ghost" onClick={() => { setResetPer(null); setNuovaPassword(""); }}>Cancel</Button>
+                      </form>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => setResetPer(u.id)}>Reset password…</Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <form onSubmit={creaUtente} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <form onSubmit={creaUtente} className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Campo etichetta="Identifier">
             <input className={CAMPO} required value={uid} onChange={(e) => setUid(e.target.value)} />
           </Campo>
           <Campo etichetta="Name">
             <input className={CAMPO} required value={nomeUtente} onChange={(e) => setNomeUtente(e.target.value)} />
+          </Campo>
+          <Campo etichetta="Password">
+            <input className={CAMPO} type="password" required minLength={4} value={password} onChange={(e) => setPassword(e.target.value)} />
           </Campo>
           <fieldset className="flex flex-col gap-1 text-xs font-medium">
             <legend className="mb-1">Roles</legend>
@@ -155,7 +198,7 @@ export function PerimetriUtentiScreen() {
               ))}
             </div>
           </fieldset>
-          <div className="md:col-span-3 flex justify-end">
+          <div className="md:col-span-4 flex justify-end">
             <Button type="submit">
               <Plus className="size-4" />
               Add user

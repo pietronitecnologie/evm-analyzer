@@ -5,6 +5,7 @@ use std::path::Path;
 
 use evm_db::progetto::{self, ProjectInfo};
 use evm_db::agile;
+use evm_db::auth;
 use evm_db::calendario;
 use evm_db::controllo;
 use evm_db::filoni;
@@ -270,9 +271,27 @@ fn utenti_elenco(percorso: String) -> Result<Vec<schermate::Utente>, String> {
 }
 
 #[tauri::command]
-fn crea_utente(percorso: String, uid: String, nome: String, ruoli: Vec<String>) -> Result<(), String> {
+fn crea_utente(percorso: String, uid: String, nome: String, password: String, ruoli: Vec<String>) -> Result<(), String> {
     let (mut conn, _) = apri_con_id(&percorso)?;
-    schermate::crea_utente(&mut conn, &uid, &nome, &ruoli)
+    schermate::crea_utente(&mut conn, &uid, &nome, &password, &ruoli)
+}
+
+#[tauri::command]
+fn accedi(percorso: String, user_uid: String, password: String) -> Result<auth::UtenteAutenticato, String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    auth::accedi(&conn, &user_uid, &password)
+}
+
+#[tauri::command]
+fn cambia_password(percorso: String, user_id: i64, attuale: String, nuova: String) -> Result<(), String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    auth::cambia_password(&conn, user_id, &attuale, &nuova)
+}
+
+#[tauri::command]
+fn reimposta_password(percorso: String, attore_id: Option<i64>, user_id: i64, nuova: String) -> Result<(), String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    auth::reimposta_password(&conn, attore_id, user_id, &nuova)
 }
 
 #[tauri::command]
@@ -793,6 +812,9 @@ pub fn run() {
             allegato_rimuovi,
             utenti_elenco,
             crea_utente,
+            accedi,
+            cambia_password,
+            reimposta_password,
             perimetri_elenco,
             crea_perimetro,
             riserve_dati,

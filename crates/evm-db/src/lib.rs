@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Pietroni Tecnologie
 
 pub mod agile;
+pub mod auth;
 pub mod calendario;
 pub mod controllo;
 pub mod filoni;
@@ -27,6 +28,7 @@ pub fn open_and_migrate(path: &Path) -> rusqlite::Result<Connection> {
     let mut conn = Connection::open(path)?;
     conn.pragma_update(None, "foreign_keys", true)?;
     migrations::migrate(&mut conn)?;
+    auth::assicura_utente_default(&conn)?;
     Ok(conn)
 }
 

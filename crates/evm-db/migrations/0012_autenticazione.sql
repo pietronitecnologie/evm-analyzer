@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 Pietroni Tecnologie
+--
+-- Autenticazione per-progetto (richiesta esplicita dell'utente, oltre le Fasi 5/6):
+-- password con hash (Argon2id, mai in chiaro). Il profilo resta quello già esistente
+-- (user_profile/user_role, Fase 4-ter) — qui solo la colonna dell'hash. L'utente
+-- amministratore di default non si semina in questa migrazione (gira anche sui
+-- progetti già esistenti, che potrebbero già avere propri utenti): lo fa
+-- evm_db::auth::assicura_utente_default, chiamata a ogni apertura solo se la
+-- tabella risulta ancora vuota — vedi quella funzione per il perché.
+ALTER TABLE user_profile ADD COLUMN password_hash TEXT;

@@ -1308,3 +1308,61 @@ accettazione, nessuno storico.
      caso "mi sono dimenticato" o "serve aggiungere un giustificativo a una voce di
      due mesi fa", senza duplicare la logica: entrambi i percorsi chiamano lo stesso
      comando `allegato_aggiungi`.
+
+143. **Login reale: Argon2id (crate `argon2`), non SHA-256 nonostante `sha2` fosse
+     già una dipendenza del progetto.** `sha2` è usato altrove per un hash di
+     contenuto (report, decisione 135), non per proteggere un segreto: un digest
+     veloce senza salt è il profilo sbagliato per una password, anche in
+     un'applicazione desktop locale — un domani l'hash potrebbe uscire dal progetto
+     (backup, condivisione del file). Argon2 di libreria (RustCrypto, `password-hash`
+     0.6) genera il salt da sé (`hash_password`, feature `getrandom` di default):
+     nessuna gestione manuale di `SaltString`/`OsRng` necessaria con questa versione
+     dell'API (diversa dalle 0.5.x più comuni nei tutorial in giro).
+
+144. **L'amministratore di default si semina all'apertura se la tabella `user_profile`
+     è vuota, non nei tre punti di creazione progetto (vuoto, da workbook, da
+     import piano).** La richiesta era "admin/admin sui nuovi progetti", ma
+     seminarlo nei tre `INSERT INTO project` avrebbe lasciato bloccati fuori tutti i
+     progetti già esistenti di questo stesso repository (creati prima di questa
+     funzionalità, con zero utenti configurati): una volta attivata la pagina di
+     login, non c'è più alcuna via per crearne uno da uno stato non autenticato — un
+     progetto senza utenti sarebbe stato permanentemente inaccessibile.
+     `auth::assicura_utente_default`, chiamata a ogni `open_and_migrate` (un
+     `COUNT(*)` quando la tabella ha già righe, trascurabile), è autoriparante e
+     copre entrambi i casi con una sola regola: "se non c'è nessuno, admin/admin
+     entra". Non si rifà se esistono già utenti (anche senza password: quel caso —
+     un progetto con utenti creati dalla vecchia `crea_utente` senza hash, prima di
+     questa migrazione — resta un limite noto, non silenziato: quegli utenti restano
+     da sistemare a mano finché non esistono).
+
+145. **"Acting as" (decisione 88) rimosso, non esteso.** Il selettore libero
+     permetteva di diventare chiunque senza credenziali — esattamente il buco che
+     la richiesta di un login reale voleva chiudere. `project-context-store`'s
+     `attoreId`/`userName`/`userRole`/`userRuoli` restano gli stessi campi, cablati
+     negli stessi comandi di backend che già richiedevano `coordinatore_piano` o un
+     ruolo specifico (nessuna modifica lato permessi): a riempirli ora è
+     `LoginScreen.tsx` dopo un `accedi()` verificato, non più una scelta libera in
+     `ContextBar.tsx`. `impostaProgetto` già azzerava `attoreId` a ogni apertura di
+     progetto (per "Acting as", a scopo di igiene): lo stesso azzeramento ora è
+     anche il meccanismo che fa ricomparire la pagina di login a ogni apertura,
+     senza bisogno di un flag "autenticato" separato nello store.
+
+146. **Verificato un login end-to-end con un backend Tauri finto (`window.__TAURI_INTERNALS__.invoke` sostituito a mano in una pagina Playwright), non solo a tipi.**
+     La webview nativa di Tauri (webkit2gtk) non è pilotabile da Playwright come un
+     normale Chromium; lanciare l'app Tauri vera in questo ambiente headless non è
+     stato tentato per questa verifica. Un backend finto in JS (stesso meccanismo
+     `invoke(cmd, args)` → `window.__TAURI_INTERNALS__.invoke`, con un piccolo
+     "database" di utenti in memoria) ha permesso di eseguire il flusso reale nel
+     browser: apertura progetto → pagina di login → password sbagliata (rifiutata,
+     stesso messaggio generico) → admin/admin corretto → shell visibile → creazione
+     di un utente con password dalla schermata Perimetri e utenti → logout → login
+     del nuovo utente con le sue credenziali. Nessun errore in console, tutti i passi
+     verificati. La correttezza di Argon2/SQLite resta sul lato Rust, già coperta da
+     6 test unitari in `auth.rs` — questa verifica copre invece il cablaggio React
+     (store, gating in `AppShell.tsx`, componenti) che i test Rust non toccano.
+     Trovato per questa via un difetto preesistente e non introdotto da questa
+     funzionalità: a una larghezza di finestra ridotta, il gruppo a destra della
+     barra di contesto (ricerca, campanella, ora anche "Signed in as") esce dalla
+     riga fissa (`h-10` con `flex-wrap`, nessuna altezza che si adatti) e sparisce
+     dalla vista — segnalato, non corretto in questo stesso passaggio (fuori
+     scope: non è un difetto del login).

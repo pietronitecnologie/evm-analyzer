@@ -14,11 +14,13 @@ import { MenuBar } from "@/components/layout/MenuBar";
 import { ResyncPlanDialog } from "@/components/layout/ResyncPlanDialog";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { StatusBar } from "@/components/layout/StatusBar";
+import { LoginScreen } from "@/components/screens/LoginScreen";
 import { ScreenPlaceholder } from "@/components/screens/ScreenPlaceholder";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { runCommand } from "@/lib/commands";
 import { useLayoutStore } from "@/stores/layout-store";
+import { useProjectContextStore } from "@/stores/project-context-store";
 
 const SHORTCUT_COMMANDS: Record<string, string> = {
   b: "vista.sidebar",
@@ -29,6 +31,9 @@ export function AppShell() {
   const activeTabId = useLayoutStore((s) => s.activeTabId);
   const openScreen = useLayoutStore((s) => s.openScreen);
   const sidebarCollapsed = useLayoutStore((s) => s.sidebarCollapsed);
+  const percorso = useProjectContextStore((s) => s.percorso);
+  const projectName = useProjectContextStore((s) => s.projectName);
+  const attoreId = useProjectContextStore((s) => s.attoreId);
 
   // Larghezza della barra laterale ridimensionabile trascinando il separatore: ricordata
   // da react-resizable-panels stesso (localStorage), non dallo store di layout — solo le
@@ -68,6 +73,15 @@ export function AppShell() {
   }, []);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
+
+  if (percorso && attoreId === null) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <LoginScreen percorso={percorso} nomeProgetto={projectName} />
+        <Toaster />
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={300}>

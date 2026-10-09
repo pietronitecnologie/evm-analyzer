@@ -10,8 +10,9 @@ import * as React from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Bell, ChevronDown, Search } from "lucide-react";
 
+import { CambiaPasswordDialog } from "@/components/layout/CambiaPasswordDialog";
 import { StatoBadge } from "@/components/ui/stato-badge";
-import { ETICHETTA_RUOLO, type BaselineRiga, type Perimetro, type SnapshotRiga, type Utente } from "@/lib/api";
+import { ETICHETTA_RUOLO, type BaselineRiga, type Perimetro, type SnapshotRiga } from "@/lib/api";
 import { usePercorso, useDati } from "@/lib/schermate";
 import { useLayoutStore } from "@/stores/layout-store";
 import { useProjectContextStore } from "@/stores/project-context-store";
@@ -90,7 +91,7 @@ export function ContextBar() {
   const [baseline] = useDati<BaselineRiga[]>("baseline_elenco", percorso);
   const [snapshot] = useDati<SnapshotRiga[]>("snapshot_elenco", percorso);
   const [perimetri] = useDati<Perimetro[]>("perimetri_elenco", percorso);
-  const [utenti] = useDati<Utente[]>("utenti_elenco", percorso);
+  const [cambiaPasswordOpen, setCambiaPasswordOpen] = React.useState(false);
 
   return (
     <div className="flex h-10 flex-wrap items-center gap-1 border-b border-border-strong bg-zona-contesto px-2">
@@ -161,20 +162,25 @@ export function ContextBar() {
             </span>
           )}
         </button>
-        <ContextSelector label="Acting as" value={ctx.userName}>
-          <VoceSelettore selezionata={ctx.attoreId === null} onSelect={() => ctx.setAttore(null, "—", [])}>
-            None
-          </VoceSelettore>
-          {(utenti ?? [])
-            .filter((u) => u.attivo)
-            .map((u) => (
-              <VoceSelettore key={u.id} selezionata={ctx.attoreId === u.id} onSelect={() => ctx.setAttore(u.id, u.nome, u.ruoli)}>
-                {u.nome} <span className="text-muted-foreground">({u.ruoli.map((r) => ETICHETTA_RUOLO[r] ?? r).join(", ")})</span>
-              </VoceSelettore>
-            ))}
-          {(utenti ?? []).length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No user yet.</p>}
-        </ContextSelector>
+        {ctx.attoreId !== null && (
+          <ContextSelector label="Signed in as" value={ctx.userName}>
+            <p className="px-2 py-1 text-xs text-muted-foreground">
+              {ctx.userRuoli.map((r) => ETICHETTA_RUOLO[r] ?? r).join(", ")}
+            </p>
+            <DropdownMenu.Separator className="my-1 h-px bg-border" />
+            <VoceSelettore onSelect={() => setCambiaPasswordOpen(true)}>Change password…</VoceSelettore>
+            <VoceSelettore onSelect={() => ctx.setAttore(null, "—", [])}>Log out</VoceSelettore>
+          </ContextSelector>
+        )}
       </div>
+      {percorso && ctx.attoreId !== null && (
+        <CambiaPasswordDialog
+          percorso={percorso}
+          userId={ctx.attoreId}
+          open={cambiaPasswordOpen}
+          onOpenChange={setCambiaPasswordOpen}
+        />
+      )}
     </div>
   );
 }

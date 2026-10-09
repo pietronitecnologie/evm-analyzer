@@ -811,9 +811,12 @@ pub fn utenti(conn: &Connection) -> Esito<Vec<Utente>> {
 
 pub const RUOLI: [&str; 4] = ["project_engineer", "supervisore", "coordinatore_piano", "amministratore"];
 
-pub fn crea_utente(conn: &mut Connection, uid: &str, nome: &str, ruoli: &[String]) -> Esito<()> {
+pub fn crea_utente(conn: &mut Connection, uid: &str, nome: &str, password: &str, ruoli: &[String]) -> Esito<()> {
     if uid.trim().is_empty() || nome.trim().is_empty() {
         return Err("identificativo e nome dell'utente sono obbligatori".into());
+    }
+    if password.len() < 4 {
+        return Err("la password deve avere almeno 4 caratteri".into());
     }
     if ruoli.is_empty() {
         return Err("assegna almeno un ruolo".into());
@@ -821,10 +824,11 @@ pub fn crea_utente(conn: &mut Connection, uid: &str, nome: &str, ruoli: &[String
     if let Some(r) = ruoli.iter().find(|r| !RUOLI.contains(&r.as_str())) {
         return Err(format!("ruolo sconosciuto: {r}"));
     }
+    let hash = crate::auth::hash_password(password)?;
     let tx = conn.transaction().map_err(errore)?;
     tx.execute(
-        "INSERT INTO user_profile (user_uid, display_name) VALUES (?1, ?2)",
-        params![uid.trim(), nome.trim()],
+        "INSERT INTO user_profile (user_uid, display_name, password_hash) VALUES (?1, ?2, ?3)",
+        params![uid.trim(), nome.trim(), hash],
     )
     .map_err(errore)?;
     let id = tx.last_insert_rowid();

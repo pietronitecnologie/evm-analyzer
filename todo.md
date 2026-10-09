@@ -55,12 +55,22 @@ accettazione formali — solo §1 (qualità dati), §2 (report) e §3 (prestazio
       decisioni 136-138.
 
 # Utenti: login reale (oltre la Fase 5/6: richiesta esplicita dell'utente)
-- [ ] 6. Pagina di login all'apertura di un progetto (i profili utente sono per-progetto, non
+- [x] 6. Pagina di login all'apertura di un progetto (i profili utente sono per-progetto, non
       globali — stessa tabella `user_profile` già esistente): password con hash (non in
       chiaro), utente "admin"/"admin" creato di default sui nuovi progetti.
-- [ ] 7. Sostituire il selettore "Acting as" (barra di contesto, decisione 88) con l'identità
+      (fatto: migrazione 0012 (`password_hash`), modulo `auth.rs` (Argon2id),
+      `auth::assicura_utente_default` seminata a ogni apertura se la tabella utenti è
+      vuota — copre sia i progetti nuovi sia quelli già esistenti senza utenti,
+      LoginScreen.tsx a tutto schermo, "Change password…"/"Reset password…" —
+      decisioni 143-146)
+- [x] 7. Sostituire il selettore "Acting as" (barra di contesto, decisione 88) con l'identità
       autenticata: stesso `attoreId` già cablato nei comandi di backend che richiedono
       coordinatore_piano, ora da un login vero invece di una scelta libera.
+      (fatto: ContextBar.tsx, stesso attoreId/userName/userRole/userRuoli, nessuna
+      modifica ai controlli di permesso lato backend — decisione 145). Nota: trovato
+      (non corretto, fuori scope) un difetto preesistente nel layout della barra di
+      contesto a finestra stretta — il gruppo a destra (ricerca/campanella/utente)
+      esce dalla riga fissa e sparisce — decisione 146.
 
 # Documetnazione
 - [ ] 8. Manuale utente del software nella sua interezza in formato .md visualizzabile anche da software.

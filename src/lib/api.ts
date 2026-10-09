@@ -104,6 +104,13 @@ export interface Utente {
   attivo: boolean;
 }
 
+export interface UtenteAutenticato {
+  id: number;
+  uid: string;
+  nome: string;
+  ruoli: string[];
+}
+
 export interface Perimetro {
   id: number;
   nome: string;
