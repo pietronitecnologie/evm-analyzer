@@ -6,7 +6,7 @@
 // schede, pannelli, tabella comune) è completo, il contenuto arriva nelle
 // Fasi 2-6 secondo il piano in sez. 9.
 
-import { FolderOpen, Import, PackagePlus, Sheet } from "lucide-react";
+import { FolderOpen, Import, Sheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TaskRisorseScreen } from "@/components/screens/TaskRisorseScreen";
@@ -64,15 +64,6 @@ function HomeScreen() {
           <Sheet className="size-5" />
           <span className="font-medium">Import Excel workbook</span>
           <span className="text-xs text-muted-foreground">Impresa Numerica format</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto flex-col items-start gap-1 p-4 text-left"
-          onClick={() => runCommand("file.importa-pacchetto")}
-        >
-          <PackagePlus className="size-5" />
-          <span className="font-medium">Import package</span>
-          <span className="text-xs text-muted-foreground">.evmwork / .evmprog</span>
         </Button>
       </div>
     </div>

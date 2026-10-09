@@ -8,7 +8,6 @@
 import { apriProgetto, nuovoProgetto } from "@/lib/progetto";
 import { esportaWorkbook, importaWorkbook } from "@/lib/workbook";
 import { NAV_GROUPS } from "@/lib/navigation";
-import { notImplemented } from "@/stores/toast-store";
 import { applyThemeToDocument, useThemeStore } from "@/stores/theme-store";
 import { useLayoutStore } from "@/stores/layout-store";
 
@@ -86,13 +85,6 @@ const viewCommands: Command[] = [
     },
   },
 ];
-
-// Voci di menu previste dalla specifica (sez. 8.3) ma la cui funzionalità
-// arriva in fasi successive (import, feed, baseline, report, ...): restano
-// raggiungibili e visibili, e segnalano con un toast la fase di arrivo.
-function placeholder(id: string, label: string, group: string): Command {
-  return { id, label, group, run: () => notImplemented(label) };
-}
 
 // Creazione, apertura e importazione del piano: funzionanti nell'app desktop.
 const progettoCommands: Command[] = [
@@ -192,48 +184,10 @@ const progettoCommands: Command[] = [
   },
 ];
 
-const placeholderCommands: Command[] = [
-  placeholder("file.progetti-recenti", "Recent projects", "File"),
-  placeholder("file.importa-pacchetto", "Import package…", "File"),
-  placeholder("file.esporta-pacchetto-lavoro", "Export work package…", "File"),
-  placeholder("file.esporta-pacchetto-avanzamento", "Export progress package…", "File"),
-  placeholder("file.esporta-csv", "Export CSV of current view", "File"),
-  placeholder("file.chiudi-progetto", "Close project", "File"),
-  placeholder("modifica.annulla", "Undo", "Edit"),
-  placeholder("modifica.ripeti", "Redo", "Edit"),
-  placeholder("modifica.copia", "Copy", "Edit"),
-  placeholder("modifica.incolla", "Paste", "Edit"),
-  placeholder("modifica.trova", "Find", "Edit"),
-  placeholder("modifica.vai-task", "Go to task…", "Edit"),
-  placeholder("vista.colonne", "Columns…", "View"),
-  placeholder("vista.salva-vista", "Save current view…", "View"),
-  placeholder("vista.ripristina-layout", "Restore layout", "View"),
-  placeholder("progetto.parametri", "Parameters and thresholds…", "Project"),
-  placeholder("progetto.base-ev", "EV measurement basis…", "Project"),
-  placeholder("progetto.calendario-status-date", "Status date calendar…", "Project"),
-  placeholder("progetto.nuovo-snapshot", "Create snapshot…", "Project"),
-  placeholder("avanzamento.invia", "Submit for approval", "Progress"),
-  placeholder("avanzamento.approva", "Approve selection", "Progress"),
-  placeholder("avanzamento.respingi", "Reject selection…", "Progress"),
-  placeholder("avanzamento.copia-periodo-precedente", "Copy progress from previous status date", "Progress"),
-  placeholder("feed.wizard", "MS Project feed wizard…", "Feed"),
-  placeholder("feed.verifica", "Check for update (load new export)…", "Feed"),
-  placeholder("feed.storico", "Feed history", "Feed"),
-  placeholder("strumenti.utenti", "User and scope management", "Tools"),
-  placeholder("strumenti.log-importazione", "Import log", "Tools"),
-  placeholder("strumenti.cartella-dati", "Data folder", "Tools"),
-  placeholder("aiuto.guida", "Guide", "Help"),
-  placeholder("aiuto.glossario", "KPI glossary", "Help"),
-  placeholder("aiuto.scorciatoie", "Keyboard shortcuts", "Help"),
-  placeholder("aiuto.informazioni", "About", "Help"),
-  placeholder("aiuto.licenza", "GPL license and third parties", "Help"),
-];
-
 export const COMMANDS: Command[] = [
   ...screenCommands,
   ...viewCommands,
   ...progettoCommands,
-  ...placeholderCommands,
 ];
 
 export function runCommand(id: string) {

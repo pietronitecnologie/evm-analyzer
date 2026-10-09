@@ -1,7 +1,12 @@
 # Funcionality
 - [x] Il menu di sinistra deve poter essere ridimentsionato. (fatto: AppShell/Sidebar, react-resizable-panels, drag + Ctrl+B collassa/espande come prima)
-- [ ] Rimuovere tutti i pulsanti attualmente morti nei menu, cosi da poter andare a visualizzare solo le funzionalità implementate.
-- [ ] Gantt: la tabella delle task deve poter essere ridimensionabile in larghezza nelle varie colonne.
+- [x] Rimuovere tutti i pulsanti attualmente morti nei menu, cosi da poter andare a visualizzare solo le funzionalità implementate.
+      (fatto: rimossi i menu Edit/Feed/Tools (tutti placeholder), le voci morte in File/View/
+      Project/Help, i 4 screenId sidebar senza schermo reale (feed-msproject, consolidamento,
+      importa-esporta, impostazioni) e il gruppo "System" risultante vuoto — decisione 139)
+- [x] Gantt: la tabella delle task deve poter essere ridimensionabile in larghezza nelle varie colonne.
+      (fatto: `useColonneRidimensionabili` in GanttScreen.tsx, drag nativo, larghezze persistite
+      in localStorage — decisione 140)
 
 # Modifiche a funzioni gia implementate
 - [ ] Negli avanzamenti dammi la possibilita di inserire delle note e dei file.

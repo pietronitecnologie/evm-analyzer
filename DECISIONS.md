@@ -1244,3 +1244,37 @@ accettazione, nessuno storico.
      com'era (usata altrove con gruppi piccoli, dove il costo non si vede) — non è
      stata toccata la sua firma pubblica. Dopo la correzione: 735 ms a 5.000 task, sotto
      obiettivo; i 158 test del motore restano verdi senza modifiche.
+
+139. **Pulizia dei menu morti: rimossi, non lasciati come placeholder con toast "non
+     implementato".** Il menu Edit, il menu Feed e il menu Tools erano composti
+     interamente da voci placeholder: rimossi per intero invece di lasciare un menu
+     vuoto o con un solo avviso. Rimossi anche i sotto-menu di File/View/Project che
+     non aprivano nulla di reale (Recent projects, Import/export pacchetto, Undo/Redo/
+     Copy/Paste/Find, Columns…, Save view…, Parameters…, Create snapshot…, Submit/
+     Approve/Reject avanzamento come scorciatoie dirette, Guide/Glossary/Shortcuts/
+     About/License). La funzionalità reale dietro ciascuna di queste voci — dove
+     esiste già (approvazioni, qualità dati) — resta raggiungibile dalla sidebar/
+     schermata propria: si è tolta solo la scorciatoia morta nel menu, non la
+     funzione. Stesso trattamento per la sidebar: tolti `feed-msproject`,
+     `consolidamento`, `importa-esporta`, `impostazioni` (nessuno schermo reale
+     dietro, solo il segnaposto generico di `ScreenPlaceholder`) e il gruppo
+     "System", rimasto vuoto dopo la rimozione. Il pulsante "Import package" nella
+     Home (.evmwork/.evmprog, mai implementato) è stato tolto allo stesso modo. Una
+     voce con un solo comando reale (menu "Progress", gruppo sidebar "Coordination")
+     non è stata accorpata o rimossa: non è morta, è solo poco popolata — "solo
+     funzionalità implementate" non significa "menu esteticamente pieni".
+
+140. **Colonne della tabella Gantt ridimensionabili, un hook locale invece di
+     TanStack Table.** La tabella a sinistra del Gantt non è una `DataTable.tsx`
+     (ha il proprio `useVirtualizer` condiviso con lo scorrimento della timeline a
+     destra, decisione già presa per la sincronizzazione verticale): riscriverla
+     sopra TanStack Table solo per il ridimensionamento avrebbe richiesto rifare
+     quella sincronizzazione. Un hook minimo (`useColonneRidimensionabili` in
+     `GanttScreen.tsx`, drag nativo su `mousemove`/`mouseup` dell'intera finestra,
+     stesso gesto di `header.getResizeHandler()` di TanStack ma senza la libreria)
+     con le larghezze persistite in `localStorage` (stesso pattern essenziale di
+     `SavedViews.ts`: letture/scritture avvolte in try/catch, nessuna dipendenza da
+     IndexedDB o da uno store Zustand dedicato per cinque numeri). Le colonne non
+     condividono più un contenitore `flex-1`: ogni colonna (compreso "Name", prima
+     `flex-1`) ha ora una larghezza esplicita in pixel, così la larghezza totale
+     della tabella è sempre la somma delle colonne, mai un valore fisso indipendente.

@@ -15,9 +15,6 @@ import {
   GitCompare,
   type LucideIcon,
   Network,
-  PackageCheck,
-  Repeat,
-  Settings,
   ShieldCheck,
   Table2,
   Users,
@@ -45,7 +42,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "avanzamento", label: "Progress", icon: ClipboardCheck },
       { id: "approvazioni", label: "Approvals", icon: ShieldCheck },
-      { id: "feed-msproject", label: "MS Project Feed", icon: Repeat },
     ],
   },
   {
@@ -78,15 +74,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Coordination",
     items: [
       { id: "perimetri-utenti", label: "User scopes", icon: Users },
-      { id: "consolidamento", label: "Package consolidation", icon: PackageCheck },
-    ],
-  },
-  {
-    id: "sistema",
-    label: "System",
-    items: [
-      { id: "importa-esporta", label: "Import/Export", icon: Repeat },
-      { id: "impostazioni", label: "Settings", icon: Settings },
     ],
   },
 ];

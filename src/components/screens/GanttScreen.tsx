@@ -25,10 +25,76 @@ import { useDati, useDatiCon, usePercorso } from "@/lib/schermate";
 import { useProjectContextStore } from "@/stores/project-context-store";
 import { Vuoto } from "./comuni";
 
-const LABEL_PX = 380;
 const HEADER_PX = 46;
 const BARRA_PX = 12;
 const MESI = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const COLONNE_TABELLA = [
+  { id: "wbs", etichetta: "WBS", defaultPx: 56, minPx: 40 },
+  { id: "nome", etichetta: "Name", defaultPx: 230, minPx: 120 },
+  { id: "inizio", etichetta: "Start", defaultPx: 80, minPx: 56 },
+  { id: "fine", etichetta: "Finish", defaultPx: 80, minPx: 56 },
+  { id: "pct", etichetta: "%", defaultPx: 48, minPx: 36 },
+] as const;
+
+const CHIAVE_LARGHEZZE = "evm-analyzer.gantt-colonne";
+
+function caricaLarghezzeColonne(): Record<string, number> {
+  const base = Object.fromEntries(COLONNE_TABELLA.map((c) => [c.id, c.defaultPx]));
+  try {
+    const raw = localStorage.getItem(CHIAVE_LARGHEZZE);
+    return raw ? { ...base, ...(JSON.parse(raw) as Record<string, number>) } : base;
+  } catch {
+    return base;
+  }
+}
+
+function persistiLarghezzeColonne(larghezze: Record<string, number>) {
+  try {
+    localStorage.setItem(CHIAVE_LARGHEZZE, JSON.stringify(larghezze));
+  } catch {
+    // localStorage non disponibile: le larghezze restano solo in memoria.
+  }
+}
+
+/** Larghezze delle colonne della tabella task, ridimensionabili trascinando il bordo destro di ciascuna. */
+function useColonneRidimensionabili() {
+  const [larghezze, setLarghezze] = React.useState<Record<string, number>>(caricaLarghezzeColonne);
+  const trascinamento = React.useRef<{ id: string; xIniziale: number; larghezzaIniziale: number } | null>(null);
+
+  React.useEffect(() => {
+    function onMove(e: MouseEvent) {
+      const t = trascinamento.current;
+      if (!t) return;
+      const minPx = COLONNE_TABELLA.find((c) => c.id === t.id)?.minPx ?? 40;
+      setLarghezze((prev) => ({ ...prev, [t.id]: Math.max(minPx, t.larghezzaIniziale + (e.clientX - t.xIniziale)) }));
+    }
+    function onUp() {
+      if (!trascinamento.current) return;
+      trascinamento.current = null;
+      setLarghezze((attuali) => {
+        persistiLarghezzeColonne(attuali);
+        return attuali;
+      });
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const iniziaTrascinamento = React.useCallback(
+    (id: string) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      trascinamento.current = { id, xIniziale: e.clientX, larghezzaIniziale: larghezze[id] };
+    },
+    [larghezze],
+  );
+
+  return { larghezze, iniziaTrascinamento };
+}
 
 /** Segmenti dei mesi per l'intestazione superiore. */
 function segmentiMesi(giorni: { iso: string }[], pxPerGiorno: number) {
@@ -51,6 +117,8 @@ export function GanttScreen() {
   const ctx = useProjectContextStore();
   const [livelloZoom, setLivelloZoom] = React.useState<LivelloZoom>("giorno");
   const [mostraFrecce, setMostraFrecce] = React.useState(true);
+  const { larghezze, iniziaTrascinamento } = useColonneRidimensionabili();
+  const labelPx = COLONNE_TABELLA.reduce((s, c) => s + larghezze[c.id], 0);
   const pxPerGiorno = LIVELLI_ZOOM.find((l) => l.id === livelloZoom)!.pxPerGiorno;
 
   const [righe] = useDatiCon<RigaGantt[]>("gantt_elenco", percorso, { baselineId: ctx.baselineId });
@@ -151,13 +219,18 @@ export function GanttScreen() {
       <Group orientation="horizontal" style={{ height: "100%", flex: 1, minHeight: 0 }}>
         <Panel id="gantt-tabella" defaultSize={32} minSize={20}>
           <div ref={leftRef} onScroll={onScrollLeft} className="h-full overflow-auto">
-            <div style={{ width: LABEL_PX, height: HEADER_PX + altezzaTotale, position: "relative" }}>
-              <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-border-strong bg-card px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground" style={{ height: HEADER_PX }}>
-                <span className="w-14 shrink-0">WBS</span>
-                <span className="flex-1">Name</span>
-                <span className="w-20 shrink-0 text-right">Start</span>
-                <span className="w-20 shrink-0 text-right">Finish</span>
-                <span className="w-12 shrink-0 text-right">%</span>
+            <div style={{ width: labelPx, height: HEADER_PX + altezzaTotale, position: "relative" }}>
+              <div className="sticky top-0 z-20 flex items-center border-b border-border-strong bg-card pl-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground" style={{ height: HEADER_PX }}>
+                {COLONNE_TABELLA.map((c) => (
+                  <span key={c.id} className={`relative h-full shrink-0 truncate pr-2 ${c.id === "nome" ? "" : "text-right"}`} style={{ width: larghezze[c.id] }}>
+                    <span style={{ lineHeight: `${HEADER_PX}px` }}>{c.etichetta}</span>
+                    <span
+                      onMouseDown={iniziaTrascinamento(c.id)}
+                      className="absolute -right-1 top-0 h-full w-2 cursor-col-resize select-none hover:bg-ring"
+                      aria-hidden="true"
+                    />
+                  </span>
+                ))}
               </div>
               {items.map((item) => {
                 const r = righe[item.index];
@@ -165,14 +238,14 @@ export function GanttScreen() {
                 return (
                   <div
                     key={r.id}
-                    className={`absolute left-0 flex w-full items-center gap-2 border-b border-border/60 px-3 text-sm ${dentro ? "" : "opacity-40"}`}
+                    className={`absolute left-0 flex w-full items-center border-b border-border/60 pl-3 text-sm ${dentro ? "" : "opacity-40"}`}
                     style={{ top: HEADER_PX, height: item.size, transform: `translateY(${item.start}px)` }}
                   >
-                    <span className="tabular-num w-14 shrink-0 text-xs text-muted-foreground">{r.wbs ?? "—"}</span>
-                    <span className={`flex-1 truncate ${r.riepilogo ? "font-semibold" : ""}`}>{r.nome}</span>
-                    <span className="tabular-num w-20 shrink-0 text-right text-xs">{r.inizio ?? "—"}</span>
-                    <span className="tabular-num w-20 shrink-0 text-right text-xs">{r.fine ?? "—"}</span>
-                    <span className="tabular-num w-12 shrink-0 text-right text-xs">{Math.round(r.pct)}</span>
+                    <span className="tabular-num shrink-0 truncate pr-2 text-xs text-muted-foreground" style={{ width: larghezze.wbs }}>{r.wbs ?? "—"}</span>
+                    <span className={`shrink-0 truncate pr-2 ${r.riepilogo ? "font-semibold" : ""}`} style={{ width: larghezze.nome }}>{r.nome}</span>
+                    <span className="tabular-num shrink-0 truncate pr-2 text-right text-xs" style={{ width: larghezze.inizio }}>{r.inizio ?? "—"}</span>
+                    <span className="tabular-num shrink-0 truncate pr-2 text-right text-xs" style={{ width: larghezze.fine }}>{r.fine ?? "—"}</span>
+                    <span className="tabular-num shrink-0 truncate pr-2 text-right text-xs" style={{ width: larghezze.pct }}>{Math.round(r.pct)}</span>
                   </div>
                 );
               })}
