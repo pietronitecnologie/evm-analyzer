@@ -9,6 +9,7 @@ use evm_db::auth;
 use evm_db::calendario;
 use evm_db::controllo;
 use evm_db::filoni;
+use evm_db::kanban;
 use evm_db::montecarlo;
 use evm_db::qualita;
 use evm_db::risorse;
@@ -662,6 +663,131 @@ fn elimina_periodo_flusso(percorso: String, id: i64) -> Result<(), String> {
     agile::elimina_periodo_flusso(&conn, pid, id)
 }
 
+#[tauri::command]
+fn agile_crea_sprint(
+    percorso: String,
+    numero: i64,
+    workstream_id: Option<i64>,
+    inizio: Option<String>,
+    fine: Option<String>,
+    sp_pianificati: Option<f64>,
+) -> Result<i64, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::crea_sprint(&conn, pid, numero, workstream_id, inizio, fine, sp_pianificati)
+}
+
+#[tauri::command]
+fn agile_modifica_sprint(
+    percorso: String,
+    id: i64,
+    inizio: Option<String>,
+    fine: Option<String>,
+    sp_pianificati: Option<f64>,
+    sp_completati: Option<f64>,
+    costo: Option<f64>,
+) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::modifica_sprint(&conn, pid, id, inizio, fine, sp_pianificati, sp_completati, costo)
+}
+
+#[tauri::command]
+fn agile_elimina_sprint(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::elimina_sprint(&conn, pid, id)
+}
+
+#[tauri::command]
+fn agile_assegna_sprint(percorso: String, uid: String, sprint_id: Option<i64>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::assegna_task_a_sprint(&conn, pid, &uid, sprint_id)
+}
+
+#[tauri::command]
+fn agile_assegna_kanban(percorso: String, uid: String, kanban: bool) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::assegna_task_a_kanban(&conn, pid, &uid, kanban)
+}
+
+#[tauri::command]
+fn agile_sprint_backlog(percorso: String, sprint_id: i64) -> Result<Vec<agile::TaskSprintRiga>, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    agile::sprint_backlog(&conn, pid, sprint_id)
+}
+
+// ---------------------------------------------------------------------- Kanban
+
+#[tauri::command]
+fn kanban_colonne(percorso: String) -> Result<Vec<kanban::ColonnaKanban>, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::colonne(&conn, pid)
+}
+
+#[tauri::command]
+fn kanban_crea_colonna(percorso: String, nome: String, is_done: bool) -> Result<i64, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::crea_colonna(&conn, pid, &nome, is_done)
+}
+
+#[tauri::command]
+fn kanban_rinomina_colonna(percorso: String, id: i64, nome: String, is_done: bool) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::rinomina_colonna(&conn, pid, id, &nome, is_done)
+}
+
+#[tauri::command]
+fn kanban_riordina_colonne(percorso: String, ordine: Vec<i64>) -> Result<(), String> {
+    let (mut conn, pid) = apri_con_id(&percorso)?;
+    kanban::riordina_colonne(&mut conn, pid, &ordine)
+}
+
+#[tauri::command]
+fn kanban_elimina_colonna(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::elimina_colonna(&conn, pid, id)
+}
+
+#[tauri::command]
+fn kanban_sottotask_elenco(percorso: String) -> Result<Vec<kanban::SottoTaskKanban>, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::sottotask_elenco(&conn, pid)
+}
+
+#[tauri::command]
+fn kanban_crea_sottotask(
+    percorso: String,
+    task_uid: String,
+    colonna_id: i64,
+    nome: String,
+    punti_effort: f64,
+) -> Result<i64, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::crea_sottotask(&conn, pid, &task_uid, colonna_id, &nome, punti_effort)
+}
+
+#[tauri::command]
+fn kanban_sposta_sottotask(percorso: String, id: i64, colonna_id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::sposta_sottotask(&conn, pid, id, colonna_id)
+}
+
+#[tauri::command]
+fn kanban_modifica_sottotask(percorso: String, id: i64, nome: String, punti_effort: f64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::modifica_sottotask(&conn, pid, id, &nome, punti_effort)
+}
+
+#[tauri::command]
+fn kanban_elimina_sottotask(percorso: String, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::elimina_sottotask(&conn, pid, id)
+}
+
+#[tauri::command]
+fn kanban_riepilogo_effort(percorso: String) -> Result<Vec<kanban::RiepilogoEffortTask>, String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::riepilogo_effort(&conn, pid)
+}
+
 // ------------------------------------------------------------------- Monte Carlo
 
 #[tauri::command]
@@ -849,6 +975,23 @@ pub fn run() {
             flusso_elenco,
             crea_periodo_flusso,
             elimina_periodo_flusso,
+            agile_crea_sprint,
+            agile_modifica_sprint,
+            agile_elimina_sprint,
+            agile_assegna_sprint,
+            agile_assegna_kanban,
+            agile_sprint_backlog,
+            kanban_colonne,
+            kanban_crea_colonna,
+            kanban_rinomina_colonna,
+            kanban_riordina_colonne,
+            kanban_elimina_colonna,
+            kanban_sottotask_elenco,
+            kanban_crea_sottotask,
+            kanban_sposta_sottotask,
+            kanban_modifica_sottotask,
+            kanban_elimina_sottotask,
+            kanban_riepilogo_effort,
             monte_carlo_salva,
             monte_carlo_elenco,
             approva_consumo_riserva,

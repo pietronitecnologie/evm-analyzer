@@ -131,12 +131,17 @@ export function ContextBar() {
           ))}
         {(baseline ?? []).length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No baseline yet.</p>}
       </ContextSelector>
-      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+      <button
+        type="button"
+        title="Toggles whether the workbook-derived EVM view (below the dashboard's native figures) bases its BAC on the direct WBS budget alone or includes the baseline's contingency reserve."
+        onClick={() => ctx.setEvBaseMode(ctx.evBaseMode === "bac_senza_contingency" ? "bac_con_contingency" : "bac_senza_contingency")}
+        className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+      >
         Base EV:{" "}
         {ctx.evBaseMode === "bac_senza_contingency"
           ? "without contingency"
           : "with contingency"}
-      </span>
+      </button>
 
       <div className="ml-auto flex items-center gap-2">
         <button

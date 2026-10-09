@@ -85,8 +85,41 @@ accettazione formali — solo §1 (qualità dati), §2 (report) e §3 (prestazio
       un allegato, un'anomalia di qualità dati accettata — decisione 147, capitolo 21 del manuale)
 
 # Agile - Kanban
-- [ ] 10. Permettimi di gestire completamente gli sprint Agile dall'applicazione. Mentieni l éventuale importazione
-- [ ] 11. Per ogni task dammi la possibilita di definire uno sprint Agile o una lavagna Kanban. Modifica le sezioni agile di conseguenza e crea la sezione Kanban (come tab della sezione Agile)
-- [ ] 12. Nel kanban fammi poter creare le colonne relative ed aggiugnere sotto-task-kanban ad esse, crea punteggi alle singole sotto-task-kanban cosi da poter tracciare anche l'effort speso. 
+- [x] 10. Permettimi di gestire completamente gli sprint Agile dall'applicazione. Mentieni l éventuale importazione
+      (fatto: crea_sprint/modifica_sprint/elimina_sprint in agile.rs, stessa tabella
+      agile_sprint già popolata dall'import — decisione 152)
+- [x] 11. Per ogni task dammi la possibilita di definire uno sprint Agile o una lavagna Kanban. Modifica le sezioni agile di conseguenza e crea la sezione Kanban (come tab della sezione Agile)
+      (fatto: task.sprint_id/task.kanban, esclusivi (decisione 153), modulo "Assign a
+      task to a sprint or the Kanban board" nella scheda Sprint, nuova colonna
+      Sprint/Kanban in Tasks and resources)
+- [x] 12. Nel kanban fammi poter creare le colonne relative ed aggiugnere sotto-task-kanban ad esse, crea punteggi alle singole sotto-task-kanban cosi da poter tracciare anche l'effort speso.
+      (fatto: nuova scheda Kanban in Agile/Flow — colonne create/rinominate/riordinate/
+      eliminate, sotto-task con punteggio di effort spostabili tra colonne, riepilogo
+      punti totali/completati per task — decisione 154)
+- [ ] 13. prmetti di modificare le task direttametne i tabella, sia in date che in WBS e gli altri campi.
 
 Via via che si procede: decisioni in DECISIONS.md, non solo qui.
+
+
+# BUG
+- [x] Cambiando la baseline con indirect bac e contingency, non cambia il BAC totale su dashboard e le altre funzioni ed analisi.
+      (fatto: bug reale in dashboard()/riserve() — restavano agganciate alla baseline di
+      tipo 'startup' invece che "l'ultima non archiviata", quindi non si aggiornavano
+      dopo una change request approvata (sempre tipo 'altra') o una baseline di tipo
+      diverso. Corretto + test di regressione. Wired anche il KPI "Budget baseline" nel
+      Dashboard (dato già presente ma mai mostrato) e il badge "Base EV" ora è un
+      pulsante vero — decisione 155)
+- [x] Creando una nuova baseline, utente o quando modifico dei parametri o in generale quando faccio un inserimento in DB, il progetto si chiude e bisogna ricaricarlo.
+      (mitigato: nessun codice trovato che azzera l'utente autenticato dopo una scrittura
+      (indagine esclusiva), ma l'app non aveva NESSUN error boundary — un'eccezione di
+      rendering non gestita durante un ricaricamento dopo scrittura smontava tutta la UI
+      lasciando una pagina bianca, indistinguibile da "il progetto si chiude". Aggiunto
+      ErrorBoundary.tsx (verificato con un crash deliberato) + PRAGMA busy_timeout=5000
+      su ogni connessione (più connessioni parallele sullo stesso file, nessun timeout
+      prima). Se si ripresenta, ora mostra l'errore invece di sparire — decisione 156)
+- [x] Ho diverse contingency definibili, una nel baseline, una in buffer e reserver una in cost governance, spiega nel manuale come devono essere utilizzate
+      (fatto: nuova sezione nel capitolo 15 del manuale, "Le tre contingency dell'app" —
+      decisione 157)
+- [x] Spiega nel manuale come devono essere utilizzate le baseline e le change request, come leggere il forecast, il cost governance e l'evm monitoring.
+      (fatto: sezioni "Come usarle"/"Come leggerla/leggerlo" aggiunte ai capitoli 10, 16,
+      17, 19 del manuale — decisione 157)

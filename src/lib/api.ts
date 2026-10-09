@@ -395,12 +395,42 @@ export interface RigaBaselineScope {
 }
 
 export interface SprintRiga {
+  id: number;
   numero: number;
   inizio: string | null;
   fine: string | null;
   spPianificati: number | null;
   spCompletati: number | null;
   costo: number | null;
+}
+
+export interface TaskSprintRiga {
+  uid: string;
+  nome: string;
+}
+
+export interface ColonnaKanban {
+  id: number;
+  nome: string;
+  posizione: number;
+  isDone: boolean;
+}
+
+export interface SottoTaskKanban {
+  id: number;
+  taskUid: string;
+  taskNome: string;
+  colonnaId: number;
+  nome: string;
+  puntiEffort: number;
+  posizione: number;
+}
+
+export interface RiepilogoEffortTask {
+  taskUid: string;
+  taskNome: string;
+  puntiTotali: number;
+  puntiCompletati: number;
 }
 
 export interface ParametriAgile {
@@ -504,4 +534,6 @@ export interface TaskEvmRiga {
   critico: boolean;
   riepilogo: boolean;
   milestone: boolean;
+  sprintNumero: number | null;
+  kanban: boolean;
 }

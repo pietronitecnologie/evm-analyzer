@@ -130,6 +130,7 @@ export function DashboardScreen() {
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
             <Kpi etichetta="BAC" valore={eur(vista.bac)} nota="WBS budget" />
+            <Kpi etichetta="Budget baseline" valore={d.bacTotale === null ? "—" : eur(d.bacTotale)} nota="WBS + indirect + contingency" />
             <Kpi etichetta="PV" valore={eur(testata.pv)} />
             <Kpi etichetta="EV" valore={eur(testata.ev)} />
             <Kpi etichetta="AC" valore={eur(testata.ac)} />

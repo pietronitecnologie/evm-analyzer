@@ -168,9 +168,16 @@ pub fn dashboard(conn: &Connection, pid: i64) -> Esito<Dashboard> {
         }
     }
 
+    // La baseline "corrente" è l'ultima non archiviata, di qualunque tipo e stato di
+    // blocco — non necessariamente 'startup': all'import ne esiste già una (non
+    // bloccata, finché nessuno blocca un budget di governance), e una change request
+    // approvata ne crea sempre una di tipo 'altra' (controllo.rs::
+    // approva_change_request), che diventa la corrente a tutti gli effetti (bug
+    // corretto: prima restava agganciata alla 'startup' anche dopo, mostrando un
+    // totale non più aggiornato).
     let bac_totale: Option<f64> = conn
         .query_row(
-            "SELECT bac_total FROM baseline WHERE project_id = ?1 AND kind = 'startup'
+            "SELECT bac_total FROM baseline WHERE project_id = ?1 AND archiviata = 0
              ORDER BY id DESC LIMIT 1",
             [pid],
             |r| r.get(0),
@@ -986,9 +993,11 @@ pub fn riserve(conn: &Connection, pid: i64) -> Esito<Riserve> {
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .map_err(errore)?;
+    // Stessa definizione di "corrente" di dashboard() sopra: ultima non archiviata,
+    // qualunque siano tipo e stato di blocco.
     let bac_totale = conn
         .query_row(
-            "SELECT bac_total FROM baseline WHERE project_id = ?1 AND kind = 'startup'
+            "SELECT bac_total FROM baseline WHERE project_id = ?1 AND archiviata = 0
              ORDER BY id DESC LIMIT 1",
             [pid],
             |r| r.get::<_, Option<f64>>(0),
@@ -1214,6 +1223,27 @@ mod tests {
         // Scavo al 50 %, Posa al 0 %: media 25 %.
         assert_eq!(d.avanzamento_medio_pct.map(|v| v.round()), Some(25.0));
         assert!(d.anomalie.iter().any(|a| a.uid == "3"), "Posa senza date");
+    }
+
+    #[test]
+    fn il_bac_totale_segue_la_baseline_corrente_anche_dopo_una_change_request() {
+        // Bug: il BAC totale di dashboard()/riserve() restava agganciato all'ultima
+        // baseline di tipo 'startup', anche dopo che una change request approvata
+        // (sempre di tipo 'altra') l'aveva resa superata — vedi todo.md "BUG".
+        let (_d, mut conn, pid) = progetto();
+        crate::controllo::imposta_budget_wbs(&conn, pid, "1.1", Some(12000.0)).unwrap();
+        crea_utente(&mut conn, "coord", "Coordinatore", "password1", &["coordinatore_piano".to_string()]).unwrap();
+        let coord: i64 = conn.query_row("SELECT id FROM user_profile WHERE user_uid = 'coord'", [], |r| r.get(0)).unwrap();
+
+        crate::controllo::blocca_baseline_budget(&conn, pid, Some(coord), "Startup", "startup", 0.0, 0.0).unwrap();
+        assert_eq!(dashboard(&conn, pid).unwrap().bac_totale, Some(12000.0));
+        assert_eq!(riserve(&conn, pid).unwrap().bac_totale, Some(12000.0));
+
+        let cr = crate::controllo::crea_change_request(&conn, pid, "Mario Rossi", "Scavi extra", Some(2500.0), None, None).unwrap();
+        crate::controllo::approva_change_request(&mut conn, pid, Some(coord), cr).unwrap();
+
+        assert_eq!(dashboard(&conn, pid).unwrap().bac_totale, Some(14500.0), "deve seguire la baseline 'altra' appena approvata, non restare sulla 'startup'");
+        assert_eq!(riserve(&conn, pid).unwrap().bac_totale, Some(14500.0));
     }
 
     #[test]

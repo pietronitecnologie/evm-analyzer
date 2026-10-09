@@ -49,15 +49,15 @@ capitolo [21. Il progetto di esempio passo per passo](#21-il-progetto-di-esempio
 
 ## 1. Di cosa si occupa l'app
 
-L'app è un **feeder per MS Project**: il piano (schedule, precedenze,
-calendari, cammino critico) resta in MS Project. Questa applicazione è dove
+Il software é inteso per essere usato da Project Engineer, Supevisori e PM,
+va a coadiuvare o sostituire software come MS Project. Questa applicazione è dove
 si registra l'avanzamento lavori, si fa l'analisi Earned Value (EVM) secondo
 il metodo del Capitolo 3 del libro "Impresa Numerica", e si genera il
 file/report con cui aggiornare MS Project.
 
-Non è un software di pianificazione: non calcola un cammino critico, non
-sposta le date dei task. Importa un piano già pianificato altrove, registra
-avanzamenti/consuntivi su quel piano, e calcola gli indicatori EVM.
+Il software si concentra nel registrare gli avanzamenti/consuntivi  di una pianificazione
+importata da Excel o MS Project e calcola gli indicatori EVM. 
+Ha la possiblita di creare nuove task e gestire le date, ma manca degli automatismi di software di pianificazione.
 
 ## 2. Avvio: aprire o creare un progetto
 
@@ -299,6 +299,40 @@ diventa la nuova baseline corrente.
 suo perimetro di budget (pulsante **Included**/**Excluded** per riga, più
 una nota se si ha il ruolo necessario).
 
+### Come usarle: il flusso corretto
+
+1. Importa il piano o crealo a mano (capitoli 5-6, 9), poi assegna un budget
+   a ogni nodo WBS che ha task di lavoro (schermata **WBS**, capitolo 8) —
+   bloccare una baseline di budget richiede che questa somma sia già
+   positiva.
+2. Blocca la **prima baseline di budget** (tipo **Startup**): qui si
+   dichiarano anche il **BAC indiretto** (costi non attribuiti a un nodo WBS
+   specifico: direzione lavori, strutture di cantiere condivise…) e la
+   **contingency** in euro — diventano `Direct BAC + Indirect BAC +
+   Contingency = Total BAC` di quella baseline. Da questo momento la
+   baseline è immutabile: ogni cambiamento di scope/costo passa da una
+   **change request**, mai da una modifica diretta.
+3. Quando emerge un imprevisto che cambia il budget o la durata (un
+   ritrovamento in cantiere, una variante richiesta dal committente…),
+   registralo come **change request** invece di toccare budget o date a
+   mano: la richiesta porta un motivo esplicito, e solo chi ha il ruolo
+   Plan coordinator decide se approvarla. **Approvarla crea una nuova
+   baseline** (tipo "Other") con lo stesso indiretto/contingency della
+   baseline di partenza più il delta di costo della richiesta — diventa
+   lei la "baseline corrente" da quel momento.
+
+**Qual è "la baseline corrente"?** È **l'ultima non archiviata**, di
+qualunque tipo: la schermata Dashboard (KPI "Budget baseline") e la
+schermata Buffer and reserves (KPI "BAC") la seguono automaticamente —
+bloccare una nuova baseline o approvare una change request aggiorna subito
+quei due numeri, non serve altro. Il selettore **Baseline** nella barra di
+contesto è invece solo un filtro di visualizzazione per il confronto nel
+Gantt e per i metadati del Report: **non** influenza il calcolo degli
+indicatori EVM (CPI/SPI/EAC…), che si basano sempre sul budget WBS corrente
+("BAC" nelle schermate EVM, etichettato "WBS budget" — vedi anche
+[15. Buffer e riserve](#15-buffer-e-riserve) per la differenza tra questo
+BAC "di lavoro" e il "Budget baseline" di governance).
+
 ## 11. Registrare l'avanzamento
 
 La schermata **Progress** è una tabella con una riga per task di lavoro
@@ -398,6 +432,40 @@ In alto, il pannello **Parameters** mostra le percentuali correnti
 (Contingency %, Management reserve %, Time buffer giorni) ed è modificabile
 da chi ha i permessi.
 
+### Le tre "contingency" dell'app, e come si usano insieme
+
+Il termine "contingency" compare in tre punti diversi dell'app, con tre
+significati distinti che **non si aggiornano a vicenda in automatico** —
+vanno tenuti allineati a mano, in quest'ordine:
+
+1. **«Contingency %»** (pannello Parameters qui sopra, lo stesso numero
+   compare in **Cost governance**): è la **politica** del progetto — "di
+   norma accantoniamo il 10% del budget diretto come contingency". Un
+   parametro di riferimento, non un importo: serve da guida per il passo 2.
+2. **Rischi registrati** (sezione Contingency qui sopra): l'importo
+   **realmente stanziato**, rischio per rischio, con **«Record a risk»**
+   (campo **Allocated contingency €**). La somma di questi importi è
+   l'«Allocated» mostrato sia qui sia in Cost governance — idealmente
+   vicina al budget diretto × la percentuale del punto 1, ma è l'utente a
+   doverlo verificare: l'app non ricalcola né avvisa se i due si
+   scostano.
+3. **«Contingency» della baseline** (campo del modulo "Lock a new budget
+   baseline", capitolo 10): un **importo in euro inserito a mano** al
+   momento di bloccare la baseline, che entra nel suo "Total BAC". **Non
+   si riempie da solo con la somma dei rischi del punto 2** — se il
+   registro rischi cambia dopo che la baseline è bloccata, il numero
+   bloccato nella baseline resta quello di allora (correttamente: una
+   baseline bloccata è immutabile, capitolo 10) finché una change request
+   non la aggiorna.
+
+**Come usarle senza perdersi**: decidi prima la percentuale di politica
+(1), censisci i rischi con i loro importi (2) finché la somma non converge
+verso quella percentuale, e solo allora blocca la baseline riportando a
+mano quella stessa somma come contingency (3). Se in seguito il registro
+rischi cambia in modo sostanziale, valuta una change request che aggiorni
+anche la contingency della nuova baseline di conseguenza — l'app non lo fa
+da sola.
+
 ## 16. EVM Monitoring
 
 La schermata **EVM Monitoring** mostra gli indicatori EVM dell'intero
@@ -417,6 +485,20 @@ Ogni sigla (BAC, CPI, SPI…) in questa e in altre schermate è sottolineata: ci
 si passa sopra il mouse (o ci si mette il focus da tastiera) per vedere nome
 per esteso, cosa misura, come si legge, la formula e il riferimento al
 libro — vedi anche [28. Glossario EVM](#28-glossario-evm).
+
+### Come leggerla
+
+Questa è la schermata per vedere l'andamento **nel tempo**, non solo lo
+stato di oggi: la tabella "Serie per data di stato" è la stessa storia che
+il Dashboard mostra per l'ultima data soltanto, status date dopo status
+date. Un progetto in salute ha CPI e SPI che oscillano intorno a 1 (o sopra)
+senza un trend in discesa marcato; un CPI che scende status date dopo
+status date, anche se ancora "verde" oggi, è un segnale da seguire prima
+che diventi un problema conclamato — è il punto di questa vista rispetto
+al singolo numero del Dashboard. La sezione "Per nodo WBS" aiuta a
+localizzare DOVE nasce uno scostamento visto a livello di progetto nel
+Dashboard: se il CPI di progetto è sceso, qui si vede quale nodo lo sta
+trascinando giù.
 
 ## 17. Forecast: EAC, Earned Schedule, Monte Carlo
 
@@ -439,6 +521,35 @@ rigenerarlo), **Period (days)**, **Backlog**, **Team cost/period**
 P90, Min/max, Mean** (e il costo a P80 se è stato inserito un costo per
 periodo), più un istogramma delle iterazioni. Ogni run si salva e resta
 richiamabile da **«Saved runs»**.
+
+### Come leggerlo
+
+**EAC (base) vs EAC (optimistic)**: l'EAC base assume che il ritmo di spesa
+osservato finora (il CPI attuale) continui fino alla fine — è la stima
+prudente da comunicare quando il progetto sta sforando. L'EAC optimistic
+assume che il resto del lavoro torni a costare esattamente quanto
+pianificato (ritmo CPI = 1 da qui alla fine) — è il "se da domani
+recuperiamo", non una previsione realistica se il CPI è basso da tempo. Usa
+l'optimistic come limite inferiore, non come stima da comunicare al
+committente. Il **TCPI**: se supera 1,1 significa che il budget residuo
+richiederebbe un'efficienza mai vista finora nel progetto per restare nel
+BAC — a quel punto il problema non si risolve "lavorando meglio", serve una
+revisione del budget (una change request) o della stima.
+
+**Earned Schedule** risponde a una domanda diversa dal CPI/SPI classico:
+SPI (Dashboard/EVM Monitoring) può restare vicino a 1 anche a progetto quasi
+concluso per costruzione matematica (tende a 1 quando il PV smette di
+crescere), mentre **SPI(t)** (qui) resta un'efficienza di programma
+leggibile fino alla fine. Se le due misure divergono molto verso la fine
+del progetto, fidati di SPI(t)/SV(t) per capire quanto si è davvero in
+anticipo o ritardo in giorni.
+
+**Monte Carlo**: **P50** è "metà delle simulazioni finisce entro questo
+numero di periodi" — troppo ottimista da solo per un impegno esterno. **P80**
+è il valore comunemente usato per una stima da comunicare con un margine di
+sicurezza ragionevole (80% delle simulazioni ci rientra). **P90** è per
+impegni dove il rischio di sforare è particolarmente costoso. Non prendere
+mai il Min come stima.
 
 ## 18. Agile/Flow
 
@@ -470,6 +581,19 @@ reserve allocata/usata) e un registro generale dei consumi di riserva
 L'assegnazione del budget ai singoli nodi WBS si fa invece nella schermata
 **WBS** (vedi [8. WBS](#8-wbs)): qui si vede il totale, non si modifica nodo
 per nodo.
+
+### Come leggerla
+
+Questa schermata risponde a "quanta riserva abbiamo ancora, in totale,
+indipendentemente da come è distribuita per rischio?" — è il quadro
+riassuntivo delle tre riserve (vedi
+[15. Buffer e riserve](#15-buffer-e-riserve) per il dettaglio di ciascuna e
+per come le tre "contingency" dell'app si tengono allineate). Il registro
+consumi qui sotto è lo stesso dato della schermata Buffer and reserves,
+solo in un'unica tabella invece che divisa per tipo di riserva — utile per
+un riepilogo in un colpo d'occhio prima di un report, non per registrare un
+nuovo consumo (per quello, la schermata Buffer and reserves ha il contesto
+— righi/periodi — per scegliere l'importo giusto).
 
 ## 20. Qualità dati
 

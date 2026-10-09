@@ -1432,3 +1432,122 @@ accettazione, nessuno storico.
      schermata, ha fatto emergere un'incongruenza che l'uso quotidiano
      dell'app (sempre con lo stesso utente già autenticato) non avrebbe
      mostrato.
+
+152. **Sprint Agile gestiti dall'app: stessa tabella `agile_sprint` già
+     popolata dall'import, nuove funzioni di scrittura invece di un
+     percorso parallelo.** La richiesta era "gestire completamente gli
+     sprint dall'applicazione, mantenendo l'eventuale importazione": dato
+     che `agile_sprint` non distingue (né ha motivo di distinguere) uno
+     sprint importato da uno creato a mano — stessa riga, stesse colonne —
+     bastavano `crea_sprint`/`modifica_sprint`/`elimina_sprint` in più,
+     nessuna migrazione. L'unica cosa aggiunta allo schema esistente è la
+     verifica applicativa di un numero di sprint duplicato nello stesso
+     ambito (`workstream_id`): il vincolo `UNIQUE(workstream_id,
+     sprint_number)` non basta da solo, perché SQLite tratta ogni
+     `workstream_id NULL` (sprint di progetto, non di un filone) come
+     distinto agli effetti di UNIQUE — due sprint "progetto, numero 1"
+     passerebbero altrimenti silenziosi.
+
+153. **Un task appartiene a UNO sprint Agile O alla lavagna Kanban, mai a
+     entrambi: due colonne (`task.sprint_id`, `task.kanban`), l'esclusività
+     applicata in Rust, non con un CHECK SQL.** `ALTER TABLE ADD COLUMN` di
+     SQLite non può aggiungere un vincolo CHECK multi-colonna che si
+     applichi anche alle righe già esistenti in modo retroattivo
+     affidabile; `agile::assegna_task_a_sprint`/`assegna_task_a_kanban`
+     azzerano sempre l'altro campo nella stessa UPDATE
+     (`kanban = 0`/`sprint_id = CASE WHEN ... THEN NULL ELSE sprint_id
+     END`), quindi i due campi non possono divergere passando sempre da lì
+     — stesso principio, a livello applicativo invece che di schema, già
+     usato altrove in questo progetto per vincoli che SQLite non esprime
+     comodamente da solo.
+
+154. **Lavagna Kanban: una sola board per progetto (`kanban_column` senza
+     riferimento a un task), le "sotto-task-kanban" come entità a parte
+     sotto un task assegnato al kanban — niente collegamento automatico
+     all'avanzamento EVM del task.** La richiesta descriveva colonne e
+     sotto-task-kanban con un punteggio per "tracciare l'effort speso": un
+     punteggio d'effort è un segnale di tracciamento (come il flusso o la
+     velocity in Agile/Flow, decisione già presa lì), non una sostituzione
+     della % fisica registrata in Progress — farlo scrivere da solo in
+     `progress_entry` avrebbe introdotto una seconda fonte di verità sulla
+     % di un task, con le sue regole di conflitto da inventare, per una
+     richiesta che chiedeva di "tracciare", non di "far calcolare l'EVM dal
+     kanban". `riepilogo_effort` aggrega punti totali/completati per task
+     (una colonna segnata "done" conta come completato) come dato di sola
+     lettura nella scheda; collegarlo all'EVM resta un'estensione futura,
+     se richiesta esplicitamente. Spostare una sotto-task tra colonne è un
+     menu a tendina per riga, non trascinamento: `@dnd-kit` è già una
+     dipendenza del progetto (riordino delle schede, `DocumentTabs.tsx`),
+     ma cablare zone di rilascio multiple con collision detection per una
+     board a più colonne è un lavoro a parte, non necessario per
+     soddisfare la richiesta letterale ("creare le colonne", "aggiungere
+     sotto-task") — rimandato, non dimenticato: upgrade possibile in un
+     secondo momento senza cambiare lo schema.
+
+155. **Bug (todo.md): il BAC totale di Dashboard e Buffer and reserves
+     restava fermo dopo aver bloccato una nuova baseline non di tipo
+     'startup', o dopo una change request approvata.** Causa: la query di
+     `schermate.rs::dashboard()`/`riserve()` filtrava esplicitamente
+     `kind = 'startup'`, mentre `approva_change_request` crea sempre una
+     baseline di tipo `'altra'` — la query restava agganciata alla vecchia
+     riga 'startup' per sempre. Corretto a "l'ultima baseline non
+     archiviata, qualunque sia il tipo o lo stato di blocco" (lo stato di
+     blocco non si può richiedere: la baseline generata al solo import,
+     prima di qualunque blocco di governance, non è `locked` ma ha già un
+     `bac_total` valido, come dimostra un test preesistente rimasto verde
+     solo dopo aver tolto anche quel filtro). Nuovo test di regressione
+     mirato proprio allo scenario segnalato (blocco + change request
+     approvata). La UI ne approfitta due volte: `DashboardScreen.tsx` ora
+     mostra anche il KPI "Budget baseline" (il campo `bacTotale` del
+     comando `dashboard`, già presente nella risposta ma mai renderizzato
+     prima — morto, non mancante), e il badge "Base EV" nella barra di
+     contesto — `setEvBaseMode` esisteva nello store ma non aveva alcun
+     controllo che lo richiamasse in nessuna schermata — è diventato un
+     pulsante vero.
+
+156. **Bug (todo.md): "un inserimento in DB chiude il progetto, serve
+     ricaricare".** Un'indagine mirata ha escluso il sospetto più ovvio
+     (qualcosa che richiama `impostaProgetto`/azzera `attoreId` dopo una
+     scrittura: nessun punto del codice lo fa, solo i tre flussi legittimi
+     di apertura progetto e il logout esplicito toccano quei campi) — ma
+     ha anche confermato che **questa app non ha un error boundary da
+     nessuna parte**: un'eccezione di rendering non gestita, nel punto in
+     cui `ricarica()` rimonta una schermata con dati freschi dopo una
+     scrittura (il momento più probabile per un bug di rendering non ancora
+     visto, su una forma di dati nuova), smonta l'intera radice React
+     lasciando una pagina bianca — indistinguibile, per l'utente, da "il
+     progetto si è chiuso": l'unica via d'uscita è ricaricare la finestra,
+     esattamente il sintomo descritto. Aggiunto `ErrorBoundary.tsx` (un
+     class component React, l'unico modo per intercettare un errore di
+     rendering) attorno sia alla finestra principale sia a ogni scheda
+     staccata: non impedisce l'errore di partenza — quello resta da
+     diagnosticare quando si ripresenta, ora con un messaggio visibile
+     invece di sparire nel nulla — ma lo rende recuperabile, con la
+     rassicurazione che il file del progetto su disco non è stato toccato.
+     Verificato con un throw deliberato dietro un flag temporaneo
+     (`?crashtest=1`, rimosso subito dopo), non solo a tipi: il pannello di
+     recupero compare davvero. Aggiunto anche `PRAGMA busy_timeout = 5000`
+     a ogni apertura di connessione (`open_and_migrate`): ogni comando apre
+     una propria connessione sullo stesso file e più schermate ne tengono
+     aperte diverse in lettura insieme — senza un timeout, una lettura che
+     arriva mentre una scrittura ha il lock esclusivo fallisce subito con
+     `SQLITE_BUSY` invece di aspettare. Non la causa confermata (non
+     riprodotta con un progetto finto end-to-end in questa sessione), ma un
+     irrigidimento reale e senza controindicazioni contro la classe di
+     problema più plausibile rimasta.
+
+157. **Bug (todo.md): tre "contingency" scollegate nell'app (percentuale di
+     policy in Parameters, importo allocato per rischio, importo della
+     baseline) — non un bug di codice ma una lacuna di spiegazione.**
+     Nessuna delle tre si aggiorna dall'altra per scelta architetturale già
+     presa altrove in questo progetto (una baseline bloccata è immutabile,
+     decisione originaria; un rischio è un record a parte con la propria
+     allocazione, non una formula derivata dalla percentuale di policy):
+     collegarle automaticamente avrebbe richiesto decidere quale delle tre
+     "vince" in caso di conflitto, una scelta di prodotto che non è la
+     stessa cosa di spiegare come usarle oggi. Aggiunta una sezione
+     dedicata nel manuale (capitolo 15) con l'ordine d'uso consigliato,
+     più sezioni "come leggerla/leggerlo" per Baseline e change request,
+     EVM Monitoring, Forecast e Cost governance (capitoli 10, 16, 17, 19) —
+     la stessa richiesta del todo.md copriva anche quelle quattro
+     schermate, non solo la contingency.

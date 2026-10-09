@@ -68,6 +68,7 @@ interface RigaTaskVista {
   nome: string;
   wbs: string | null;
   filone: string | null;
+  sprintOKanban: string | null;
   metodoEv: string | null;
   inizioPianificato: string | null;
   finePianificata: string | null;
@@ -99,6 +100,7 @@ const COLONNE_TASK: ColumnDef<RigaTaskVista, unknown>[] = [
   { id: "wbs", accessorKey: "wbs", header: "WBS", size: 80, cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "nome", accessorKey: "nome", header: "Name", size: 220 },
   { id: "filone", accessorKey: "filone", header: "Workstream", cell: (c) => c.getValue<string | null>() ?? "—" },
+  { id: "sprintOKanban", accessorKey: "sprintOKanban", header: "Sprint/Kanban", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "metodoEv", accessorKey: "metodoEv", header: "EV method", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "inizioPianificato", accessorKey: "inizioPianificato", header: "Planned start", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "finePianificata", accessorKey: "finePianificata", header: "Planned finish", cell: (c) => c.getValue<string | null>() ?? "—" },
@@ -190,6 +192,7 @@ function SchedaTask({ percorso }: { percorso: string }) {
         nome: t.nome,
         wbs: t.wbs,
         filone: t.filone,
+        sprintOKanban: t.sprintNumero !== null ? `Sprint ${t.sprintNumero}` : t.kanban ? "Kanban" : null,
         metodoEv: t.metodoEv,
         inizioPianificato: t.inizioPianificato,
         finePianificata: t.finePianificata,

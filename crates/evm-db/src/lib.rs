@@ -6,6 +6,7 @@ pub mod auth;
 pub mod calendario;
 pub mod controllo;
 pub mod filoni;
+pub mod kanban;
 pub mod montecarlo;
 pub mod qualita;
 pub mod risorse;
@@ -27,6 +28,14 @@ use rusqlite::Connection;
 pub fn open_and_migrate(path: &Path) -> rusqlite::Result<Connection> {
     let mut conn = Connection::open(path)?;
     conn.pragma_update(None, "foreign_keys", true)?;
+    // Ogni comando apre una propria connessione sullo stesso file (apri_con_id in
+    // src-tauri): più schermate/la barra di contesto ne tengono aperte diverse insieme
+    // in lettura, e una scrittura prende un lock esclusivo per la durata della sua
+    // transazione. Senza busy_timeout, una lettura che arriva in quella finestra fallisce
+    // subito con SQLITE_BUSY invece di aspettare — todo.md "BUG" (un inserimento in DB
+    // che a volte "rompe" qualcosa). 5 s è ampiamente sufficiente per le transazioni di
+    // questa app (nessuna scrittura itera su migliaia di righe in un singolo comando).
+    conn.pragma_update(None, "busy_timeout", 5000)?;
     migrations::migrate(&mut conn)?;
     auth::assicura_utente_default(&conn)?;
     Ok(conn)

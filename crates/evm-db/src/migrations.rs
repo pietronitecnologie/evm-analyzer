@@ -75,6 +75,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0012_autenticazione",
         sql: include_str!("../migrations/0012_autenticazione.sql"),
     },
+    Migration {
+        version: 13,
+        name: "0013_agile_kanban",
+        sql: include_str!("../migrations/0013_agile_kanban.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

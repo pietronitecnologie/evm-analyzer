@@ -4,6 +4,7 @@
 import * as React from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ScreenPlaceholder } from "@/components/screens/ScreenPlaceholder";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,17 +21,19 @@ function useAppliedTheme() {
 /** Finestra staccata (sez. 8.2): mostra una singola scheda, senza il guscio completo. */
 function DetachedWindow({ screenId, title }: { screenId: string; title: string }) {
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="flex h-screen flex-col">
-        <div className="flex h-9 items-center border-b border-border bg-card px-3 text-sm font-medium">
-          {title}
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={300}>
+        <div className="flex h-screen flex-col">
+          <div className="flex h-9 items-center border-b border-border bg-card px-3 text-sm font-medium">
+            {title}
+          </div>
+          <div className="flex-1 overflow-auto">
+            <ScreenPlaceholder screenId={screenId} title={title} />
+          </div>
         </div>
-        <div className="flex-1 overflow-auto">
-          <ScreenPlaceholder screenId={screenId} title={title} />
-        </div>
-      </div>
-      <Toaster />
-    </TooltipProvider>
+        <Toaster />
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -49,5 +52,9 @@ export default function App() {
     );
   }
 
-  return <AppShell />;
+  return (
+    <ErrorBoundary>
+      <AppShell />
+    </ErrorBoundary>
+  );
 }

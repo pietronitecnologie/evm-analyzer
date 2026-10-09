@@ -206,6 +206,9 @@ pub struct TaskEvmRiga {
     pub critico: bool,
     pub riepilogo: bool,
     pub milestone: bool,
+    /// Numero dello sprint Agile assegnato, se c'è (esclusivo col kanban: agile.rs).
+    pub sprint_numero: Option<i64>,
+    pub kanban: bool,
 }
 
 /// Elenco dei task con i dati di pianificazione/baseline per la scheda Task e risorse.
@@ -224,10 +227,12 @@ pub fn elenco_evm(conn: &Connection, project_id: i64) -> Result<Vec<TaskEvmRiga>
                      JOIN status_snapshot s ON s.id = st.snapshot_id
                      WHERE st.task_id = t.id AND s.project_id = ?1
                      ORDER BY s.status_date DESC, s.id DESC LIMIT 1),
-                    t.float_days, t.is_critical, t.is_summary, t.is_milestone
+                    t.float_days, t.is_critical, t.is_summary, t.is_milestone,
+                    sp.sprint_number, t.kanban
              FROM task t
              LEFT JOIN wbs w ON w.id = t.wbs_id
              LEFT JOIN workstream ws ON ws.id = t.workstream_id
+             LEFT JOIN agile_sprint sp ON sp.id = t.sprint_id
              WHERE t.project_id = ?1
              ORDER BY CAST(t.uid_source AS INTEGER), t.uid_source",
         )
@@ -250,6 +255,8 @@ pub fn elenco_evm(conn: &Connection, project_id: i64) -> Result<Vec<TaskEvmRiga>
                 critico: r.get::<_, i64>(12)? != 0,
                 riepilogo: r.get::<_, i64>(13)? != 0,
                 milestone: r.get::<_, i64>(14)? != 0,
+                sprint_numero: r.get(15)?,
+                kanban: r.get::<_, i64>(16)? != 0,
             })
         })
         .map_err(|e| e.to_string())?
