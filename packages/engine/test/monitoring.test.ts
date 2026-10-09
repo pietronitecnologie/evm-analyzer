@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 import { allocaBudgetTask, monitoraggioEvm, pvLineareTask, type MonTask, type MonWbs } from "../src/index";
 
 const P = { greenThreshold: 0.95, yellowThreshold: 0.85 };
-const task = (uid: string, wbs: string, costo: number, start: string, finish: string): MonTask => ({
-  uid, wbs, riepilogo: false, start, finish, costoBaseline: costo,
+const task = (uid: string, wbs: string, costo: number, start: string, finish: string, filone: string | null = null): MonTask => ({
+  uid, wbs, filone, riepilogo: false, start, finish, costoBaseline: costo,
 });
 
 describe("allocazione del budget ai task", () => {
@@ -78,9 +78,26 @@ describe("serie di monitoraggio", () => {
     expect(p.perWbs["2.2"].cpi).toBeCloseTo(1 / 3, 9);
     expect(p.perWbsMisure["2.1"]).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500 });
     // Un solo task per nodo in questa fixture: perTask coincide con perWbs riga per riga.
-    expect(p.perTaskMisure.A).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500, wbs: "2.1", uid: "A" });
+    expect(p.perTaskMisure.A).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500, wbs: "2.1", uid: "A", filone: null });
     expect(p.perTask.A.cv).toBeCloseTo(-100, 6);
     expect(p.perTask.B.cpi).toBeCloseTo(1 / 3, 9);
+    expect(p.perFilone).toEqual({});
+    expect(p.perFiloneMisure).toEqual({});
+  });
+
+  it("indici per filone: solo i task con un filone assegnato", () => {
+    const wbsConFilone: MonWbs[] = [{ codice: "2.1", budget: 1000 }, { codice: "2.2", budget: 500 }];
+    const tasksConFilone = [
+      task("A", "2.1", 1, "2026-01-01", "2026-01-11", "Backend"),
+      task("B", "2.2", 1, "2026-01-01", "2026-01-11", null),
+    ];
+    const r = monitoraggioEvm(wbsConFilone, tasksConFilone, [
+      { date: "2026-01-06", righe: [{ uid: "A", pct: 0.4, ac: 500 }, { uid: "B", pct: 0.2, ac: 300 }] },
+    ], P);
+    const p = r.punti[0];
+    expect(Object.keys(p.perFilone)).toEqual(["Backend"]);
+    expect(p.perFiloneMisure.Backend).toEqual({ bac: 1000, pv: 500, ev: 400, ac: 500 });
+    expect(p.perFilone.Backend.cv).toBeCloseTo(-100, 6);
   });
 
   it("i punti sono ordinati per data e un progetto senza avanzamenti ha EV zero", () => {

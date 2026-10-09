@@ -7,6 +7,7 @@ use evm_db::progetto::{self, ProjectInfo};
 use evm_db::agile;
 use evm_db::calendario;
 use evm_db::controllo;
+use evm_db::filoni;
 use evm_db::montecarlo;
 use evm_db::risorse;
 use evm_db::export::{self, CacheExport, OpzioniExport};
@@ -287,6 +288,12 @@ fn registra_consumo(
 ) -> Result<(), String> {
     let (conn, id) = apri_con_id(&percorso)?;
     schermate::registra_consumo(&conn, id, &tipo, importo, &data, nota.as_deref())
+}
+
+#[tauri::command]
+fn approva_consumo_riserva(percorso: String, attore_id: Option<i64>, id: i64) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    schermate::approva_consumo_riserva(&conn, pid, attore_id, id)
 }
 
 #[tauri::command]
@@ -625,6 +632,52 @@ fn monte_carlo_elenco(percorso: String, tipo: Option<String>) -> Result<Vec<mont
     montecarlo::monte_carlo_elenco(&conn, id, tipo.as_deref())
 }
 
+// --------------------------------------------------------------- Filoni e gate
+
+#[tauri::command]
+fn elenco_filoni(percorso: String) -> Result<Vec<filoni::FiloneRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    filoni::elenco_filoni(&conn, id)
+}
+
+#[tauri::command]
+fn crea_filone(
+    percorso: String,
+    nome: String,
+    tipo: String,
+    metodo_misura: String,
+    planned_unit_value: Option<f64>,
+    scope_variabile: bool,
+) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    filoni::crea_filone(&conn, id, &nome, &tipo, &metodo_misura, planned_unit_value, scope_variabile)
+}
+
+#[tauri::command]
+fn assegna_task_a_filone(percorso: String, task_uid: String, filone_id: Option<i64>) -> Result<(), String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    filoni::assegna_task_a_filone(&conn, id, &task_uid, filone_id)
+}
+
+#[tauri::command]
+fn elenco_gate(percorso: String) -> Result<Vec<filoni::GateRiga>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    filoni::elenco_gate(&conn, id)
+}
+
+#[tauri::command]
+fn crea_gate(
+    percorso: String,
+    da_filone_id: i64,
+    a_filone_id: i64,
+    descrizione: Option<String>,
+    data_gate: Option<String>,
+    buffer_giorni: f64,
+) -> Result<i64, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    filoni::crea_gate(&conn, id, da_filone_id, a_filone_id, descrizione.as_deref(), data_gate.as_deref(), buffer_giorni)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -687,6 +740,12 @@ pub fn run() {
             elimina_periodo_flusso,
             monte_carlo_salva,
             monte_carlo_elenco,
+            approva_consumo_riserva,
+            elenco_filoni,
+            crea_filone,
+            assegna_task_a_filone,
+            elenco_gate,
+            crea_gate,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

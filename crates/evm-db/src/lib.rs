@@ -4,6 +4,7 @@
 pub mod agile;
 pub mod calendario;
 pub mod controllo;
+pub mod filoni;
 pub mod montecarlo;
 pub mod risorse;
 pub mod import;

@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 
+use crate::controllo::richiede_coordinatore_piano;
 use crate::tempo;
 
 type Esito<T> = Result<T, String>;
@@ -750,6 +751,10 @@ pub struct Rischio {
     pub probabilita_pct: Option<f64>,
     pub impatto: Option<f64>,
     pub contingenza: Option<f64>,
+    /// Importo usato (`risk.usage_amount`): `None` se il rischio non si è ancora
+    /// materializzato, diverso da `Some(0.0)` ("materializzato ma senza costo").
+    pub utilizzato: Option<f64>,
+    pub data_utilizzo: Option<String>,
     pub stato: String,
 }
 
@@ -761,6 +766,10 @@ pub struct Consumo {
     pub importo: f64,
     pub data: String,
     pub nota: Option<String>,
+    /// Riservato a `management_reserve` (RES_MR_UNAPPROVED, specifica Fase 5 §3.8):
+    /// contingency/buffer di tempo non richiedono approvazione, il campo esiste su
+    /// ogni riga solo perché `reserve_usage` non distingue la colonna per tipo.
+    pub approvato: bool,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -797,7 +806,7 @@ pub fn riserve(conn: &Connection, pid: i64) -> Esito<Riserve> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, description, probability_pct, impact_estimated, contingency_allocated, status
+            "SELECT id, description, probability_pct, impact_estimated, contingency_allocated, usage_amount, usage_date, status
              FROM risk WHERE project_id = ?1 ORDER BY id",
         )
         .map_err(errore)?;
@@ -809,7 +818,9 @@ pub fn riserve(conn: &Connection, pid: i64) -> Esito<Riserve> {
                 probabilita_pct: r.get(2)?,
                 impatto: r.get(3)?,
                 contingenza: r.get(4)?,
-                stato: r.get(5)?,
+                utilizzato: r.get(5)?,
+                data_utilizzo: r.get(6)?,
+                stato: r.get(7)?,
             })
         })
         .map_err(errore)?
@@ -818,7 +829,7 @@ pub fn riserve(conn: &Connection, pid: i64) -> Esito<Riserve> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, kind, amount, date, note FROM reserve_usage
+            "SELECT id, kind, amount, date, note, approved FROM reserve_usage
              WHERE project_id = ?1 ORDER BY date, id",
         )
         .map_err(errore)?;
@@ -830,6 +841,7 @@ pub fn riserve(conn: &Connection, pid: i64) -> Esito<Riserve> {
                 importo: r.get(2)?,
                 data: r.get(3)?,
                 nota: r.get(4)?,
+                approvato: r.get::<_, i64>(5)? != 0,
             })
         })
         .map_err(errore)?
@@ -890,6 +902,22 @@ pub fn registra_consumo(
         params![pid, tipo, importo, data, nota.filter(|n| !n.trim().is_empty())],
     )
     .map_err(errore)?;
+    Ok(())
+}
+
+/// Approva un consumo di riserva (serve a chiudere RES_MR_UNAPPROVED per la management
+/// reserve, specifica Fase 5 §3.8). Riservato al coordinatore del piano.
+pub fn approva_consumo_riserva(conn: &Connection, pid: i64, attore_id: Option<i64>, id: i64) -> Esito<()> {
+    richiede_coordinatore_piano(conn, attore_id)?;
+    let cambiate = conn
+        .execute(
+            "UPDATE reserve_usage SET approved = 1 WHERE id = ?1 AND project_id = ?2 AND approved = 0",
+            params![id, pid],
+        )
+        .map_err(errore)?;
+    if cambiate == 0 {
+        return Err("consumo non trovato o già approvato".into());
+    }
     Ok(())
 }
 

@@ -18,9 +18,9 @@ describe("coperturaTaskPct", () => {
   it("è 1 quando tutti i task pesabili hanno una riga nell'ultimo snapshot", () => {
     const d = dati({
       task: [
-        { uid: "1", wbs: "1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
-        { uid: "2", wbs: "1", riepilogo: false, inizio: null, fine: null, costoBaseline: 2000 },
-        { uid: "0", wbs: "1", riepilogo: true, inizio: null, fine: null, costoBaseline: 0 },
+        { uid: "1", wbs: "1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+        { uid: "2", wbs: "1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 2000 },
+        { uid: "0", wbs: "1", filone: null, riepilogo: true, inizio: null, fine: null, costoBaseline: 0 },
       ],
       snapshot: [{ data: "2026-01-10", etichetta: null, sorgente: "manuale", righe: [
         { uid: "1", pct: 1, ac: 1000 },
@@ -33,8 +33,8 @@ describe("coperturaTaskPct", () => {
   it("pesa la copertura parziale sul costo di baseline, non sul conteggio dei task", () => {
     const d = dati({
       task: [
-        { uid: "1", wbs: "1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
-        { uid: "2", wbs: "1", riepilogo: false, inizio: null, fine: null, costoBaseline: 3000 },
+        { uid: "1", wbs: "1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+        { uid: "2", wbs: "1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 3000 },
       ],
       snapshot: [
         { data: "2026-01-05", etichetta: null, sorgente: "manuale", righe: [{ uid: "1", pct: 0.5, ac: 500 }] },
@@ -48,8 +48,8 @@ describe("coperturaTaskPct", () => {
   it("ignora i task senza WBS e i riepiloghi nel totale pesabile", () => {
     const d = dati({
       task: [
-        { uid: "1", wbs: "1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
-        { uid: "2", wbs: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 5000 },
+        { uid: "1", wbs: "1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+        { uid: "2", wbs: null, filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 5000 },
       ],
       snapshot: [{ data: "2026-01-10", etichetta: null, sorgente: "manuale", righe: [{ uid: "1", pct: 1, ac: 1000 }] }],
     });
@@ -59,8 +59,8 @@ describe("coperturaTaskPct", () => {
   it("con codiceRadice limita il calcolo al sottoalbero", () => {
     const d = dati({
       task: [
-        { uid: "1", wbs: "1.1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
-        { uid: "2", wbs: "2.1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+        { uid: "1", wbs: "1.1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+        { uid: "2", wbs: "2.1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
       ],
       snapshot: [{ data: "2026-01-10", etichetta: null, sorgente: "manuale", righe: [{ uid: "1", pct: 1, ac: 1000 }] }],
     });
@@ -75,8 +75,8 @@ describe("evmPerNodoWbs", () => {
   const d = dati({
     wbs: [{ codice: "1", budget: 1000 }, { codice: "1.1", budget: 1000 }, { codice: "2", budget: 2000 }],
     task: [
-      { uid: "a", wbs: "1.1", riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
-      { uid: "b", wbs: "2", riepilogo: false, inizio: null, fine: null, costoBaseline: 2000 },
+      { uid: "a", wbs: "1.1", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 1000 },
+      { uid: "b", wbs: "2", filone: null, riepilogo: false, inizio: null, fine: null, costoBaseline: 2000 },
     ],
     snapshot: [{ data: "2026-01-10", etichetta: null, sorgente: "manuale", righe: [
       { uid: "a", pct: 1, ac: 1000 },

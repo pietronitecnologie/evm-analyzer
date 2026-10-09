@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use crate::tempo;
 
-type Esito<T> = Result<T, String>;
+pub(crate) type Esito<T> = Result<T, String>;
 
 fn e<E: std::fmt::Display>(err: E) -> String {
     err.to_string()
@@ -54,6 +54,9 @@ pub struct BudgetWbs {
 pub struct TaskMon {
     pub uid: String,
     pub wbs: Option<String>,
+    /// Nome del filone (workstream) a cui appartiene il task, per il rollup EVM per
+    /// filone (specifica Fase 5 §3.7) — stessa convenzione di `wbs`: nome, non id.
+    pub filone: Option<String>,
     pub riepilogo: bool,
     pub inizio: Option<String>,
     pub fine: Option<String>,
@@ -113,10 +116,12 @@ pub fn dati_monitoraggio(conn: &Connection, pid: i64) -> Esito<DatiMonitoraggio>
 
     let mut st = conn
         .prepare(
-            "SELECT t.uid_source, w.code, t.is_summary, t.start_planned, t.finish_planned,
+            "SELECT t.uid_source, w.code, ws.name, t.is_summary, t.start_planned, t.finish_planned,
                     COALESCE((SELECT bt.cost FROM baseline_task bt JOIN baseline b ON b.id = bt.baseline_id
                               WHERE bt.task_id = t.id AND b.kind = 'startup' ORDER BY b.id DESC LIMIT 1), 0)
-             FROM task t LEFT JOIN wbs w ON w.id = t.wbs_id
+             FROM task t
+             LEFT JOIN wbs w ON w.id = t.wbs_id
+             LEFT JOIN workstream ws ON ws.id = t.workstream_id
              WHERE t.project_id = ?1
              ORDER BY CAST(t.uid_source AS INTEGER), t.uid_source",
         )
@@ -126,10 +131,11 @@ pub fn dati_monitoraggio(conn: &Connection, pid: i64) -> Esito<DatiMonitoraggio>
             Ok(TaskMon {
                 uid: r.get(0)?,
                 wbs: r.get(1)?,
-                riepilogo: r.get::<_, i64>(2)? != 0,
-                inizio: r.get(3)?,
-                fine: r.get(4)?,
-                costo_baseline: r.get(5)?,
+                filone: r.get(2)?,
+                riepilogo: r.get::<_, i64>(3)? != 0,
+                inizio: r.get(4)?,
+                fine: r.get(5)?,
+                costo_baseline: r.get(6)?,
             })
         })
         .map_err(e)?
@@ -276,7 +282,7 @@ fn baseline_corrente(conn: &Connection, pid: i64) -> Esito<i64> {
 /// schermate Baseline/Change request sono riservate a questo ruolo). Restituisce
 /// il suo nome, usato come "creata da"/"approvata da" invece di un campo di
 /// testo libero separato (l'autore tracciato è sempre l'utente verificato).
-fn richiede_coordinatore_piano(conn: &Connection, attore_id: Option<i64>) -> Esito<String> {
+pub(crate) fn richiede_coordinatore_piano(conn: &Connection, attore_id: Option<i64>) -> Esito<String> {
     let id = attore_id.ok_or_else(|| "azione riservata al coordinatore del piano: seleziona l'utente attivo".to_string())?;
     let nome: String = conn
         .query_row("SELECT display_name FROM user_profile WHERE id = ?1 AND active = 1", [id], |r| r.get(0))

@@ -30,6 +30,9 @@ export interface PuntoVista {
   perWbsMisure: Record<string, EvmInput>;
   perTask: Record<string, EvmOutput>;
   perTaskMisure: Record<string, EvmInput>;
+  /** Indici per filone (workstream), specifica Fase 5 §3.7. */
+  perFilone: Record<string, EvmOutput>;
+  perFiloneMisure: Record<string, EvmInput>;
 }
 
 export interface VistaMonitoraggio {
@@ -46,6 +49,7 @@ export function vistaMonitoraggio(d: DatiMonitoraggio): VistaMonitoraggio {
   const tasks: MonTask[] = d.task.map((t) => ({
     uid: t.uid,
     wbs: t.wbs,
+    filone: t.filone,
     riepilogo: t.riepilogo,
     start: t.inizio,
     finish: t.fine,
@@ -67,6 +71,8 @@ export function vistaMonitoraggio(d: DatiMonitoraggio): VistaMonitoraggio {
     perWbsMisure: p.perWbsMisure,
     perTask: p.perTask,
     perTaskMisure: p.perTaskMisure,
+    perFilone: p.perFilone,
+    perFiloneMisure: p.perFiloneMisure,
   }));
   return {
     bac: risultato.bac,

@@ -92,6 +92,9 @@ export interface Rischio {
   probabilitaPct: number | null;
   impatto: number | null;
   contingenza: number | null;
+  /** `null` se il rischio non si è ancora materializzato. */
+  utilizzato: number | null;
+  dataUtilizzo: string | null;
   stato: string;
 }
 
@@ -101,6 +104,8 @@ export interface Consumo {
   importo: number;
   data: string;
   nota: string | null;
+  /** Riservato a `management_reserve` (RES_MR_UNAPPROVED). */
+  approvato: boolean;
 }
 
 export interface Riserve {
@@ -172,10 +177,31 @@ export interface BudgetWbs {
 export interface TaskMon {
   uid: string;
   wbs: string | null;
+  filone: string | null;
   riepilogo: boolean;
   inizio: string | null;
   fine: string | null;
   costoBaseline: number;
+}
+
+export interface FiloneRiga {
+  id: number;
+  nome: string;
+  tipo: string;
+  metodoMisura: string;
+  plannedUnitValue: number | null;
+  scopeVariabile: boolean;
+}
+
+export interface GateRiga {
+  id: number;
+  daFiloneId: number;
+  daFilone: string;
+  aFiloneId: number;
+  aFilone: string;
+  descrizione: string | null;
+  dataGate: string | null;
+  bufferGiorni: number;
 }
 
 export interface SnapshotMon {

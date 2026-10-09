@@ -55,6 +55,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0008_backlog_agile",
         sql: include_str!("../migrations/0008_backlog_agile.sql"),
     },
+    Migration {
+        version: 9,
+        name: "0009_filoni_riserve",
+        sql: include_str!("../migrations/0009_filoni_riserve.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

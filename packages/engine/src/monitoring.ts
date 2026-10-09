@@ -15,6 +15,8 @@ export interface MonTask {
   uid: string;
   /** Codice del nodo WBS a cui appartiene il task (null se non assegnato). */
   wbs: string | null;
+  /** Nome del filone (workstream) a cui appartiene il task (null se non assegnato). */
+  filone: string | null;
   riepilogo: boolean;
   start: ISODate | null;
   finish: ISODate | null;
@@ -55,6 +57,10 @@ export interface PuntoMonitoraggio {
   perTask: Record<string, EvmOutput>;
   /** PV/EV/AC/BAC del singolo task. */
   perTaskMisure: Record<string, EvmInput>;
+  /** Indici per filone (workstream), specifica Fase 5 §3.7. Solo i task con filone assegnato. */
+  perFilone: Record<string, EvmOutput>;
+  /** Somme PV/EV/AC/BAC per filone. */
+  perFiloneMisure: Record<string, EvmInput>;
 }
 
 export interface MonitoraggioResult {
@@ -132,7 +138,7 @@ export function monitoraggioEvm(
   const ordinati = [...snapshots].sort((a, b) => isoToDays(a.date) - isoToDays(b.date));
   for (const snap of ordinati) {
     const perUid = new Map(snap.righe.map((r) => [r.uid, r]));
-    const righeEvm: (EvmInput & { wbs: string; uid: string })[] = [];
+    const righeEvm: (EvmInput & { wbs: string; uid: string; filone: string | null })[] = [];
     for (const [uid, budget] of Object.entries(budgetTask)) {
       const t = tasksPerUid.get(uid);
       if (!t || t.wbs === null) continue;
@@ -140,6 +146,7 @@ export function monitoraggioEvm(
       righeEvm.push({
         wbs: t.wbs,
         uid,
+        filone: t.filone,
         bac: budget,
         pv: pvLineareTask(budget, t.start, t.finish, snap.date),
         ev: budget * (r?.pct ?? 0),
@@ -161,6 +168,15 @@ export function monitoraggioEvm(
       perTask[riga.uid] = evm(riga, params);
       perTaskMisure[riga.uid] = riga;
     }
+    // Solo i task con filone assegnato: nessun bucket "non assegnato" (come perWbs).
+    const righeConFilone = righeEvm.filter((x): x is EvmInput & { wbs: string; uid: string; filone: string } => x.filone !== null);
+    const gruppiFilone = rollup(righeConFilone, (x) => x.filone, params);
+    const perFilone: Record<string, EvmOutput> = {};
+    for (const [nome, out] of gruppiFilone) perFilone[nome] = out;
+    const perFiloneMisure: Record<string, EvmInput> = {};
+    for (const nome of gruppiFilone.keys()) {
+      perFiloneMisure[nome] = sumEvm(righeConFilone.filter((x) => x.filone === nome));
+    }
     punti.push({
       date: snap.date,
       pv: totale.pv,
@@ -171,6 +187,8 @@ export function monitoraggioEvm(
       perWbsMisure,
       perTask,
       perTaskMisure,
+      perFilone,
+      perFiloneMisure,
     });
   }
   return { bac, budgetTask, punti, warnings };

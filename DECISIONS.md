@@ -859,3 +859,108 @@ già previsto ma non cablato) con le schede Sprint, Velocity, Flow, Monte Carlo.
      elenca esplicitamente nella tabella. Backlog residuo/Sprint residui/EAC
      tempo/EAC costo sono invece valori di progetto non per-sprint: striscia di
      `Kpi` sopra la tabella, stessa scelta della decisione 83.
+
+## Fase 5, incremento 8 — Filoni e programma, Buffer e riserve (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.7/§3.8)
+
+Ambito: nuova schermata `FiloniScreen` (nav id `filoni`, già previsto ma non
+cablato) con la tabella dei filoni/riga Programma/elenco gate, e `RiserveScreen`
+riscritta in tre sezioni — Contingency, Management reserve, Buffer di tempo —
+ognuna con lo stato del motore (`buffers.ts`, scritto e testato dalla Fase 2 ma
+non ancora richiamato da nessuna schermata).
+
+106. **Workstream e gate: CRUD manuale, come `agile_sprint`/`kanban_flow` prima di
+     loro.** `workstream`/`workstream_gate` esistevano dalla Fase 1 ma nessun
+     import li popola (il foglio "Agile" del workbook esporta solo gli sprint,
+     non i filoni) e nessun comando li leggeva o scriveva. Nuovo modulo
+     `crates/evm-db/src/filoni.rs`: `crea_filone`/`elenco_filoni`/
+     `assegna_task_a_filone`/`crea_gate`/`elenco_gate`. Due colonne mancavano per
+     corrispondere al motore: `workstream.variable_scope` (il campo
+     `Workstream.variableScope` del motore non aveva nulla da leggere) e
+     `workstream_gate.due_date` (un gate aveva buffer e descrizione ma non la
+     propria data) — migrazione `0009_filoni_riserve.sql`.
+
+107. **Il nome del filone è la chiave del rollup EVM: unicità imposta alla
+     creazione.** Il motore raggruppa gli indici per filone sul nome
+     (`MonTask.filone`/`perFilone`, stessa convenzione del codice WBS, non
+     sull'id — coerente con come `perWbs` già funziona), quindi due filoni
+     omonimi farebbero confluire silenziosamente i loro dati nello stesso
+     gruppo. `crea_filone` rifiuta un nome già usato nel progetto — unico
+     controllo di unicità lato backend su un "nome" dell'app (i codici WBS non
+     lo hanno, ma lì il codice è strutturato e la Fase 3 già lo tratta come
+     chiave); qui, senza, il bug sarebbe silenzioso (somme sbagliate, non un
+     errore).
+
+108. **`dati_monitoraggio`/`monitoraggioEvm` portano ora anche il filone di ogni
+     task, con lo stesso trattamento del WBS.** `TaskMon.filone` (nuovo campo,
+     `LEFT JOIN workstream` in `dati_monitoraggio` — stesso join già usato da
+     `task.rs::elenco_evm`) alimenta `perFilone`/`perFiloneMisure` in
+     `PuntoMonitoraggio` (`packages/engine/src/monitoring.ts`), costruiti con lo
+     stesso `rollup()`/`sumEvm()` di `perWbs`, filtrando i task senza filone
+     invece di un bucket "non assegnato" (anche questo, come `perWbs`). Un task
+     senza WBS non entra comunque in `righeEvm` (limite preesistente
+     dell'allocazione del budget, non introdotto qui): un filone con solo task
+     privi di WBS non riceve ancora indici EVM.
+
+109. **Nessuna rilevazione LOE per filone: ogni riga passata a `programRollup`
+     ha `loe: false`.** `WorkstreamRow.loe` richiederebbe di portare il metodo
+     EV di ogni task dentro il rollup di monitoraggio solo per alimentare
+     `loeShare`/`spiExLoe`/l'avviso `LOE_SHARE` — nessuna delle colonne della
+     tabella Filoni della specifica (`Filone | Tipo | Metodo di misura | BAC |
+     PV | EV | AC | CPI | SPI | Peso sul programma | Semaforo`) le richiede.
+     Con `loe: false` ovunque, `loeShare` resta 0 (sotto qualunque soglia
+     positiva) e lo SPI mostrato è sempre quello semplice — nessuna sovrastima
+     nascosta, solo una correzione che questo incremento non calcola. Rimandato
+     a quando una schermata mostrerà davvero LOE share/SPI-ex-LOE.
+
+110. **GATE_NO_BUFFER non si calcola: nessuna data di consegna prevista per
+     filone esiste.** `checkGate` confronta la data del gate con una previsione
+     di consegna (P80 Monte Carlo o EAC tempo) **per filone**, ma né il Monte
+     Carlo (decisione 100, per fonte di velocity/throughput di progetto, non
+     per filone) né `programRollup` calcolano una data di fine per singolo
+     filone — costruirla richiederebbe una macchina di Earned-Schedule-per-
+     filone a sé. `FiloniScreen` chiama `programRollup` con `gates: []`
+     (nessun avviso) e mostra l'elenco dei gate letto da `elenco_gate` solo per
+     tracciamento, con una nota esplicita in UI che l'avviso automatico non
+     c'è ancora — non un errore nascosto.
+
+111. **Buffer e riserve: `risk.usage_amount`/`usage_date` letti per la prima
+     volta.** Le colonne esistevano dalla Fase 1 ma `schermate.rs::riserve()`
+     non le selezionava: `Rischio` porta ora `utilizzato`/`dataUtilizzo`,
+     usati sia per le colonne Utilizzata/Residuo della tabella rischi
+     (specifica §3.8) sia come `RiskRow` per `contingencyStatus` (motore,
+     `lib/riserve.ts::statoContingency`) — RES_CONT_NO_RISK/RES_CONT_MISMATCH
+     ora hanno dati reali da cui scattare, non solo i test unitari del motore
+     (decisione 42).
+
+112. **`reserve_usage.approved`, nuova colonna, con un'approvazione riservata al
+     coordinatore del piano.** Nessuna colonna segnava se un consumo di
+     riserva fosse approvato: RES_MR_UNAPPROVED non aveva dati da leggere.
+     `approva_consumo_riserva` (nuovo comando, stesso schema di permesso delle
+     decisioni 88-89: `richiede_coordinatore_piano`, resa `pub(crate)` in
+     `controllo.rs` e riusata da `schermate.rs` invece di duplicarla) marca un
+     consumo come approvato; `lib/riserve.ts::statoRiservaGestione` considera
+     la management reserve "approvata" solo se **tutti** i consumi di quel
+     tipo lo sono — un solo consumo non approvato tiene l'avviso attivo, non
+     lo nasconde la media. Contingency e buffer di tempo non hanno questo
+     concetto (la specifica lo richiede solo per la management reserve).
+
+113. **L'indice di salute del buffer si applica solo al Buffer di tempo.**
+     `bufferHealth(consumedPct, completedPct)` è il "fever chart" classico —
+     consumo del buffer di programma contro percentuale di progetto
+     completata (EV/BAC, da `dati_monitoraggio`, già disponibile nella
+     schermata) — concetto estraneo a contingency/management reserve, che
+     hanno invece un residuo diretto (stanziata/usata) e il loro avviso
+     dedicato. Si mostra quindi come unica card nella scheda Buffer di tempo,
+     non replicato nelle altre due.
+
+114. **Tabella Filoni: "Peso sul programma" è `evShare`, "Semaforo" è il
+     peggiore tra CPI e SPI.** Il motore espone sia `evShare` sia `acShare`
+     come contributo di un filone alle variazioni di programma, ma la
+     specifica elenca una sola colonna "Peso sul programma": si mostra
+     `evShare` (il peso sul valore guadagnato, la metrica EVM primaria),
+     `acShare` resta calcolato nel motore ma non ha una colonna propria. La
+     colonna "Semaforo" non esiste come campo singolo in `WorkstreamResult`
+     (che porta `cpiLight`/`spiLight` separati, come ogni altra schermata):
+     si combina con il peggiore dei due (rosso > giallo > verde > nd), così un
+     filone in ritardo ma a costo non segnala "a posto" solo perché il CPI è
+     verde.
