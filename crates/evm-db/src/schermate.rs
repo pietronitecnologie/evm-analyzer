@@ -468,7 +468,8 @@ fn snapshot_manuale(conn: &Connection, pid: i64) -> Esito<i64> {
 }
 
 /// Registra una proposta di avanzamento per un task (UID) e la invia subito per
-/// approvazione: compare nella schermata Approvazioni.
+/// approvazione: compare nella schermata Approvazioni. Restituisce l'id della voce
+/// creata, per poterle allegare subito dei file (todo.md).
 pub fn registra_avanzamento(
     conn: &mut Connection,
     pid: i64,
@@ -478,7 +479,8 @@ pub fn registra_avanzamento(
     fine: Option<String>,
     ac: Option<f64>,
     ore: Option<f64>,
-) -> Esito<()> {
+    nota: Option<String>,
+) -> Esito<i64> {
     if ore.is_some_and(|v| !v.is_finite() || v < 0.0) {
         return Err("le ore consuntive devono essere un numero positivo o zero".into());
     }
@@ -501,15 +503,18 @@ pub fn registra_avanzamento(
         .map_err(errore)?
         .ok_or_else(|| format!("task UID {uid} non trovato o di riepilogo"))?;
     let snapshot = snapshot_manuale(&tx, pid)?;
+    let nota = nota.filter(|v| !v.trim().is_empty());
     tx.execute(
         "INSERT INTO progress_entry (snapshot_id, task_id, entered_at, pct_complete,
-                                     actual_start, actual_finish, actual_cost, actual_work_h, state)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'inviato')",
-        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine, ac, ore],
+                                     actual_start, actual_finish, actual_cost, actual_work_h,
+                                     author_note, state)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'inviato')",
+        params![snapshot, task_id, tempo::adesso_iso(), pct / 100.0, inizio, fine, ac, ore, nota],
     )
     .map_err(errore)?;
+    let entry_id = tx.last_insert_rowid();
     tx.commit().map_err(errore)?;
-    Ok(())
+    Ok(entry_id)
 }
 
 // ------------------------------------------------------------ Approvazioni
@@ -606,6 +611,162 @@ pub fn respingi(conn: &Connection, entry_id: i64, nota: &str) -> Esito<()> {
         .map_err(errore)?;
     if cambiate == 0 {
         return Err("la voce non è più in attesa di approvazione".into());
+    }
+    Ok(())
+}
+
+// ------------------------------------------------- Storico e allegati avanzamento
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VoceStorico {
+    pub id: i64,
+    pub status_date: String,
+    pub registrato_il: String,
+    pub stato: String,
+    pub pct: f64,
+    pub inizio_effettivo: Option<String>,
+    pub fine_effettiva: Option<String>,
+    pub ac: Option<f64>,
+    pub ore: Option<f64>,
+    pub nota_autore: Option<String>,
+    pub nota_rifiuto: Option<String>,
+    pub allegati: i64,
+}
+
+/// Storico completo (tutte le voci, non solo quella vigente) di un task, con nota
+/// dell'autore, motivo di un eventuale rifiuto e conteggio allegati.
+pub fn storico_avanzamento(conn: &Connection, pid: i64, uid: &str) -> Esito<Vec<VoceStorico>> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT pe.id, s.status_date, pe.entered_at, pe.state, pe.pct_complete,
+                    pe.actual_start, pe.actual_finish, pe.actual_cost, pe.actual_work_h,
+                    pe.author_note, pe.note,
+                    (SELECT COUNT(*) FROM progress_entry_attachment a WHERE a.progress_entry_id = pe.id)
+             FROM progress_entry pe
+             JOIN status_snapshot s ON s.id = pe.snapshot_id
+             JOIN task t ON t.id = pe.task_id
+             WHERE t.project_id = ?1 AND t.uid_source = ?2
+             ORDER BY pe.id DESC",
+        )
+        .map_err(errore)?;
+    let righe = stmt
+        .query_map(params![pid, uid], |r| {
+            Ok(VoceStorico {
+                id: r.get(0)?,
+                status_date: r.get(1)?,
+                registrato_il: r.get(2)?,
+                stato: r.get(3)?,
+                pct: r.get::<_, Option<f64>>(4)?.unwrap_or(0.0) * 100.0,
+                inizio_effettivo: r.get(5)?,
+                fine_effettiva: r.get(6)?,
+                ac: r.get(7)?,
+                ore: r.get(8)?,
+                nota_autore: r.get(9)?,
+                nota_rifiuto: r.get(10)?,
+                allegati: r.get(11)?,
+            })
+        })
+        .map_err(errore)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(errore)?;
+    Ok(righe)
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AllegatoRiga {
+    pub id: i64,
+    pub nome_file: String,
+    pub mime: Option<String>,
+    pub dimensione: i64,
+    pub caricato_il: String,
+}
+
+pub fn elenco_allegati(conn: &Connection, entry_id: i64) -> Esito<Vec<AllegatoRiga>> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, file_name, mime_type, size_bytes, uploaded_at
+             FROM progress_entry_attachment WHERE progress_entry_id = ?1 ORDER BY id",
+        )
+        .map_err(errore)?;
+    let righe = stmt
+        .query_map([entry_id], |r| {
+            Ok(AllegatoRiga {
+                id: r.get(0)?,
+                nome_file: r.get(1)?,
+                mime: r.get(2)?,
+                dimensione: r.get(3)?,
+                caricato_il: r.get(4)?,
+            })
+        })
+        .map_err(errore)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(errore)?;
+    Ok(righe)
+}
+
+/// Indovina il MIME dall'estensione: solo per i tipi comuni, `None` altrove (il
+/// visualizzatore del sistema operativo se la cava comunque aprendo per estensione).
+fn mime_da_estensione(nome_file: &str) -> Option<String> {
+    let ext = nome_file.rsplit('.').next()?.to_lowercase();
+    let mime = match ext.as_str() {
+        "pdf" => "application/pdf",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "txt" => "text/plain",
+        "csv" => "text/csv",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "zip" => "application/zip",
+        _ => return None,
+    };
+    Some(mime.to_string())
+}
+
+/// Allega un file a una voce di avanzamento: il contenuto entra nel file `.evmproj`
+/// come blob, non un percorso esterno (un solo file da copiare/spostare, sez. 2).
+pub fn aggiungi_allegato(conn: &Connection, entry_id: i64, percorso_file: &str) -> Esito<i64> {
+    let percorso = std::path::Path::new(percorso_file);
+    let nome_file = percorso
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("percorso file non valido")?
+        .to_string();
+    let contenuto = std::fs::read(percorso).map_err(errore)?;
+    let dimensione = contenuto.len() as i64;
+    let mime = mime_da_estensione(&nome_file);
+    conn.execute(
+        "INSERT INTO progress_entry_attachment
+            (progress_entry_id, file_name, mime_type, size_bytes, content, uploaded_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![entry_id, nome_file, mime, dimensione, contenuto, tempo::adesso_iso()],
+    )
+    .map_err(errore)?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Scrive il contenuto di un allegato nel percorso scelto dall'utente (dialogo "Save as").
+pub fn salva_allegato(conn: &Connection, allegato_id: i64, percorso_destinazione: &str) -> Esito<()> {
+    let contenuto: Vec<u8> = conn
+        .query_row(
+            "SELECT content FROM progress_entry_attachment WHERE id = ?1",
+            [allegato_id],
+            |r| r.get(0),
+        )
+        .map_err(errore)?;
+    std::fs::write(percorso_destinazione, contenuto).map_err(errore)
+}
+
+pub fn rimuovi_allegato(conn: &Connection, allegato_id: i64) -> Esito<()> {
+    let cambiate = conn
+        .execute("DELETE FROM progress_entry_attachment WHERE id = ?1", [allegato_id])
+        .map_err(errore)?;
+    if cambiate == 0 {
+        return Err("allegato non trovato".into());
     }
     Ok(())
 }
@@ -1054,7 +1215,7 @@ mod tests {
     #[test]
     fn un_rifiuto_riporta_il_motivo_a_chi_ha_proposto() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None, None).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None, None, None).unwrap();
         let voce = approvazioni(&conn, pid).unwrap()[0].id;
         assert!(respingi(&conn, voce, "  ").is_err(), "il motivo è obbligatorio");
         respingi(&conn, voce, "manca la data di fine").unwrap();
@@ -1067,7 +1228,7 @@ mod tests {
     #[test]
     fn avanzamento_passa_da_inviato_ad_applicato() {
         let (_d, mut conn, pid) = progetto();
-        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None, Some(1200.0), None).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, Some("2026-01-12".into()), None, Some(1200.0), None, None).unwrap();
         let coda = approvazioni(&conn, pid).unwrap();
         assert_eq!(coda.len(), 1, "una proposta registrata è subito in approvazione");
         approva(&mut conn, coda[0].id).unwrap();
@@ -1081,6 +1242,59 @@ mod tests {
         // Lo scavo non deve perdere il suo 50 % nel nuovo snapshot.
         let scavo = avanzamento_elenco(&conn, pid).unwrap().into_iter().find(|r| r.uid == "2").unwrap();
         assert_eq!(scavo.pct, 50.0);
+    }
+
+    #[test]
+    fn la_nota_dell_autore_non_si_confonde_con_il_motivo_di_rifiuto() {
+        let (_d, mut conn, pid) = progetto();
+        registra_avanzamento(&mut conn, pid, "3", 30.0, None, None, None, None, Some("ritardo per maltempo".into()))
+            .unwrap();
+        let voce = approvazioni(&conn, pid).unwrap()[0].id;
+        respingi(&conn, voce, "manca la data di fine").unwrap();
+        let storico = storico_avanzamento(&conn, pid, "3").unwrap();
+        assert_eq!(storico.len(), 1);
+        assert_eq!(storico[0].nota_autore.as_deref(), Some("ritardo per maltempo"));
+        assert_eq!(storico[0].nota_rifiuto.as_deref(), Some("manca la data di fine"));
+    }
+
+    #[test]
+    fn lo_storico_vede_tutte_le_voci_non_solo_l_ultima() {
+        let (_d, mut conn, pid) = progetto();
+        registra_avanzamento(&mut conn, pid, "3", 10.0, None, None, None, None, None).unwrap();
+        let prima = approvazioni(&conn, pid).unwrap()[0].id;
+        approva(&mut conn, prima).unwrap();
+        registra_avanzamento(&mut conn, pid, "3", 20.0, None, None, None, None, None).unwrap();
+        let storico = storico_avanzamento(&conn, pid, "3").unwrap();
+        assert_eq!(storico.len(), 2, "entrambe le voci restano visibili, non solo la vigente");
+        assert_eq!(storico[0].pct, 20.0, "la più recente è la prima (ORDER BY id DESC)");
+        assert_eq!(storico[1].pct, 10.0);
+    }
+
+    #[test]
+    fn un_allegato_si_puo_aggiungere_elencare_salvare_e_rimuovere() {
+        let (dir, mut conn, pid) = progetto();
+        registra_avanzamento(&mut conn, pid, "3", 10.0, None, None, None, None, None).unwrap();
+        let entry_id = approvazioni(&conn, pid).unwrap()[0].id;
+
+        let origine = dir.path().join("foto-cantiere.jpg");
+        std::fs::write(&origine, b"contenuto finto di una foto").unwrap();
+        let allegato_id = aggiungi_allegato(&conn, entry_id, origine.to_str().unwrap()).unwrap();
+
+        let elenco = elenco_allegati(&conn, entry_id).unwrap();
+        assert_eq!(elenco.len(), 1);
+        assert_eq!(elenco[0].nome_file, "foto-cantiere.jpg");
+        assert_eq!(elenco[0].mime.as_deref(), Some("image/jpeg"));
+        assert_eq!(elenco[0].dimensione, 27);
+
+        let storico = storico_avanzamento(&conn, pid, "3").unwrap();
+        assert_eq!(storico[0].allegati, 1);
+
+        let destinazione = dir.path().join("scaricato.jpg");
+        salva_allegato(&conn, allegato_id, destinazione.to_str().unwrap()).unwrap();
+        assert_eq!(std::fs::read(&destinazione).unwrap(), b"contenuto finto di una foto");
+
+        rimuovi_allegato(&conn, allegato_id).unwrap();
+        assert!(elenco_allegati(&conn, entry_id).unwrap().is_empty());
     }
 
     #[test]

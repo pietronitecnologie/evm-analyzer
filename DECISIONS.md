@@ -1278,3 +1278,33 @@ accettazione, nessuno storico.
      condividono più un contenitore `flex-1`: ogni colonna (compreso "Name", prima
      `flex-1`) ha ora una larghezza esplicita in pixel, così la larghezza totale
      della tabella è sempre la somma delle colonne, mai un valore fisso indipendente.
+
+141. **Allegati di avanzamento: blob in `progress_entry_attachment`, non percorsi su
+     disco esterni al progetto.** Un `.evmproj` è un file solo (sez. 2): se gli
+     allegati fossero percorsi assoluti su disco, spostare o copiare il progetto
+     romperebbe i riferimenti o lascerebbe orfani. Il contenuto entra come `BLOB`
+     nello stesso file SQLite — nessuna cartella parallela da sincronizzare con il
+     progetto, stesso principio già seguito per tutto il resto del progetto. `note`
+     su `progress_entry` restava già occupata dal motivo di rifiuto
+     (`schermate.rs::respingi`, dalla Fase 4-bis): una nuova colonna `author_note`
+     tiene la nota di chi registra l'avanzamento separata, così un rifiuto successivo
+     non la sovrascrive. Nessun `uploaded_by`/tracciamento di chi ha allegato cosa:
+     la tabella `progress_entry` stessa non traccia `entered_by` da quando esiste
+     (mai scritto in `registra_avanzamento`) — aggiungerlo solo per gli allegati
+     avrebbe introdotto un'incoerenza, non una funzionalità in più; resta un lavoro
+     per quando il sistema di login reale (prossimo passo, vedi todo.md) sostituirà
+     il selettore "Acting as".
+
+142. **Storico avanzamento: tutte le voci di `progress_entry` per un task, non solo
+     quella vigente — e un allegato si può aggiungere anche a una voce già passata,
+     non solo al momento dell'invio.** `avanzamento_elenco` mostra solo l'ultima voce
+     per riga (necessario per la tabella principale, altrimenti illeggibile a
+     centinaia di task); il nuovo `storico_avanzamento(conn, pid, uid)` è la vista
+     completa, dietro un pulsante "History" per riga invece che un'altra colonna
+     nella tabella già densa. Il flusso rapido in `AvanzamentoScreen.tsx` (scegliere
+     un file prima di "Submit for approval") copre il caso comune — allegare mentre
+     si registra — usando l'id restituito da `registra_avanzamento` (la firma è
+     cambiata da `Esito<()>` a `Esito<i64>` per questo); il dialogo storico copre il
+     caso "mi sono dimenticato" o "serve aggiungere un giustificativo a una voce di
+     due mesi fa", senza duplicare la logica: entrambi i percorsi chiamano lo stesso
+     comando `allegato_aggiungi`.

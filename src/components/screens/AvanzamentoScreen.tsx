@@ -6,16 +6,19 @@
 // vigente resta quello approvato finché la proposta non viene applicata.
 
 import * as React from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import { acDaOre } from "@evm-analyzer/engine";
 
-import { Info } from "lucide-react";
+import { Info, Paperclip, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type AssegnazioneRiga, type RigaAvanzamento, type RisorsaRiga, chiama } from "@/lib/api";
 import { Vuoto } from "./comuni";
-import { CAMPO, CELLA, TESTA_TABELLA, esegui, usePercorso, useDati } from "@/lib/schermate";
+import { AvanzamentoStorico } from "./AvanzamentoStorico";
+import { avviso, CAMPO, CELLA, TESTA_TABELLA, usePercorso, useDati } from "@/lib/schermate";
+import { useToastStore } from "@/stores/toast-store";
 
 interface Bozza {
   pct: string;
@@ -25,6 +28,10 @@ interface Bozza {
   ac: string;
   /** Ore consuntive cumulate del task, stringa vuota se non inserite. */
   ore: string;
+  /** Nota libera di chi registra l'avanzamento (distinta dal motivo di un rifiuto). */
+  nota: string;
+  /** Percorso di un file scelto da allegare alla voce appena registrata, o null. */
+  fileAllegato: string | null;
 }
 
 const ETICHETTE_STATO: Record<string, string> = {
@@ -39,6 +46,7 @@ export function AvanzamentoScreen() {
   const [bozze, setBozze] = React.useState<Record<string, Bozza>>({});
   const [risorse] = useDati<RisorsaRiga[]>("risorse_elenco", percorso);
   const [assegnazioni] = useDati<AssegnazioneRiga[]>("assegnazioni_elenco", percorso);
+  const [storicoUid, setStoricoUid] = React.useState<string | null>(null);
 
   /** AC da ore consuntive: ore × tariffa media delle risorse assegnate al task (motore). */
   function acDaOreTask(uid: string, ore: number | null): number | null {
@@ -62,32 +70,43 @@ export function AvanzamentoScreen() {
       fine: r.fineEffettiva ?? "",
       ac: r.ac ? String(r.ac) : "",
       ore: "",
+      nota: "",
+      fileAllegato: null,
     };
 
-  function modifica(uid: string, r: RigaAvanzamento, campo: keyof Bozza, v: string) {
+  function modifica(uid: string, r: RigaAvanzamento, campo: keyof Bozza, v: string | null) {
     setBozze((prev) => ({ ...prev, [uid]: { ...valore(r), ...prev[uid], [campo]: v } }));
+  }
+
+  async function sceglieAllegato(uid: string, r: RigaAvanzamento) {
+    const file = await open({ title: "Attach file", multiple: false, directory: false });
+    if (file) modifica(uid, r, "fileAllegato", file);
   }
 
   async function registra(r: RigaAvanzamento) {
     const b = valore(r);
-    const ok = await esegui("Progress not recorded", () =>
-      chiama(percorso!, "registra_avanzamento", {
+    try {
+      const voceId = await chiama<number>(percorso!, "registra_avanzamento", {
         uid: r.uid,
         pct: Number(b.pct),
         inizio: b.inizio || null,
         fine: b.fine || null,
         ac: b.ac === "" ? acDaOreTask(r.uid, b.ore === "" ? null : Number(b.ore)) : Number(b.ac),
         ore: b.ore === "" ? null : Number(b.ore),
-      }),
-      `Submitted for approval: ${r.uid}`,
-    );
-    if (ok) {
+        nota: b.nota || null,
+      });
+      if (b.fileAllegato) {
+        await chiama(percorso!, "allegato_aggiungi", { voceId, percorsoFile: b.fileAllegato });
+      }
+      useToastStore.getState().push({ title: `Submitted for approval: ${r.uid}` });
       setBozze((prev) => {
         const next = { ...prev };
         delete next[r.uid];
         return next;
       });
       await ricarica();
+    } catch (e) {
+      avviso("Progress not recorded", e);
     }
   }
 
@@ -138,6 +157,7 @@ export function AvanzamentoScreen() {
                 </span>
               </th>
               <th className={`${TESTA_TABELLA} text-right`}>Cumulative AC (€)</th>
+              <th className={TESTA_TABELLA}>Note</th>
               <th className={TESTA_TABELLA}>Latest proposal status</th>
               <th className={TESTA_TABELLA} />
             </tr>
@@ -192,6 +212,37 @@ export function AvanzamentoScreen() {
                       onChange={(e) => modifica(r.uid, r, "ac", e.target.value)}
                     />
                   </td>
+                  <td className={CELLA}>
+                    <input
+                      className={`${CAMPO} w-40`}
+                      value={b.nota}
+                      placeholder="Optional note…"
+                      aria-label={`Note for ${r.uid}`}
+                      onChange={(e) => modifica(r.uid, r, "nota", e.target.value)}
+                    />
+                    {b.fileAllegato ? (
+                      <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Paperclip className="size-3 shrink-0" />
+                        <span className="truncate">{b.fileAllegato.split(/[\\/]/).pop()}</span>
+                        <button
+                          type="button"
+                          aria-label="Remove chosen attachment"
+                          className="shrink-0 hover:text-foreground"
+                          onClick={() => modifica(r.uid, r, "fileAllegato", null)}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => void sceglieAllegato(r.uid, r)}
+                      >
+                        <Paperclip className="size-3" /> Attach file…
+                      </button>
+                    )}
+                  </td>
                   <td className={`${CELLA} text-xs`}>
                     <span className="text-muted-foreground">
                       {r.statoUltimaVoce ? ETICHETTE_STATO[r.statoUltimaVoce] ?? r.statoUltimaVoce : "—"}
@@ -201,9 +252,14 @@ export function AvanzamentoScreen() {
                     )}
                   </td>
                   <td className={CELLA}>
-                    <Button size="sm" variant="ghost" disabled={!modificata} onClick={() => registra(r)}>
-                      Submit for approval
-                    </Button>
+                    <div className="flex flex-col items-start gap-1">
+                      <Button size="sm" variant="ghost" disabled={!modificata} onClick={() => registra(r)}>
+                        Submit for approval
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setStoricoUid(r.uid)}>
+                        History
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -211,6 +267,14 @@ export function AvanzamentoScreen() {
           </tbody>
         </table>
       </div>
+      {storicoUid && percorso && (
+        <AvanzamentoStorico
+          percorso={percorso}
+          uid={storicoUid}
+          nome={righe.find((r) => r.uid === storicoUid)?.nome ?? storicoUid}
+          onClose={() => setStoricoUid(null)}
+        />
+      )}
     </div>
   );
 }

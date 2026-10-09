@@ -9,8 +9,14 @@
       in localStorage — decisione 140)
 
 # Modifiche a funzioni gia implementate
-- [ ] Negli avanzamenti dammi la possibilita di inserire delle note e dei file.
-- [ ] Visualizzazione degli storici dei avanzamenti per le task con relative note e file allegati.
+- [x] Negli avanzamenti dammi la possibilita di inserire delle note e dei file.
+      (fatto: campo Note + "Attach file…" al momento dell'invio in AvanzamentoScreen.tsx;
+      migrazione 0011, colonna `author_note` e tabella `progress_entry_attachment` (blob,
+      non percorsi esterni) — decisione 141)
+- [x] Visualizzazione degli storici dei avanzamenti per le task con relative note e file allegati.
+      (fatto: pulsante "History" per riga → AvanzamentoStorico.tsx, tutte le voci passate
+      con nota autore/motivo di rifiuto/allegati scaricabili o rimovibili, allegabili anche
+      a una voce già passata — decisione 142)
 
 # Fase 6 (sottoinsieme: qualità dati, report, prestazioni — vedi SPEC_FASE_6_QUALITA_REPORT_RILASCIO.md)
 Fuori da questo giro: §4 backup/sicurezza, §5 installer, §6 documentazione, §7 e2e, §8 criteri di

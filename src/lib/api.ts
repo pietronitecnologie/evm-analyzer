@@ -61,6 +61,29 @@ export interface RigaAvanzamento {
   ac: number;
 }
 
+export interface VoceStorico {
+  id: number;
+  statusDate: string;
+  registratoIl: string;
+  stato: string;
+  pct: number;
+  inizioEffettivo: string | null;
+  fineEffettiva: string | null;
+  ac: number | null;
+  ore: number | null;
+  notaAutore: string | null;
+  notaRifiuto: string | null;
+  allegati: number;
+}
+
+export interface AllegatoRiga {
+  id: number;
+  nomeFile: string;
+  mime: string | null;
+  dimensione: number;
+  caricatoIl: string;
+}
+
 export interface RigaApprovazione {
   id: number;
   uid: string;

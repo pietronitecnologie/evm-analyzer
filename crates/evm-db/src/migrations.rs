@@ -65,6 +65,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "0010_qualita_dati",
         sql: include_str!("../migrations/0010_qualita_dati.sql"),
     },
+    Migration {
+        version: 11,
+        name: "0011_avanzamento_allegati",
+        sql: include_str!("../migrations/0011_avanzamento_allegati.sql"),
+    },
 ];
 
 /// Versione di schema più recente conosciuta da questo binario.

@@ -209,9 +209,10 @@ fn registra_avanzamento(
     fine: Option<String>,
     ac: Option<f64>,
     ore: Option<f64>,
-) -> Result<(), String> {
+    nota: Option<String>,
+) -> Result<i64, String> {
     let (mut conn, id) = apri_con_id(&percorso)?;
-    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine, ac, ore)
+    schermate::registra_avanzamento(&mut conn, id, &uid, pct, inizio, fine, ac, ore, nota)
 }
 
 #[tauri::command]
@@ -230,6 +231,36 @@ fn approva_voce(percorso: String, voce_id: i64) -> Result<(), String> {
 fn respingi_voce(percorso: String, voce_id: i64, nota: String) -> Result<(), String> {
     let (conn, _) = apri_con_id(&percorso)?;
     schermate::respingi(&conn, voce_id, &nota)
+}
+
+#[tauri::command]
+fn storico_avanzamento(percorso: String, uid: String) -> Result<Vec<schermate::VoceStorico>, String> {
+    let (conn, id) = apri_con_id(&percorso)?;
+    schermate::storico_avanzamento(&conn, id, &uid)
+}
+
+#[tauri::command]
+fn allegati_elenco(percorso: String, voce_id: i64) -> Result<Vec<schermate::AllegatoRiga>, String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    schermate::elenco_allegati(&conn, voce_id)
+}
+
+#[tauri::command]
+fn allegato_aggiungi(percorso: String, voce_id: i64, percorso_file: String) -> Result<i64, String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    schermate::aggiungi_allegato(&conn, voce_id, &percorso_file)
+}
+
+#[tauri::command]
+fn allegato_salva(percorso: String, allegato_id: i64, percorso_destinazione: String) -> Result<(), String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    schermate::salva_allegato(&conn, allegato_id, &percorso_destinazione)
+}
+
+#[tauri::command]
+fn allegato_rimuovi(percorso: String, allegato_id: i64) -> Result<(), String> {
+    let (conn, _) = apri_con_id(&percorso)?;
+    schermate::rimuovi_allegato(&conn, allegato_id)
 }
 
 #[tauri::command]
@@ -755,6 +786,11 @@ pub fn run() {
             approvazioni_elenco,
             approva_voce,
             respingi_voce,
+            storico_avanzamento,
+            allegati_elenco,
+            allegato_aggiungi,
+            allegato_salva,
+            allegato_rimuovi,
             utenti_elenco,
             crea_utente,
             perimetri_elenco,
