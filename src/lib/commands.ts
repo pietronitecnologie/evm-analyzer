@@ -182,6 +182,12 @@ const progettoCommands: Command[] = [
     group: "Help",
     run: () => useLayoutStore.getState().setDiagnosticsDialogOpen(true),
   },
+  {
+    id: "aiuto.guida",
+    label: "Guide",
+    group: "Help",
+    run: () => useLayoutStore.getState().openScreen("guida", "Guide"),
+  },
 ];
 
 export const COMMANDS: Command[] = [

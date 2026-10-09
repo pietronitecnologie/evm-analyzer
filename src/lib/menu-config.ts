@@ -82,6 +82,6 @@ export const MENUS: MenuDef[] = [
   {
     id: "aiuto",
     label: "Help",
-    entries: [cmd("aiuto.diagnostica")],
+    entries: [cmd("aiuto.guida"), cmd("aiuto.diagnostica")],
   },
 ];

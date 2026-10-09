@@ -6,9 +6,10 @@
 // Change request (richiesta/approvazione/rigetto, crea la baseline collegata quando
 // approvata) e Scope (WBS inclusi/esclusi in `baseline_scope`). Le azioni di gestione
 // (blocco/archiviazione baseline, decisione sulla CR, modifica dello scope) sono
-// riservate a chi agisce con il ruolo coordinatore_piano (selettore "Acting as" nella
-// barra di contesto, DECISIONS.md): la richiesta di una variazione resta invece aperta
-// a chiunque, come l'invio di un avanzamento rispetto alla sua approvazione.
+// riservate a chi è autenticato con il ruolo coordinatore_piano (login reale,
+// DECISIONS.md #143-146 — prima un selettore libero "Acting as"): la richiesta di
+// una variazione resta invece aperta a chiunque, come l'invio di un avanzamento
+// rispetto alla sua approvazione.
 
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -57,7 +58,7 @@ export function BaselineCrScreen() {
       {!puoGestire && (
         <p className="border-b border-border-strong bg-zona-contesto px-4 py-1.5 text-xs text-muted-foreground">
           Read-only: management actions on this screen (lock/archive a baseline, decide a change request, edit scope) require
-          the plan coordinator role. Pick a user with that role in "Acting as" (top bar) to manage them.
+          the plan coordinator role. Sign in as a user with that role to manage them.
         </p>
       )}
       <Tabs.Content value="baseline" className="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden" forceMount>

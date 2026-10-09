@@ -73,9 +73,16 @@ accettazione formali — solo §1 (qualità dati), §2 (report) e §3 (prestazio
       esce dalla riga fissa e sparisce — decisione 146.
 
 # Documetnazione
-- [ ] 8. Manuale utente del software nella sua interezza in formato .md visualizzabile anche da software.
-- [ ] 9. progetto di esmpio con relativi avanzamenti, changes, tasks etc.. da richiamare nel manuale
+- [x] 8. Manuale utente del software nella sua interezza in formato .md visualizzabile anche da software.
+      (fatto: MANUALE_UTENTE.md alla radice, 29 capitoli — ogni schermata, login, ruoli,
+      glossario EVM, limiti noti; leggibile anche in-app da Help → Guide (GuideScreen.tsx,
+      react-markdown) — decisioni 147-151)
+- [x] 9. progetto di esmpio con relativi avanzamenti, changes, tasks etc.. da richiamare nel manuale
          utente come esempi e traccia.
+      (fatto: fixtures/progetto-esempio.evmproj, generato da
+      crates/evm-db/examples/progetto_esempio.rs (rieseguibile) chiamando le stesse funzioni
+      di libreria dell'app — baseline, change request, avanzamenti con rifiuto/correzione,
+      un allegato, un'anomalia di qualità dati accettata — decisione 147, capitolo 21 del manuale)
 
 # Agile - Kanban
 - [ ] 10. Permettimi di gestire completamente gli sprint Agile dall'applicazione. Mentieni l éventuale importazione

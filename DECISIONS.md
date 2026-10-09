@@ -1366,3 +1366,69 @@ accettazione, nessuno storico.
      riga fissa (`h-10` con `flex-wrap`, nessuna altezza che si adatti) e sparisce
      dalla vista — segnalato, non corretto in questo stesso passaggio (fuori
      scope: non è un difetto del login).
+
+147. **Il progetto di esempio è generato da uno script Rust committato
+     (`crates/evm-db/examples/progetto_esempio.rs`), non un file `.evmproj`
+     scritto a mano o da SQL grezzo.** Lo script chiama le stesse funzioni
+     pubbliche della libreria che usa l'app (`import::salva_piano`,
+     `controllo::imposta_budget_wbs`/`blocca_baseline_budget`/
+     `crea_change_request`/`approva_change_request`, `schermate::
+     registra_avanzamento`/`approva`/`respingi`/`aggiungi_allegato`,
+     `filoni::crea_filone`/`crea_gate`, `qualita::ricalcola_problemi`/
+     `accetta_problema`): i dati che il manuale descrive sono garantiti
+     passare per gli stessi controlli di validazione del resto dell'app, non
+     un file costruito a mano che potrebbe violare un vincolo mai esercitato
+     altrove. Unica eccezione deliberata: `registra_avanzamento`/
+     `snapshot_manuale` timbrano sempre con la data odierna reale
+     (`tempo::oggi_iso()`), non programmabile dalle funzioni pubbliche — per
+     raccontare tre cicli di monitoraggio su mesi diversi, ogni ciclo si
+     registra "oggi" e si retrodata con un `UPDATE` isolato subito dopo
+     (funzione `backdata`, commentata come eccezione e non come tecnica
+     generale). Rieseguibile in qualunque momento con `cargo run --example
+     progetto_esempio -p evm-db`: se la libreria cambia firma, lo script
+     smette di compilare invece di restare un fixture silenziosamente
+     disallineato.
+
+148. **Il manuale utente (`MANUALE_UTENTE.md`) è in italiano, con il testo
+     esatto dell'interfaccia (in inglese) citato tra virgolette «così».**
+     L'app stessa è tutta in inglese (decisione di ottobre di questa stessa
+     serie di incrementi), ma l'utenza descritta nel `README.md` (project
+     engineer e supervisori di un'impresa italiana) legge più comodamente
+     una guida in italiano — stesso compromesso già scelto per `README.md`/
+     `DECISIONS.md`, entrambi in italiano nonostante il codice e la UI siano
+     in inglese. Citare la stringa esatta invece di tradurla anche quella
+     evita l'ambiguità "che pulsante è, in inglese, quello che il manuale
+     chiama in italiano?".
+
+149. **Il manuale vive alla radice del repository, non in una cartella
+     `docs/`.** La cartella `docs/` di questo progetto è stata cancellata
+     su scelta esplicita dell'utente (vedi la cronologia di questa sessione:
+     "Leave it deleted" per le vecchie specifiche di fase) — ricrearla,
+     anche con contenuto nuovo, avrebbe potuto sembrare un'inversione di
+     quella scelta. `MANUALE_UTENTE.md` sta accanto a `README.md`/
+     `DECISIONS.md`/`todo.md`, nello stesso posto.
+
+150. **Il manuale è leggibile anche dentro l'app stessa (Help → Guide),
+     non solo da un editor di testo** — la richiesta originale lo chiedeva
+     esplicitamente ("visualizzabile anche da software"). `GuideScreen.tsx`
+     importa `MANUALE_UTENTE.md` come testo grezzo a tempo di build (Vite
+     `?raw`: nessuna richiesta di rete, funziona offline) e lo renderizza con
+     `react-markdown` + `remark-gfm` (due nuove dipendenze, nessuna libreria
+     di markdown esisteva già nel progetto). Stile scritto a mano in una
+     classe `.markdown-corpo` in `globals.css` invece di aggiungere
+     `@tailwindcss/typography`: un solo schermo non vale una dipendenza in
+     più. Questo restituisce una funzione reale al comando "Guide" nel menu
+     Help, rimosso come placeholder morto nella decisione 139 — non
+     reintrodotto come eccezione alla pulizia di quella decisione, ma perché
+     ora esiste davvero.
+
+151. **Trovati e corretti, mentre si scriveva il manuale, due riferimenti
+     residui al selettore "Acting as"** in `BaselineCrScreen.tsx` (un
+     commento e un banner mostrato all'utente) rimasti dalla decisione 145
+     (che lo ha sostituito con il login reale): il banner indicava ancora
+     "Pick a user with that role in «Acting as» (top bar)", un controllo che
+     non esiste più nella barra di contesto. Corretto in "Sign in as a user
+     with that role". Scrivere la documentazione da zero, schermata per
+     schermata, ha fatto emergere un'incongruenza che l'uso quotidiano
+     dell'app (sempre con lo stesso utente già autenticato) non avrebbe
+     mostrato.
