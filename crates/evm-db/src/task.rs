@@ -152,6 +152,120 @@ pub fn crea_task(conn: &mut Connection, project_id: i64, input: &NuovoTask) -> R
     })
 }
 
+/// Metodi EV validi (vincolo `ev_method` della tabella `task`, migrazione 0001).
+const METODI_EV: [&str; 7] = ["0_100", "50_50", "20_80", "unita_fisiche", "milestone_pesate", "loe", "pct_soggettiva"];
+
+fn task_non_trovato(cambiate: usize) -> Result<(), String> {
+    if cambiate == 0 {
+        return Err("task non trovato".into());
+    }
+    Ok(())
+}
+
+/// Modifica il nome di un task (editabile direttamente in tabella, todo.md).
+pub fn imposta_nome(conn: &Connection, project_id: i64, id: i64, nome: &str) -> Result<(), String> {
+    let nome = nome.trim();
+    if nome.is_empty() {
+        return Err("il nome del task è obbligatorio".into());
+    }
+    let cambiate = conn
+        .execute("UPDATE task SET name = ?3 WHERE id = ?1 AND project_id = ?2", params![id, project_id, nome])
+        .map_err(|e| e.to_string())?;
+    task_non_trovato(cambiate)
+}
+
+/// Modifica il nodo WBS di un task (`None`/stringa vuota lo rimuove dalla WBS).
+pub fn imposta_wbs(conn: &Connection, project_id: i64, id: i64, codice_wbs: Option<String>) -> Result<(), String> {
+    let wbs_id: Option<i64> = match codice_wbs.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
+        Some(codice) => Some(
+            conn.query_row(
+                "SELECT id FROM wbs WHERE project_id = ?1 AND code = ?2",
+                params![project_id, codice],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("codice WBS «{codice}» non presente nel progetto"))?,
+        ),
+        None => None,
+    };
+    let cambiate = conn
+        .execute("UPDATE task SET wbs_id = ?3 WHERE id = ?1 AND project_id = ?2", params![id, project_id, wbs_id])
+        .map_err(|e| e.to_string())?;
+    task_non_trovato(cambiate)
+}
+
+/// Modifica il metodo di misura EV di un task (`None` lo lascia non assegnato).
+pub fn imposta_metodo_ev(conn: &Connection, project_id: i64, id: i64, metodo_ev: Option<String>) -> Result<(), String> {
+    if let Some(m) = &metodo_ev {
+        if !METODI_EV.contains(&m.as_str()) {
+            return Err(format!("metodo EV non valido: {m}"));
+        }
+    }
+    let cambiate = conn
+        .execute("UPDATE task SET ev_method = ?3 WHERE id = ?1 AND project_id = ?2", params![id, project_id, metodo_ev])
+        .map_err(|e| e.to_string())?;
+    task_non_trovato(cambiate)
+}
+
+/// Modifica la milestone di un task.
+pub fn imposta_milestone(conn: &Connection, project_id: i64, id: i64, milestone: bool) -> Result<(), String> {
+    let cambiate = conn
+        .execute(
+            "UPDATE task SET is_milestone = ?3 WHERE id = ?1 AND project_id = ?2",
+            params![id, project_id, milestone as i64],
+        )
+        .map_err(|e| e.to_string())?;
+    task_non_trovato(cambiate)
+}
+
+/// Modifica le date pianificate di un task (editabili direttamente in tabella, todo.md).
+/// Stessa regola di calcolo di `crea_task`: con entrambe le date note, la durata si
+/// ricalcola sui giorni lavorativi del calendario — altrimenti resta quella già
+/// salvata (una sola data non basta per ricavarla).
+pub fn imposta_pianificazione(
+    conn: &Connection,
+    project_id: i64,
+    id: i64,
+    inizio: Option<String>,
+    fine: Option<String>,
+) -> Result<(), String> {
+    let inizio = match inizio.as_deref().filter(|v| !v.trim().is_empty()) {
+        Some(v) => Some(tempo::normalizza_data(v).ok_or_else(|| format!("data di inizio non valida: {v}"))?),
+        None => None,
+    };
+    let fine = match fine.as_deref().filter(|v| !v.trim().is_empty()) {
+        Some(v) => Some(tempo::normalizza_data(v).ok_or_else(|| format!("data di fine non valida: {v}"))?),
+        None => None,
+    };
+    if let (Some(i), Some(f)) = (&inizio, &fine) {
+        if f < i {
+            return Err("la data di fine precede quella di inizio".into());
+        }
+    }
+    let cambiate = match (&inizio, &fine) {
+        (Some(i), Some(f)) => {
+            let regole = calendario::regole_predefinite(conn, project_id)?;
+            let (Some(gi), Some(gf)) = (giorno_da_iso(i), giorno_da_iso(f)) else {
+                return Err("date non valide".into());
+            };
+            let durata_giorni = regole.giorni_lavorativi(gi, gf) as f64;
+            conn.execute(
+                "UPDATE task SET start_planned = ?3, finish_planned = ?4, duration_planned_days = ?5 WHERE id = ?1 AND project_id = ?2",
+                params![id, project_id, inizio, fine, durata_giorni],
+            )
+            .map_err(|e| e.to_string())?
+        }
+        _ => conn
+            .execute(
+                "UPDATE task SET start_planned = ?3, finish_planned = ?4 WHERE id = ?1 AND project_id = ?2",
+                params![id, project_id, inizio, fine],
+            )
+            .map_err(|e| e.to_string())?,
+    };
+    task_non_trovato(cambiate)
+}
+
 /// Elenco dei task del progetto, nell'ordine di UID.
 pub fn elenca_task(conn: &Connection, project_id: i64) -> Result<Vec<TaskRiga>, String> {
     let mut stmt = conn
@@ -429,5 +543,40 @@ mod tests {
         assert_eq!(spoglio.inizio_baseline, None);
         assert_eq!(spoglio.pct_reale, None, "mai registrato: None, non 0");
         assert_eq!(spoglio.filone, None);
+    }
+
+    #[test]
+    fn i_campi_di_un_task_si_modificano_direttamente_in_tabella() {
+        let (_dir, mut conn, pid) = progetto_con_wbs();
+        conn.execute("INSERT INTO wbs (project_id, parent_id, code, name) VALUES (?1, NULL, '2', 'Fase 2')", [pid]).unwrap();
+        let riga = crea_task(&mut conn, pid, &NuovoTask { nome: "Scavo".into(), codice_wbs: Some("1".into()), ..Default::default() }).unwrap();
+
+        imposta_nome(&conn, pid, riga.id, "  ").unwrap_err();
+        imposta_nome(&conn, pid, riga.id, "Scavo di sbancamento").unwrap();
+        assert_eq!(elenca_task(&conn, pid).unwrap()[0].nome, "Scavo di sbancamento");
+
+        imposta_wbs(&conn, pid, riga.id, Some("9.9".into())).unwrap_err();
+        imposta_wbs(&conn, pid, riga.id, Some("2".into())).unwrap();
+        assert_eq!(elenca_task(&conn, pid).unwrap()[0].wbs.as_deref(), Some("2"));
+        imposta_wbs(&conn, pid, riga.id, None).unwrap();
+        assert_eq!(elenca_task(&conn, pid).unwrap()[0].wbs, None);
+
+        imposta_metodo_ev(&conn, pid, riga.id, Some("non_esiste".into())).unwrap_err();
+        imposta_metodo_ev(&conn, pid, riga.id, Some("loe".into())).unwrap();
+        let metodo: Option<String> = conn.query_row("SELECT ev_method FROM task WHERE id = ?1", [riga.id], |r| r.get(0)).unwrap();
+        assert_eq!(metodo.as_deref(), Some("loe"));
+
+        imposta_milestone(&conn, pid, riga.id, true).unwrap();
+        assert!(elenca_task(&conn, pid).unwrap()[0].milestone);
+
+        imposta_pianificazione(&conn, pid, riga.id, Some("2026-01-05".into()), Some("2026-01-09".into())).unwrap();
+        let dopo = elenca_task(&conn, pid).unwrap();
+        assert_eq!(dopo[0].inizio.as_deref(), Some("2026-01-05"));
+        assert_eq!(dopo[0].fine.as_deref(), Some("2026-01-09"));
+        assert_eq!(dopo[0].durata_giorni, Some(5.0), "ricalcolata sui giorni lavorativi");
+
+        imposta_pianificazione(&conn, pid, riga.id, Some("2026-01-09".into()), Some("2026-01-05".into())).unwrap_err();
+
+        assert!(imposta_nome(&conn, pid, 999, "x").is_err(), "task inesistente");
     }
 }

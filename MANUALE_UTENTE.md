@@ -11,7 +11,7 @@ Guide**.
 
 Un progetto di esempio completo (`fixtures/progetto-esempio.evmproj`) accompagna
 questo manuale: molti capitoli lo richiamano con numeri concreti. Vedi il
-capitolo [21. Il progetto di esempio passo per passo](#21-il-progetto-di-esempio-passo-per-passo).
+capitolo [22. Il progetto di esempio passo per passo](#22-il-progetto-di-esempio-passo-per-passo).
 
 ## Indice
 
@@ -31,19 +31,20 @@ capitolo [21. Il progetto di esempio passo per passo](#21-il-progetto-di-esempio
 14. [Filoni e programma (workstream)](#14-filoni-e-programma-workstream)
 15. [Buffer e riserve](#15-buffer-e-riserve)
 16. [EVM Monitoring](#16-evm-monitoring)
-17. [Forecast: EAC, Earned Schedule, Monte Carlo](#17-forecast-eac-earned-schedule-monte-carlo)
-18. [Agile/Flow](#18-agileflow)
-19. [Cost governance](#19-cost-governance)
-20. [Qualità dati](#20-qualità-dati)
-21. [Il progetto di esempio passo per passo](#21-il-progetto-di-esempio-passo-per-passo)
-22. [Report](#22-report)
-23. [Perimetri e utenti](#23-perimetri-e-utenti)
-24. [Calendari di lavoro](#24-calendari-di-lavoro)
-25. [Diagnostica](#25-diagnostica)
-26. [Scorciatoie da tastiera](#26-scorciatoie-da-tastiera)
-27. [Ruoli e permessi](#27-ruoli-e-permessi)
-28. [Glossario EVM](#28-glossario-evm)
-29. [Limiti noti](#29-limiti-noti)
+17. [Forecast: EAC, Earned Schedule](#17-forecast-eac-earned-schedule)
+18. [Agile](#18-agile)
+19. [Kanban](#19-kanban)
+20. [Cost governance](#20-cost-governance)
+21. [Qualità dati](#21-qualità-dati)
+22. [Il progetto di esempio passo per passo](#22-il-progetto-di-esempio-passo-per-passo)
+23. [Report](#23-report)
+24. [Perimetri e utenti](#24-perimetri-e-utenti)
+25. [Calendari di lavoro](#25-calendari-di-lavoro)
+26. [Diagnostica](#26-diagnostica)
+27. [Scorciatoie da tastiera](#27-scorciatoie-da-tastiera)
+28. [Ruoli e permessi](#28-ruoli-e-permessi)
+29. [Glossario EVM](#29-glossario-evm)
+30. [Limiti noti](#30-limiti-noti)
 
 ---
 
@@ -113,7 +114,7 @@ link **«Open a different project…»** nella pagina di login permette di
 tornare indietro senza dover chiudere l'applicazione.
 
 Per creare altri utenti o reimpostare una password dimenticata, vedi
-[23. Perimetri e utenti](#23-perimetri-e-utenti).
+[24. Perimetri e utenti](#24-perimetri-e-utenti).
 
 ## 4. L'interfaccia: menu, barra di contesto, barra laterale
 
@@ -126,9 +127,9 @@ Per creare altri utenti o reimpostare una password dimenticata, vedi
 - **Project** — nome del progetto aperto.
 - **Status date** — «Latest» o una data di stato specifica tra quelle
   registrate; a fianco un'etichetta **Draft** / **Provisional** / **Final**
-  (vedi [20. Qualità dati](#20-qualità-dati) per cosa serve "Final").
+  (vedi [21. Qualità dati](#21-qualità-dati) per cosa serve "Final").
 - **Scope** — «Whole project» o un perimetro (sottoalbero WBS) tra quelli
-  definiti in [23. Perimetri e utenti](#23-perimetri-e-utenti).
+  definiti in [24. Perimetri e utenti](#24-perimetri-e-utenti).
 - **Baseline** — quale baseline di budget usare come riferimento nelle
   schermate di analisi (🔒 = bloccata).
 - Un'etichetta **«Base EV: without contingency»** / **«with contingency»**:
@@ -143,7 +144,7 @@ collassabile a sola icona con **Ctrl+B**, raggruppa le schermate:
 
 - **Work** — Progress, Approvals.
 - **Analysis** — Dashboard, WBS, Tasks and resources, Gantt, Forecast,
-  Workstreams and schedule, Agile/Flow, Buffer and reserves, EVM Monitoring.
+  Workstreams and schedule, Agile, Kanban, Buffer and reserves, EVM Monitoring.
 - **Governance** — Baseline and change requests, Cost governance, Data
   quality, Report.
 - **Coordination** — User scopes.
@@ -216,7 +217,7 @@ Contingency, Management reserve e Time buffer (vedi
 
 In fondo, una tabella **"Anomalies"** (UID, Task, Issue): un controllo
 rapido e leggero, distinto dal registro completo di
-[20. Qualità dati](#20-qualità-dati) — qui sono solo le incongruenze più
+[21. Qualità dati](#21-qualità-dati) — qui sono solo le incongruenze più
 immediate (es. un task avanzato senza data di inizio effettiva), non le
 regole più elaborate del motore.
 
@@ -484,7 +485,7 @@ progetto (non filtrati da Scope/Baseline della barra di contesto):
 Ogni sigla (BAC, CPI, SPI…) in questa e in altre schermate è sottolineata: ci
 si passa sopra il mouse (o ci si mette il focus da tastiera) per vedere nome
 per esteso, cosa misura, come si legge, la formula e il riferimento al
-libro — vedi anche [28. Glossario EVM](#28-glossario-evm).
+libro — vedi anche [29. Glossario EVM](#29-glossario-evm).
 
 ### Come leggerla
 
@@ -500,9 +501,9 @@ localizzare DOVE nasce uno scostamento visto a livello di progetto nel
 Dashboard: se il CPI di progetto è sceso, qui si vede quale nodo lo sta
 trascinando giù.
 
-## 17. Forecast: EAC, Earned Schedule, Monte Carlo
+## 17. Forecast: EAC, Earned Schedule
 
-La schermata **Forecast** ha tre schede.
+La schermata **Forecast** ha due schede.
 
 **EAC**: BAC, ETC, EAC (base), EAC (optimistic), VAC, TCPI — con un avviso
 se il TCPI supera 1,1 (serve un'efficienza superiore al 110% sul budget
@@ -512,15 +513,6 @@ EAC (base/optimistic) con il BAC come riferimento.
 **Earned Schedule**: richiede che il progetto abbia una data di inizio e una
 data di fine prevista. Mostra ES (Earned Schedule, in giorni), AT (Actual
 Time), SPI(t) = ES ÷ AT, SV(t) = ES − AT, e la data di fine stimata.
-
-**Monte Carlo**: simulazione per stimare quando si esaurirà il backlog
-residuo, a partire dallo storico di velocity (sprint) o di throughput
-(flusso). Campi: **Iterations**, **Seed** (con pulsante «New» per
-rigenerarlo), **Period (days)**, **Backlog**, **Team cost/period**
-(facoltativo), **Start from**. Il pulsante **«Run»** calcola **P50, P80,
-P90, Min/max, Mean** (e il costo a P80 se è stato inserito un costo per
-periodo), più un istogramma delle iterazioni. Ogni run si salva e resta
-richiamabile da **«Saved runs»**.
 
 ### Come leggerlo
 
@@ -544,32 +536,66 @@ leggibile fino alla fine. Se le due misure divergono molto verso la fine
 del progetto, fidati di SPI(t)/SV(t) per capire quanto si è davvero in
 anticipo o ritardo in giorni.
 
-**Monte Carlo**: **P50** è "metà delle simulazioni finisce entro questo
-numero di periodi" — troppo ottimista da solo per un impegno esterno. **P80**
-è il valore comunemente usato per una stima da comunicare con un margine di
-sicurezza ragionevole (80% delle simulazioni ci rientra). **P90** è per
-impegni dove il rischio di sforare è particolarmente costoso. Non prendere
-mai il Min come stima.
+## 18. Agile
 
-## 18. Agile/Flow
+La schermata **Agile** (gruppo Analysis nella barra laterale) è
+**autosufficiente**: si creano gli sprint, ci si assegnano i task e si legge
+l'avanzamento, tutto dentro l'app — nessun import esterno è necessario (un
+workbook con il foglio "Agile - Velocity" resta un modo facoltativo per
+popolarla con dati storici, non l'unico). Ha due schede.
 
-La schermata **Agile/Flow** ha quattro schede (la quarta, Monte Carlo, è la
-stessa della schermata Forecast).
+**Sprint**: una card per ogni sprint, in stile board di sviluppo software.
+Ogni card mostra:
 
-**Sprint**: dati storici importati dal workbook (foglio "Agile - Velocity").
-Mostra velocity media, costo/SP, backlog residuo, sprint residui, EAC (tempo
-e costo). Il campo **«Remaining backlog (SP)»** è l'unico dato inserito a
-mano qui: nessun import fornisce questa cifra.
+- numero e intervallo di date dello sprint, con icone per modificarlo o
+  rimuoverlo;
+- una **barra di avanzamento** calcolata dalla % reale dei task assegnati
+  allo sprint (la stessa `pctReale` registrata in
+  [11. Registrare l'avanzamento](#11-registrare-lavanzamento)) — non da uno
+  story-point "completato" inserito a mano: appena assegni un task allo
+  sprint e ne registri l'avanzamento, la barra si aggiorna da sola;
+- gli indicatori **SP planned/completed**, **EV**, **AC**, **CPI** — questi
+  restano legati ai campi opzionali "story point pianificati/completati"
+  dello sprint (per chi li usa per la velocity) e non sono necessari per
+  vedere l'avanzamento, che viene sempre dai task;
+- l'elenco dei **task assegnati**, con un segno di spunta verde per quelli
+  completati (100%), l'etichetta **critical** per i task sul percorso
+  critico, e la percentuale di avanzamento di ciascuno.
+
+Sotto le card: **«New sprint»** (numero, date, SP pianificati facoltativi)
+per crearne uno; **«Assign a task to a sprint»** per collegare un task
+esistente a uno sprint (lo stesso punto da cui, in alternativa, si assegna
+un task al Kanban — vedi [19. Kanban](#19-kanban): un task appartiene
+all'uno o all'altro, mai a entrambi); **«Remaining backlog (SP)»**, campo
+facoltativo che serve solo per il forecast "sprint residui / EAC" nei KPI
+sopra le card.
 
 **Velocity**: grafico a barre della velocity per sprint con media mobile
-(finestra configurabile).
+(finestra configurabile) — richiede gli SP completati dello sprint.
 
-**Flow**: a differenza dello sprint, **qui tutto è manuale** — nessun import
-fornisce dati di flusso Kanban. **«Record a flow period»** (Period
-start/end, Throughput, Cycle time, WIP observed) registra un periodo
-osservato; la tabella li elenca con un'icona cestino per rimuoverli.
+## 19. Kanban
 
-## 19. Cost governance
+La schermata **Kanban** (gruppo Analysis nella barra laterale) ha due
+schede.
+
+**Board**: colonne configurabili (**«New column»**: nome e se è una colonna
+"done", il cui effort conta come completato) con le freccette ←/→ per
+riordinarle, una matita per rinominarle, un cestino per eliminarle (solo se
+vuote). Ogni colonna e ogni sotto-task ha un **selettore di colore**: una
+riga di pallini (una delle otto tinte fisse, o il pallino tratteggiato per
+"nessun colore") sotto il nome della colonna o dentro la card della
+sotto-task. Dentro ogni colonna, le card delle **sotto-task** (create da
+**«New sub-task»**: task, colonna, nome, punti di effort) si spostano tra
+colonne con il menu a tendina nella card. In fondo, **«Effort spent»**
+riepiloga, per ogni task assegnato al Kanban, i punti totali e quelli nelle
+colonne "done".
+
+**Flow**: **qui tutto è manuale** — nessun import fornisce dati di flusso
+Kanban. **«Record a flow period»** (Period start/end, Throughput, Cycle
+time, WIP observed) registra un periodo osservato; la tabella li elenca con
+un'icona cestino per rimuoverli.
+
+## 20. Cost governance
 
 La schermata **Cost governance** mostra una sintesi di budget e riserve
 (quanti nodi WBS hanno un budget, contingency allocata/usata, management
@@ -595,7 +621,7 @@ un riepilogo in un colpo d'occhio prima di un report, non per registrare un
 nuovo consumo (per quello, la schermata Buffer and reserves ha il contesto
 — righi/periodi — per scegliere l'importo giusto).
 
-## 20. Qualità dati
+## 21. Qualità dati
 
 La schermata **Data quality** è il registro delle anomalie: problemi che il
 motore di calcolo rileva (budget mancante, date incoerenti, scostamenti
@@ -617,7 +643,7 @@ accettata non torna "aperta" solo perché viene ricalcolata (resta accettata
 finché qualcuno non la riapre), e una risolta da sola (la causa non c'è
 più) si marca automaticamente come tale.
 
-## 21. Il progetto di esempio passo per passo
+## 22. Il progetto di esempio passo per passo
 
 `fixtures/progetto-esempio.evmproj` è un piccolo progetto realistico:
 **"Rifacimento impianto elettrico — Edificio A"**, generato dallo script
@@ -661,7 +687,7 @@ Apri questo file (**File → Open**) e segui i capitoli di questo manuale
 schermata per schermata: ogni numero citato sopra si ritrova esattamente
 in Dashboard, WBS, Baseline and change requests, Progress e Data quality.
 
-## 22. Report
+## 23. Report
 
 La schermata **Report** genera un documento HTML autosufficiente, pensato
 per la stampa in A4: a sinistra le sezioni attivabili (una casella per
@@ -674,11 +700,7 @@ PDF"). Il report porta una filigrana **"Provisional"** se la status date non
 è "Final", e in piè di pagina un hash del contenuto più la versione
 dell'app, per poterlo verificare più avanti.
 
-La sezione Monte Carlo non è ancora disponibile nel report (nessuna run "del
-report" senza prima scegliere quale run riportare — vedi
-[29. Limiti noti](#29-limiti-noti)).
-
-## 23. Perimetri e utenti
+## 24. Perimetri e utenti
 
 La schermata **User scopes** (gruppo Coordination nella barra laterale) ha
 due sezioni.
@@ -701,9 +723,9 @@ caselle dei **Roles**:
 - **Administrator**
 
 Un utente può avere più ruoli insieme (cumulabili). Vedi
-[27. Ruoli e permessi](#27-ruoli-e-permessi) per cosa sblocca ciascuno.
+[28. Ruoli e permessi](#28-ruoli-e-permessi) per cosa sblocca ciascuno.
 
-## 24. Calendari di lavoro
+## 25. Calendari di lavoro
 
 La schermata **Working calendars** (**Project → Working calendars…**) elenca
 gli schemi di calendario del progetto: nome, giorni lavorativi, festivi, e
@@ -716,14 +738,14 @@ usa lunedì-venerdì senza festivi.
 Il pulsante **«Recalculate task durations»** in alto ricalcola la durata dei
 task secondo il calendario in uso.
 
-## 25. Diagnostica
+## 26. Diagnostica
 
 **Help → Diagnostics…** apre una finestra con la versione dell'app e, se un
 progetto è aperto, la sua dimensione (numero di task, nodi WBS, status
 date registrate) — utile per capire se un rallentamento segnalato dipende
 dalla scala del progetto.
 
-## 26. Scorciatoie da tastiera
+## 27. Scorciatoie da tastiera
 
 | Scorciatoia | Azione |
 |---|---|
@@ -735,7 +757,7 @@ dalla scala del progetto.
 Ogni comando della barra dei menu è raggiungibile anche dalla palette
 (**Ctrl+K**): basta digitarne il nome.
 
-## 27. Ruoli e permessi
+## 28. Ruoli e permessi
 
 Un utente può avere uno o più di questi ruoli insieme:
 
@@ -755,7 +777,7 @@ Senza il ruolo richiesto, l'azione resta visibile ma disattivata (o la
 schermata passa in sola lettura con un banner che lo spiega) — non
 scompare, per capire comunque cosa esiste e a chi chiedere.
 
-## 28. Glossario EVM
+## 29. Glossario EVM
 
 Lo stesso testo che compare passando il mouse su ogni sigla nell'app
 (§ = paragrafo del Capitolo 3 del libro "Impresa Numerica").
@@ -784,14 +806,11 @@ Un indice **undefined** (mostrato come «—») non è un errore: significa che
 il denominatore è zero (es. CPI senza ancora nessun costo registrato) — non
 un valore calcolabile, non un valore nascosto.
 
-## 29. Limiti noti
+## 30. Limiti noti
 
 Questi limiti sono intenzionali, non dimenticanze — annotati qui perché
 l'utente non li scambi per un difetto:
 
-- **Il report non include ancora una sezione Monte Carlo**: lo storico delle
-  simulazioni ha più fonti (sprint o flusso) e nessuna è "quella del
-  report" senza un selettore dedicato, non ancora costruito.
 - **L'esportazione PDF non è stata verificata su Windows/macOS** da questo
   ambiente di sviluppo (solo Linux): la resa dell'SVG inline nella finestra
   di stampa di sistema resta da controllare su quelle piattaforme.
@@ -802,7 +821,7 @@ l'utente non li scambi per un difetto:
 - **Un utente creato con una versione dell'app precedente al login reale**,
   se il progetto aveva già almeno un utente configurato, non riceve una
   password automaticamente: va reimpostata da un amministratore (vedi
-  [23. Perimetri e utenti](#23-perimetri-e-utenti)).
+  [24. Perimetri e utenti](#24-perimetri-e-utenti)).
 - **La barra di contesto, a finestra molto stretta**, può nascondere il
   gruppo di destra (ricerca, notifiche, utente autenticato): un difetto di
   layout noto, non legato al login in sé — allargare la finestra lo

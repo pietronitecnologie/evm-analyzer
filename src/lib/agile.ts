@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
-// Adatta i dati Agile/Flow del backend al motore (agileMetrics/flow). Il backlog
+// Adatta i dati Agile del backend al motore (agileMetrics/flow). Il backlog
 // residuo (SP) è un parametro a mano (nessun import lo fornisce, vedi DECISIONS.md):
 // qui si calcola comunque con 0 se assente, così sprint/velocity/costo per SP restano
 // disponibili; sprintRemaining/eacTimeDays/eacCost vanno ignorati dalla UI quando

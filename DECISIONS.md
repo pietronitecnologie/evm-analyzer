@@ -1551,3 +1551,58 @@ accettazione, nessuno storico.
      EVM Monitoring, Forecast e Cost governance (capitoli 10, 16, 17, 19) —
      la stessa richiesta del todo.md copriva anche quelle quattro
      schermate, non solo la contingency.
+
+158. **Task editabili direttamente in tabella (todo.md 13): nome, codice WBS,
+     metodo EV, milestone, date pianificate — stesso pattern di
+     `DataTable`/`EditableCell` già esistente, nessun componente nuovo.**
+     Cinque nuovi setter a campo singolo in `task.rs` (stesso stile di
+     `risorse::imposta_tariffa` — nessuna voce di audit log, solo le
+     creazioni lo richiedono) più i comandi Tauri corrispondenti.
+     `imposta_pianificazione` ricalcola `duration_planned_days` solo se
+     arrivano sia inizio sia fine insieme (stessa logica di `crea_task`):
+     modificare una sola data aggiorna quella data e basta, la durata resta
+     quella che era. Verificato con un backend Tauri finto in Playwright
+     (non solo a tipi): qui si è trovato che un mock che ritorna lo stesso
+     riferimento di array ad ogni `invoke()` fa fallire silenziosamente il
+     re-render (React confronta per riferimento, l'IPC vero invece
+     serializza sempre un oggetto nuovo) — i mock di questo tipo in futuro
+     devono restituire `JSON.parse(JSON.stringify(...))`, non l'oggetto
+     mutato in posto.
+
+159. **Monte Carlo rimosso dall'app (richiesta esplicita dell'utente:
+     "perché non utilizzata"), non solo nascosto.** Toccava due schermate
+     (Forecast e Agile/Flow, stesso pannello condiviso): rimossi il
+     pannello (`MonteCarloPanel.tsx`), l'adattatore (`lib/montecarlo.ts`),
+     la voce di comando/menu, i due comandi Tauri (`monte_carlo_salva`/
+     `monte_carlo_elenco`), il modulo Rust (`montecarlo.rs`) e la tabella
+     `monte_carlo_run` (migrazione 0015, `DROP TABLE`: schema a v15) —
+     niente lasciato a metà o solo scollegato dalla UI. Non toccato invece
+     `packages/engine/src/montecarlo.ts`: è codice di libreria autonomo e
+     testato, non legato alla UI rimossa, e l'utente ha parlato della
+     funzionalità (il pannello), non del motore di calcolo condiviso.
+
+160. **Agile e Kanban separati in due schermate (non più una schermata
+     "Agile/Kanban" a tab), richiesta esplicita dopo che in questa stessa
+     sessione era stato proposto solo di rinominare la voce di menu.**
+     `AgileFlowScreen.tsx` sostituito da `AgileScreen.tsx` (Sprint,
+     Velocity) e `KanbanScreen.tsx` (Board, Flow): due voci di navigazione
+     (`agile`, `kanban`) al posto di una (`agile-flow`), due screenId in
+     `ScreenPlaceholder.tsx`. Flow resta sotto Kanban (è una metrica di
+     flusso Kanban, non di sprint); Velocity resta sotto Agile (è calcolata
+     sugli stessi sprint). Manuale: capitolo 18 "Agile/Kanban" diviso in 18
+     "Agile" e 19 "Kanban", capitoli successivi rinumerati (19→30 diventano
+     20→30... fino a 30 "Limiti noti").
+
+161. **Avanzamento di sprint letto dai task assegnati (`pctReale`), non più
+     solo dagli story point completati inseriti a mano — la richiesta di
+     rendere Agile "autosufficiente, senza bisogno di importazione
+     esterna".** La card di ogni sprint mostra ora l'elenco dei task
+     assegnati con il loro avanzamento reale e una barra calcolata come
+     media di quelle percentuali: un dato già presente nel progetto
+     (la stessa `pctReale` di Task e risorse) che prima la schermata Agile
+     non mostrava affatto, lasciando "SP completed" (un campo manuale o di
+     import) come unica fonte di progresso. I campi SP pianificati/
+     completati restano, ma solo per chi li usa per EV/AC/CPI/velocity —
+     non sono più necessari per vedere l'avanzamento dello sprint. Nessuna
+     nuova colonna DB: niente "story point per task" introdotto, perché
+     l'informazione richiesta (avanzamento) esisteva già a livello di task.

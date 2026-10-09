@@ -404,16 +404,12 @@ export interface SprintRiga {
   costo: number | null;
 }
 
-export interface TaskSprintRiga {
-  uid: string;
-  nome: string;
-}
-
 export interface ColonnaKanban {
   id: number;
   nome: string;
   posizione: number;
   isDone: boolean;
+  colore: string | null;
 }
 
 export interface SottoTaskKanban {
@@ -424,6 +420,7 @@ export interface SottoTaskKanban {
   nome: string;
   puntiEffort: number;
   posizione: number;
+  colore: string | null;
 }
 
 export interface RiepilogoEffortTask {
@@ -454,18 +451,6 @@ export interface PeriodoFlusso {
   throughput: number | null;
   cycleTimeGiorni: number | null;
   wipOsservato: number | null;
-}
-
-export type TipoMonteCarlo = "velocity" | "throughput";
-
-export interface EsecuzioneMonteCarlo {
-  id: number;
-  tipo: TipoMonteCarlo;
-  nIter: number;
-  seed: number;
-  parametriJson: string;
-  risultatoJson: string;
-  creatoIl: string;
 }
 
 export interface Governance {

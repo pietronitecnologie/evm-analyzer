@@ -96,7 +96,18 @@ accettazione formali — solo §1 (qualità dati), §2 (report) e §3 (prestazio
       (fatto: nuova scheda Kanban in Agile/Flow — colonne create/rinominate/riordinate/
       eliminate, sotto-task con punteggio di effort spostabili tra colonne, riepilogo
       punti totali/completati per task — decisione 154)
-- [ ] 13. prmetti di modificare le task direttametne i tabella, sia in date che in WBS e gli altri campi.
+- [x] 13. prmetti di modificare le task direttametne i tabella, sia in date che in WBS e gli altri campi.
+      (fatto: colonne WBS/Nome/Inizio pianificato/Fine pianificata editabili in Tasks and
+      resources, 5 nuovi setter in task.rs — decisione 158)
+- [x] 14. Rimuovi Monte Carlo (non utilizzata). Rendi Agile autosufficiente (niente import
+      esterno necessario): avanzamento sprint e task tutto integrato nella sezione. Separa
+      Agile e Kanban in due sezioni distinte (non più tab di un'unica schermata "Agile/Kanban").
+      (fatto: Monte Carlo rimosso ovunque — pannello, comandi Tauri, modulo Rust, tabella DB
+      (migrazione 0015) — decisione 159; AgileScreen.tsx/KanbanScreen.tsx separati, due voci
+      di menu — decisione 160; card sprint con avanzamento calcolato dai task assegnati
+      (pctReale), non più solo da SP completati manuali — decisione 161; colore
+      personalizzabile per colonne e sotto-task Kanban (palette fissa di 8 tinte) — vedi
+      anche decisione 154)
 
 Via via che si procede: decisioni in DECISIONS.md, non solo qui.
 

@@ -97,13 +97,13 @@ function deltaGiorni(pianificata: string | null, baseline: string | null): numbe
 
 const COLONNE_TASK: ColumnDef<RigaTaskVista, unknown>[] = [
   { id: "uid", accessorKey: "uid", header: "UID", size: 70 },
-  { id: "wbs", accessorKey: "wbs", header: "WBS", size: 80, cell: (c) => c.getValue<string | null>() ?? "—" },
-  { id: "nome", accessorKey: "nome", header: "Name", size: 220 },
+  { id: "wbs", accessorKey: "wbs", header: "WBS", size: 80, meta: { editable: true }, cell: (c) => c.getValue<string | null>() ?? "—" },
+  { id: "nome", accessorKey: "nome", header: "Name", size: 220, meta: { editable: true } },
   { id: "filone", accessorKey: "filone", header: "Workstream", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "sprintOKanban", accessorKey: "sprintOKanban", header: "Sprint/Kanban", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "metodoEv", accessorKey: "metodoEv", header: "EV method", cell: (c) => c.getValue<string | null>() ?? "—" },
-  { id: "inizioPianificato", accessorKey: "inizioPianificato", header: "Planned start", cell: (c) => c.getValue<string | null>() ?? "—" },
-  { id: "finePianificata", accessorKey: "finePianificata", header: "Planned finish", cell: (c) => c.getValue<string | null>() ?? "—" },
+  { id: "inizioPianificato", accessorKey: "inizioPianificato", header: "Planned start", meta: { editable: true }, cell: (c) => c.getValue<string | null>() ?? "—" },
+  { id: "finePianificata", accessorKey: "finePianificata", header: "Planned finish", meta: { editable: true }, cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "inizioBaseline", accessorKey: "inizioBaseline", header: "Baseline start", cell: (c) => c.getValue<string | null>() ?? "—" },
   { id: "fineBaseline", accessorKey: "fineBaseline", header: "Baseline finish", cell: (c) => c.getValue<string | null>() ?? "—" },
   {
@@ -237,6 +237,26 @@ function SchedaTask({ percorso }: { percorso: string }) {
     }
   }
 
+  async function modificaCella(rowId: string, columnId: string, valore: string) {
+    const id = Number(rowId);
+    const riga = righe.find((r) => r.id === rowId);
+    const ok = await esegui("Change not saved", async () => {
+      switch (columnId) {
+        case "nome":
+          return chiama(percorso, "task_imposta_nome", { id, nome: valore });
+        case "wbs":
+          return chiama(percorso, "task_imposta_wbs", { id, codiceWbs: valore.trim() === "" ? null : valore });
+        case "inizioPianificato":
+          return chiama(percorso, "task_imposta_pianificazione", { id, inizio: valore.trim() === "" ? null : valore, fine: riga?.finePianificata ?? null });
+        case "finePianificata":
+          return chiama(percorso, "task_imposta_pianificazione", { id, inizio: riga?.inizioPianificato ?? null, fine: valore.trim() === "" ? null : valore });
+        default:
+          return undefined;
+      }
+    });
+    if (ok) await ricaricaTask();
+  }
+
   if (!task || !datiMon) return <Vuoto messaggio="Loading…" />;
 
   return (
@@ -261,6 +281,8 @@ function SchedaTask({ percorso }: { percorso: string }) {
           quickFilters={FILTRI_TASK}
           pinnedColumnIds={["uid", "wbs", "nome"]}
           emptyMessage="No task. Fill in the form below or import a plan."
+          getCellKind={(_, columnId) => (["wbs", "nome", "inizioPianificato", "finePianificata"].includes(columnId) ? "input" : "normale")}
+          onCellEdit={modificaCella}
         />
       </div>
 

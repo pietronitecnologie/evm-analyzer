@@ -18,6 +18,19 @@ fn e<E: std::fmt::Display>(err: E) -> String {
     err.to_string()
 }
 
+/// Colori selezionabili per colonne e sotto-task (stessa lista di
+/// `src/lib/kanban-colori.ts`, tenute allineate a mano: poche voci, cambiano di rado).
+const COLORI_VALIDI: [&str; 8] = ["rosso", "arancione", "giallo", "verde", "teal", "blu", "viola", "grigio"];
+
+fn colore_valido(colore: &Option<String>) -> Esito<()> {
+    if let Some(c) = colore {
+        if !COLORI_VALIDI.contains(&c.as_str()) {
+            return Err(format!("colore non valido: {c}"));
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ColonnaKanban {
@@ -25,20 +38,34 @@ pub struct ColonnaKanban {
     pub nome: String,
     pub posizione: i64,
     pub is_done: bool,
+    pub colore: Option<String>,
 }
 
 pub fn colonne(conn: &Connection, pid: i64) -> Esito<Vec<ColonnaKanban>> {
     let mut st = conn
-        .prepare("SELECT id, name, position, is_done FROM kanban_column WHERE project_id = ?1 ORDER BY position")
+        .prepare("SELECT id, name, position, is_done, color FROM kanban_column WHERE project_id = ?1 ORDER BY position")
         .map_err(e)?;
     let righe = st
         .query_map([pid], |r| {
-            Ok(ColonnaKanban { id: r.get(0)?, nome: r.get(1)?, posizione: r.get(2)?, is_done: r.get::<_, i64>(3)? != 0 })
+            Ok(ColonnaKanban { id: r.get(0)?, nome: r.get(1)?, posizione: r.get(2)?, is_done: r.get::<_, i64>(3)? != 0, colore: r.get(4)? })
         })
         .map_err(e)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(e)?;
     Ok(righe)
+}
+
+/// Cambia (o toglie, con `None`) il colore di una colonna — azione indipendente dal
+/// rinominarla, pensata per un selettore di colore a parte nella UI.
+pub fn imposta_colore_colonna(conn: &Connection, pid: i64, id: i64, colore: Option<String>) -> Esito<()> {
+    colore_valido(&colore)?;
+    let cambiate = conn
+        .execute("UPDATE kanban_column SET color = ?3 WHERE id = ?1 AND project_id = ?2", params![id, pid, colore])
+        .map_err(e)?;
+    if cambiate == 0 {
+        return Err("colonna non trovata".into());
+    }
+    Ok(())
 }
 
 /// Crea una colonna in coda alla lavagna (posizione = ultima + 1).
@@ -130,6 +157,7 @@ pub struct SottoTaskKanban {
     pub nome: String,
     pub punti_effort: f64,
     pub posizione: i64,
+    pub colore: Option<String>,
 }
 
 /// Tutte le sotto-task della lavagna (di ogni task assegnato al kanban): la scheda
@@ -137,7 +165,7 @@ pub struct SottoTaskKanban {
 pub fn sottotask_elenco(conn: &Connection, pid: i64) -> Esito<Vec<SottoTaskKanban>> {
     let mut st = conn
         .prepare(
-            "SELECT k.id, t.uid_source, t.name, k.column_id, k.name, k.effort_points, k.position
+            "SELECT k.id, t.uid_source, t.name, k.column_id, k.name, k.effort_points, k.position, k.color
              FROM kanban_subtask k JOIN task t ON t.id = k.task_id
              WHERE k.project_id = ?1
              ORDER BY k.column_id, k.position",
@@ -153,12 +181,26 @@ pub fn sottotask_elenco(conn: &Connection, pid: i64) -> Esito<Vec<SottoTaskKanba
                 nome: r.get(4)?,
                 punti_effort: r.get(5)?,
                 posizione: r.get(6)?,
+                colore: r.get(7)?,
             })
         })
         .map_err(e)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(e)?;
     Ok(righe)
+}
+
+/// Cambia (o toglie) il colore di una sotto-task — azione indipendente dal
+/// modificarne nome/punteggio.
+pub fn imposta_colore_sottotask(conn: &Connection, pid: i64, id: i64, colore: Option<String>) -> Esito<()> {
+    colore_valido(&colore)?;
+    let cambiate = conn
+        .execute("UPDATE kanban_subtask SET color = ?3 WHERE id = ?1 AND project_id = ?2", params![id, pid, colore])
+        .map_err(e)?;
+    if cambiate == 0 {
+        return Err("sotto-task non trovata".into());
+    }
+    Ok(())
 }
 
 fn task_kanban_id_di(conn: &Connection, pid: i64, uid: &str) -> Esito<i64> {
@@ -352,5 +394,22 @@ mod tests {
         let (_d, conn, pid, _uid) = progetto_con_task_kanban();
         let col = crea_colonna(&conn, pid, "To do", false).unwrap();
         assert!(crea_sottotask(&conn, pid, "999", col, "Fantasma", 1.0).is_err());
+    }
+
+    #[test]
+    fn colonne_e_sotto_task_si_colorano_con_una_palette_fissa() {
+        let (_d, conn, pid, uid) = progetto_con_task_kanban();
+        let col = crea_colonna(&conn, pid, "To do", false).unwrap();
+        let sub = crea_sottotask(&conn, pid, &uid, col, "Schema elettrico", 3.0).unwrap();
+
+        assert!(imposta_colore_colonna(&conn, pid, col, Some("fucsia".into())).is_err(), "colore inesistente");
+        imposta_colore_colonna(&conn, pid, col, Some("verde".into())).unwrap();
+        assert_eq!(colonne(&conn, pid).unwrap()[0].colore.as_deref(), Some("verde"));
+        imposta_colore_colonna(&conn, pid, col, None).unwrap();
+        assert_eq!(colonne(&conn, pid).unwrap()[0].colore, None);
+
+        assert!(imposta_colore_sottotask(&conn, pid, sub, Some("fucsia".into())).is_err());
+        imposta_colore_sottotask(&conn, pid, sub, Some("blu".into())).unwrap();
+        assert_eq!(sottotask_elenco(&conn, pid).unwrap()[0].colore.as_deref(), Some("blu"));
     }
 }

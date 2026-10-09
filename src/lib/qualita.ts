@@ -4,7 +4,7 @@
 // Registro unico delle anomalie (specifica Fase 6, §1): raccoglie in un'unica lista gli
 // avvisi che il motore calcola già per schermata (WBS, EVM, Agile, Flusso, Filoni,
 // Riserve) e la lista delle risorse (Q007/Q013) — stesse funzioni già richiamate da
-// AgileFlowScreen/FiloniScreen/RiserveScreen/TaskRisorseScreen, nessun calcolo nuovo.
+// AgileScreen/KanbanScreen/FiloniScreen/RiserveScreen/TaskRisorseScreen, nessun calcolo nuovo.
 //
 // Fuori da questo primo giro (vedi DECISIONS.md): gli avvisi EVM_*/PV_NOT_MONOTONIC a
 // livello di singolo task/nodo WBS (centinaia di righe "CPI non definito" per task con

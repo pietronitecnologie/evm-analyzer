@@ -133,12 +133,6 @@ const progettoCommands: Command[] = [
     run: () => useLayoutStore.getState().openScreen("forecast", "Forecast"),
   },
   {
-    id: "analisi.monte-carlo",
-    label: "Monte Carlo…",
-    group: "Analysis",
-    run: () => useLayoutStore.getState().openScreen("forecast", "Forecast"),
-  },
-  {
     id: "analisi.qualita-dati",
     label: "Data quality…",
     group: "Analysis",

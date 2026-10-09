@@ -7,9 +7,8 @@
 // srcDoc>, isolato dallo stile dell'app), l'esportazione HTML e la stampa/PDF sono
 // esattamente lo stesso documento, non tre resi diversi da mantenere sincronizzati.
 //
-// Fuori da questo giro (vedi DECISIONS.md): sezione Monte Carlo (richiede di scegliere
-// quale run salvata mostrare — nessuna è "quella attuale" tra le fonti velocity/
-// throughput); logo caricato dall'utente (solo il nome azienda in testo); paginazione
+// Fuori da questo giro (vedi DECISIONS.md): logo caricato dall'utente (solo il nome
+// azienda in testo); paginazione
 // "Pagina x di y" interattiva nell'anteprima a schermo (i numeri di pagina corretti
 // escono solo nella stampa/PDF, via contatori CSS — l'anteprima scorre senza spezzare in
 // pagine finte).

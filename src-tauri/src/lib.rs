@@ -10,7 +10,6 @@ use evm_db::calendario;
 use evm_db::controllo;
 use evm_db::filoni;
 use evm_db::kanban;
-use evm_db::montecarlo;
 use evm_db::qualita;
 use evm_db::risorse;
 use evm_db::export::{self, CacheExport, OpzioniExport};
@@ -147,6 +146,37 @@ fn crea_task(percorso: String, input: NuovoTaskInput) -> Result<TaskRiga, String
             milestone: input.milestone,
         },
     )
+}
+
+/// Modifica il nome di un task (modificabile direttamente in tabella).
+#[tauri::command]
+fn task_imposta_nome(percorso: String, id: i64, nome: String) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    task::imposta_nome(&conn, pid, id, &nome)
+}
+
+#[tauri::command]
+fn task_imposta_wbs(percorso: String, id: i64, codice_wbs: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    task::imposta_wbs(&conn, pid, id, codice_wbs)
+}
+
+#[tauri::command]
+fn task_imposta_metodo_ev(percorso: String, id: i64, metodo_ev: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    task::imposta_metodo_ev(&conn, pid, id, metodo_ev)
+}
+
+#[tauri::command]
+fn task_imposta_milestone(percorso: String, id: i64, milestone: bool) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    task::imposta_milestone(&conn, pid, id, milestone)
+}
+
+#[tauri::command]
+fn task_imposta_pianificazione(percorso: String, id: i64, inizio: Option<String>, fine: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    task::imposta_pianificazione(&conn, pid, id, inizio, fine)
 }
 
 /// Elenco dei task del progetto aperto da `percorso`.
@@ -747,6 +777,12 @@ fn kanban_elimina_colonna(percorso: String, id: i64) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn kanban_imposta_colore_colonna(percorso: String, id: i64, colore: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::imposta_colore_colonna(&conn, pid, id, colore)
+}
+
+#[tauri::command]
 fn kanban_sottotask_elenco(percorso: String) -> Result<Vec<kanban::SottoTaskKanban>, String> {
     let (conn, pid) = apri_con_id(&percorso)?;
     kanban::sottotask_elenco(&conn, pid)
@@ -783,30 +819,15 @@ fn kanban_elimina_sottotask(percorso: String, id: i64) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn kanban_imposta_colore_sottotask(percorso: String, id: i64, colore: Option<String>) -> Result<(), String> {
+    let (conn, pid) = apri_con_id(&percorso)?;
+    kanban::imposta_colore_sottotask(&conn, pid, id, colore)
+}
+
+#[tauri::command]
 fn kanban_riepilogo_effort(percorso: String) -> Result<Vec<kanban::RiepilogoEffortTask>, String> {
     let (conn, pid) = apri_con_id(&percorso)?;
     kanban::riepilogo_effort(&conn, pid)
-}
-
-// ------------------------------------------------------------------- Monte Carlo
-
-#[tauri::command]
-fn monte_carlo_salva(
-    percorso: String,
-    tipo: String,
-    n_iter: i64,
-    seed: i64,
-    parametri_json: String,
-    risultato_json: String,
-) -> Result<i64, String> {
-    let (conn, id) = apri_con_id(&percorso)?;
-    montecarlo::monte_carlo_salva(&conn, id, &tipo, n_iter, seed, &parametri_json, &risultato_json)
-}
-
-#[tauri::command]
-fn monte_carlo_elenco(percorso: String, tipo: Option<String>) -> Result<Vec<montecarlo::EsecuzioneMonteCarlo>, String> {
-    let (conn, id) = apri_con_id(&percorso)?;
-    montecarlo::monte_carlo_elenco(&conn, id, tipo.as_deref())
 }
 
 // --------------------------------------------------------------- Filoni e gate
@@ -920,6 +941,11 @@ pub fn run() {
             commit_plan_import,
             resync_plan,
             crea_task,
+            task_imposta_nome,
+            task_imposta_wbs,
+            task_imposta_metodo_ev,
+            task_imposta_milestone,
+            task_imposta_pianificazione,
             elenca_task,
             task_evm_elenco,
             dashboard,
@@ -986,14 +1012,14 @@ pub fn run() {
             kanban_rinomina_colonna,
             kanban_riordina_colonne,
             kanban_elimina_colonna,
+            kanban_imposta_colore_colonna,
             kanban_sottotask_elenco,
             kanban_crea_sottotask,
             kanban_sposta_sottotask,
             kanban_modifica_sottotask,
             kanban_elimina_sottotask,
+            kanban_imposta_colore_sottotask,
             kanban_riepilogo_effort,
-            monte_carlo_salva,
-            monte_carlo_elenco,
             approva_consumo_riserva,
             elenco_filoni,
             crea_filone,

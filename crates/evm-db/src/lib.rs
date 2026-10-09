@@ -7,7 +7,6 @@ pub mod calendario;
 pub mod controllo;
 pub mod filoni;
 pub mod kanban;
-pub mod montecarlo;
 pub mod qualita;
 pub mod risorse;
 pub mod import;

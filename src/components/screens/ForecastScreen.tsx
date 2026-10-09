@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
-// Forecast (specifica Fase 5, §3.6): schede EAC, Earned Schedule, Monte Carlo. Nessun
-// calcolo nuovo per EAC: l'adattatore già usato da Dashboard/WBS/Task (lib/monitoraggio.ts)
-// porta ETC/EAC/EAC ottimistica/VAC/TCPI per ogni data di stato dentro `EvmOutput`. Earned
-// Schedule chiama una funzione del motore (`earnedSchedule`) finora esportata ma non ancora
-// richiamata da nessuna schermata. Monte Carlo è lo stesso `MonteCarloPanel` condiviso con
-// Agile/Flow (specifica: "stessi controlli e salvataggio"), sulle stesse fonti (sprint
-// velocity/throughput di flusso): vedi DECISIONS.md.
+// Forecast (specifica Fase 5, §3.6): schede EAC, Earned Schedule. Nessun calcolo nuovo
+// per EAC: l'adattatore già usato da Dashboard/WBS/Task (lib/monitoraggio.ts) porta
+// ETC/EAC/EAC ottimistica/VAC/TCPI per ogni data di stato dentro `EvmOutput`. Earned
+// Schedule chiama una funzione del motore (`earnedSchedule`) finora esportata ma non
+// ancora richiamata da nessuna schermata. La scheda Monte Carlo (e il pannello
+// condiviso con Agile) è stata rimossa su richiesta dell'utente: inutilizzata (vedi
+// DECISIONS.md).
 
 import * as React from "react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -16,23 +16,19 @@ import { diffDays, earnedSchedule } from "@evm-analyzer/engine";
 
 import { EChart } from "@/components/charts/EChart";
 import { leggiColoriGrafico } from "@/components/charts/tema";
-import type { DatiAgile, DatiMonitoraggio, Perimetro, PeriodoFlusso } from "@/lib/api";
+import type { DatiMonitoraggio, Perimetro } from "@/lib/api";
 import { eur, num } from "@/lib/format";
 import { coperturaTaskPct, filtraPerPerimetro, puntoTestata, vistaMonitoraggio, type PuntoVista, type VistaMonitoraggio } from "@/lib/monitoraggio";
-import { costruisciFonti } from "@/lib/montecarlo";
 import { usePercorso, useDati } from "@/lib/schermate";
 import { useProjectContextStore } from "@/stores/project-context-store";
 import { Vuoto } from "./comuni";
 import { Kpi } from "./kpi";
-import { MonteCarloPanel } from "./MonteCarloPanel";
 
 export function ForecastScreen() {
   const percorso = usePercorso();
   const ctx = useProjectContextStore();
   const [datiMon] = useDati<DatiMonitoraggio>("dati_monitoraggio", percorso);
   const [perimetri] = useDati<Perimetro[]>("perimetri_elenco", percorso);
-  const [datiAgile] = useDati<DatiAgile>("agile_dati", percorso);
-  const [flusso] = useDati<PeriodoFlusso[]>("flusso_elenco", percorso);
 
   const codiceRadice = React.useMemo(() => perimetri?.find((p) => p.id === ctx.scopeId)?.codiceWbs ?? null, [perimetri, ctx.scopeId]);
   const vista = React.useMemo(() => (datiMon ? vistaMonitoraggio(filtraPerPerimetro(datiMon, codiceRadice)) : null), [datiMon, codiceRadice]);
@@ -50,7 +46,6 @@ export function ForecastScreen() {
         {[
           { v: "eac", t: "EAC" },
           { v: "earned-schedule", t: "Earned Schedule" },
-          { v: "monte-carlo", t: "Monte Carlo" },
         ].map(({ v, t }) => (
           <Tabs.Trigger
             key={v}
@@ -71,13 +66,6 @@ export function ForecastScreen() {
       </Tabs.Content>
       <Tabs.Content value="earned-schedule" className="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden" forceMount>
         <SchedaEarnedSchedule vista={vista} testata={testata} dataInizio={ctx.dataInizio} dataFinePrevista={ctx.dataFinePrevista} />
-      </Tabs.Content>
-      <Tabs.Content value="monte-carlo" className="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden" forceMount>
-        {!datiAgile || !flusso ? (
-          <Vuoto messaggio="Loading…" />
-        ) : (
-          <MonteCarloPanel percorso={percorso} fonti={costruisciFonti(datiAgile, flusso)} />
-        )}
       </Tabs.Content>
     </Tabs.Root>
   );
