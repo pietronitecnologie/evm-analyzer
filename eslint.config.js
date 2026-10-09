@@ -33,6 +33,14 @@ export default tseslint.config(
     },
   },
   {
+    // Script Node (benchmark, non build dell'app): nessun plugin React.
+    files: ["**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.node },
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,

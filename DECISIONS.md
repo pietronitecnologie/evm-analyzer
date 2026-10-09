@@ -1193,3 +1193,54 @@ accettazione, nessuno storico.
      documento finale — SHA-256 via Web Crypto (`crypto.subtle.digest`, disponibile nel
      contesto della webview come in ogni browser), troncato ai primi 16 caratteri
      esadecimali per restare leggibile a piè di pagina.
+
+136. **Suite di prestazioni (specifica Fase 6 §3): un binario Rust separato
+     (`bench/`, nuovo membro del workspace Cargo) invece di un test `#[bench]` o di
+     criterion.** Serve generare progetti sintetici a tre scale (200/2.000/20.000 task,
+     20 filoni, 50 risorse, 52 date di stato, le stesse quantità della specifica) con
+     inserimenti massivi in un'unica transazione, poi cronometrare `apertura_progetto`
+     e `query_gantt` su quei file veri — un `#[bench]` nightly-only o criterion
+     avrebbero aggiunto una dipendenza/toolchain in più solo per il micro-benchmarking,
+     quando qui serve soprattutto orchestrare SQLite su disco. Confronto con una
+     baseline persistita in `bench/baseline.json` (JSON semplice, non un formato
+     proprietario di una libreria di benchmark) con tolleranza 20% più una soglia di
+     rumore `SOGLIA_RUMORE_MS = 20.0`: sotto i 20 ms il confronto percentuale è puro
+     rumore di misura (osservato empiricamente — `query_gantt_200` è passato da 4,7 ms a
+     6,5 ms fra due run consecutive a parità di codice), non una regressione.
+     Cold-start-to-Home, fps di scroll e memoria a riposo restano fuori da questa
+     suite: non sono misurabili senza una finestra Tauri reale, e sono rimandati
+     all'incremento di test visivi/E2E (anch'esso fuori dallo scope di questo passaggio
+     di Fase 6, per direttiva esplicita). Import XML ed export workbook non hanno un
+     benchmark dedicato: sono già esercitati a fondo dai test di integrazione Rust
+     esistenti (`tests/import_esempi.rs`, `tests/workbook_fixture.rs`) e il loro costo è
+     dominato dal parsing di libreria, non da codice di questo progetto da sorvegliare
+     per regressioni.
+
+137. **Metà TypeScript della suite (`bench/engine.bench.mjs`), uno script Node a parte
+     invece di un test Vitest.** `monitoraggioEvm()` e `simulateVelocity()` sono
+     funzioni pure del motore (nessun I/O): non serve l'ambiente di test, basta
+     `npx tsx` o `node --experimental-strip-types`. Scrive nello stesso
+     `bench/baseline.json` del binario Rust, per fusione (`{...baseline, ...nuovo}`) —
+     un file solo per tutta la suite di prestazioni, non due, evitando di dover
+     ricordare quale metà guardare. Le date sintetiche dei 52 snapshot si generano con
+     `addDays("2026-01-01", s * 7)` (la stessa funzione del motore, non aritmetica
+     manuale su mese/giorno): un primo tentativo con `` `2026-${mese}-${giorno}` ``
+     calcolato a mano ha prodotto `"2026-13-01"` oltre il quarantaquattresimo snapshot
+     (il motore lo ha respinto correttamente con `EngineInputError`) — la lezione è che
+     generare date sintetiche richiede sempre le stesse funzioni di calendario del
+     motore, mai una riformulazione ad-hoc.
+
+138. **Bug di prestazioni reale trovato dalla suite, non dal codice in produzione:
+     `monitoraggioEvm` ricalcolava `perWbsMisure` e `perFiloneMisure` con un
+     `righeEvm.filter(...)` per ogni nodo WBS/filone, dentro il raggruppamento già
+     fatto una volta da `rollup()`.** O(task × nodi) per ogni snapshot invece di
+     O(task): a 5.000 task e 500 nodi WBS (il rapporto 10:1 della specifica) e 52
+     snapshot, il primo run della suite TypeScript ha misurato 2.474 ms contro
+     l'obiettivo di 1.000 ms della specifica (§3) — non un'ipotesi, una misura reale
+     che ha fallito il controllo automatico. Corretto raggruppando `righeEvm` una sola
+     volta per chiave (nuova funzione privata `raggruppaPer` in `monitoring.ts`) e
+     derivando sia la somma (`perXMisure`) sia l'indice EVM (`perX`) dallo stesso
+     gruppo, senza un secondo passaggio sull'array intero; `rollup()` in `evm.ts` resta
+     com'era (usata altrove con gruppi piccoli, dove il costo non si vede) — non è
+     stata toccata la sua firma pubblica. Dopo la correzione: 735 ms a 5.000 task, sotto
+     obiettivo; i 158 test del motore restano verdi senza modifiche.

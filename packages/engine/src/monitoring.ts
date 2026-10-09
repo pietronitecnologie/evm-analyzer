@@ -8,7 +8,7 @@
 // avanzamenti registrati. Nessun valore è calcolato fuori da questo modulo.
 
 import { isoToDays } from "./dates";
-import { evm, rollup, sumEvm, type EvmInput, type EvmOutput } from "./evm";
+import { evm, sumEvm, type EvmInput, type EvmOutput } from "./evm";
 import { type ISODate, type Money, type ProjectParams, type Warning } from "./types";
 
 export interface MonTask {
@@ -121,6 +121,18 @@ export function pvLineareTask(budget: Money, start: ISODate | null, finish: ISOD
   return budget * frazione;
 }
 
+/** Raggruppa gli elementi per chiave in un solo passaggio (vedi monitoraggioEvm). */
+function raggruppaPer<T, K>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
+  const gruppi = new Map<K, T[]>();
+  for (const item of items) {
+    const chiave = keyFn(item);
+    const lista = gruppi.get(chiave);
+    if (lista) lista.push(item);
+    else gruppi.set(chiave, [item]);
+  }
+  return gruppi;
+}
+
 /**
  * Serie EVM sui punti di stato. Per ogni snapshot: PV alla sua data, EV = Σ budget × %
  * fisica, AC = Σ AC cumulato. Il BAC è la somma dei budget dei task.
@@ -154,12 +166,14 @@ export function monitoraggioEvm(
       });
     }
     const totale = sumEvm(righeEvm);
-    const gruppi = rollup(righeEvm, (x) => x.wbs, params);
+    // Raggruppamento in un solo passaggio: evita di riscandire righeEvm per ogni
+    // chiave (rollup() da solo richiederebbe un secondo filter per ricavare perXMisure).
     const perWbs: Record<string, EvmOutput> = {};
-    for (const [codice, out] of gruppi) perWbs[codice] = out;
     const perWbsMisure: Record<string, EvmInput> = {};
-    for (const codice of gruppi.keys()) {
-      perWbsMisure[codice] = sumEvm(righeEvm.filter((x) => x.wbs === codice));
+    for (const [codice, lista] of raggruppaPer(righeEvm, (x) => x.wbs)) {
+      const misura = sumEvm(lista);
+      perWbsMisure[codice] = misura;
+      perWbs[codice] = evm(misura, params);
     }
     // Un task è già la propria riga: nessun raggruppamento, solo evm() riga per riga.
     const perTask: Record<string, EvmOutput> = {};
@@ -169,13 +183,13 @@ export function monitoraggioEvm(
       perTaskMisure[riga.uid] = riga;
     }
     // Solo i task con filone assegnato: nessun bucket "non assegnato" (come perWbs).
-    const righeConFilone = righeEvm.filter((x): x is EvmInput & { wbs: string; uid: string; filone: string } => x.filone !== null);
-    const gruppiFilone = rollup(righeConFilone, (x) => x.filone, params);
     const perFilone: Record<string, EvmOutput> = {};
-    for (const [nome, out] of gruppiFilone) perFilone[nome] = out;
     const perFiloneMisure: Record<string, EvmInput> = {};
-    for (const nome of gruppiFilone.keys()) {
-      perFiloneMisure[nome] = sumEvm(righeConFilone.filter((x) => x.filone === nome));
+    for (const [nome, lista] of raggruppaPer(righeEvm, (x) => x.filone)) {
+      if (nome === null) continue;
+      const misura = sumEvm(lista);
+      perFiloneMisure[nome] = misura;
+      perFilone[nome] = evm(misura, params);
     }
     punti.push({
       date: snap.date,

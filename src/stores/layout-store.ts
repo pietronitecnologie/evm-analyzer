@@ -15,6 +15,7 @@ interface LayoutState {
   commandPaletteOpen: boolean;
   importWizardOpen: boolean;
   resyncDialogOpen: boolean;
+  diagnosticsDialogOpen: boolean;
   tabs: DocumentTab[];
   activeTabId: string | null;
 
@@ -22,6 +23,7 @@ interface LayoutState {
   setCommandPaletteOpen: (open: boolean) => void;
   setImportWizardOpen: (open: boolean) => void;
   setResyncDialogOpen: (open: boolean) => void;
+  setDiagnosticsDialogOpen: (open: boolean) => void;
 
   openScreen: (screenId: string, title: string) => void;
   closeTab: (id: string) => void;
@@ -39,6 +41,7 @@ export const useLayoutStore = create<LayoutState>()(
       commandPaletteOpen: false,
       importWizardOpen: false,
       resyncDialogOpen: false,
+      diagnosticsDialogOpen: false,
       tabs: [],
       activeTabId: null,
 
@@ -47,6 +50,7 @@ export const useLayoutStore = create<LayoutState>()(
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
       setImportWizardOpen: (open) => set({ importWizardOpen: open }),
       setResyncDialogOpen: (open) => set({ resyncDialogOpen: open }),
+      setDiagnosticsDialogOpen: (open) => set({ diagnosticsDialogOpen: open }),
 
       openScreen: (screenId, title) => {
         const existing = get().tabs.find((t) => t.screenId === screenId);

@@ -184,6 +184,12 @@ const progettoCommands: Command[] = [
     group: "Project",
     run: () => useLayoutStore.getState().setResyncDialogOpen(true),
   },
+  {
+    id: "aiuto.diagnostica",
+    label: "Diagnostics…",
+    group: "Help",
+    run: () => useLayoutStore.getState().setDiagnosticsDialogOpen(true),
+  },
 ];
 
 const placeholderCommands: Command[] = [

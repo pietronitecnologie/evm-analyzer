@@ -6,6 +6,7 @@ import { Group, Panel, Separator, useDefaultLayout, type PanelImperativeHandle }
 
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { ContextBar } from "@/components/layout/ContextBar";
+import { DiagnosticsDialog } from "@/components/layout/DiagnosticsDialog";
 import { DocumentTabs } from "@/components/layout/DocumentTabs";
 import { EsitoImportazione } from "@/components/layout/EsitoImportazione";
 import { ImportPlanWizard } from "@/components/layout/ImportPlanWizard";
@@ -104,6 +105,7 @@ export function AppShell() {
       <EsitoImportazione />
       <ImportPlanWizard />
       <ResyncPlanDialog />
+      <DiagnosticsDialog />
       <Toaster />
     </TooltipProvider>
   );

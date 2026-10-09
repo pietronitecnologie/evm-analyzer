@@ -142,6 +142,7 @@ export const MENUS: MenuDef[] = [
       cmd("aiuto.glossario"),
       cmd("aiuto.scorciatoie"),
       sep,
+      cmd("aiuto.diagnostica"),
       cmd("aiuto.informazioni"),
       cmd("aiuto.licenza"),
     ],
