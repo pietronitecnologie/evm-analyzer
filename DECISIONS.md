@@ -1140,3 +1140,56 @@ accettazione, nessuno storico.
      normale. Nessun canale di invalidazione immediato tra schede: fino a 15 s di
      scarto tra un'azione (ricalcola/accetta/riapri) e l'aggiornamento del numero in
      barra, accettato come compromesso rispetto a un bus di eventi tra componenti.
+
+## Fase 6, incremento 2 — Report (SPEC_FASE_6_QUALITA_REPORT_RILASCIO.md §2)
+
+130. **Un solo documento HTML per anteprima, esportazione e stampa — non tre resi da
+     tenere sincronizzati.** `lib/report.ts::generaReportHtml` produce una stringa HTML
+     autosufficiente (CSS inline scritto a mano, nessuna classe Tailwind né variabile
+     CSS dell'app: quelle esistono solo dentro l'app, un file esportato non le avrebbe).
+     `ReportScreen` la mostra in un `<iframe srcDoc={html}>` — isolato dallo stile
+     dell'app per costruzione, non per attenzione a non farlo perdere — "Esporta HTML"
+     scrive la stessa stringa su disco, "Stampa/Esporta PDF" chiama
+     `iframeRef.current.contentWindow.print()`, che stampa solo il contenuto
+     dell'iframe (comportamento standard del browser/webview), non la finestra dell'app
+     attorno: nessuna CSS `print:hidden` da aggiungere ad `AppShell` per nascondere
+     menu/barra laterale durante la stampa, il problema non si pone.
+
+131. **PDF: stampa della webview, nessuna libreria Rust di riserva.** Percorso
+     principale della specifica (§2.3.1) scelto senza il fallback del §2.3.2 (`typst` o
+     simile) — la specifica stessa chiede di scegliere una sola strada. Non verificabile
+     sulle tre piattaforme da questo ambiente di sviluppo (solo Linux): la resa
+     dell'SVG inline e delle regole `@page`/`break-inside` nella finestra "Salva come
+     PDF" di Windows/macOS resta da controllare quando l'app girerà lì — annotato come
+     rischio noto, non silenziato.
+
+132. **Il rendering SVG di ECharts in modalità SSR è stato eseguito davvero, non solo
+     controllato a tipi.** `echarts.init(null, null, { renderer: "svg", ssr: true })` +
+     `renderToSVGString()` è un uso dell'API mai comparso altrove nel codice (il resto
+     dell'app disegna sempre su un `<div>` reale via `EChart.tsx`): verificato con uno
+     script Node scartato subito dopo (stesso principio delle decisioni 72/99 — misurare
+     prima di fidarsi della firma dei tipi) prima di scriverlo dentro `report.ts`.
+
+133. **Scope ridotto rispetto alla specifica, dichiarato non indovinato.** Sezione Monte
+     Carlo assente: lo storico delle run salvate (decisione 101) ha più fonti
+     (velocity/throughput) e nessuna è "quella del report" senza un selettore dedicato —
+     rimandato. Nessun caricamento di un logo (solo il nome azienda in testo). Nessun
+     "Pagina x di y" interattivo nell'anteprima a schermo: i numeri di pagina via
+     contatori CSS esistono solo quando il documento è davvero impaginato (stampa/PDF),
+     non in uno scroll HTML continuo — l'anteprima mostra il contenuto, non una
+     simulazione di impaginazione.
+
+134. **`versione_app`, un comando Tauri proprio invece di `@tauri-apps/api/app`'s
+     `getVersion()`.** Quest'ultima richiederebbe una capability Tauri in più da
+     verificare (quali permessi minimi §4.5 della specifica concede davvero) solo per
+     leggere una stringa; `env!("CARGO_PKG_VERSION")` è una costante di compilazione,
+     stesso livello di fiducia di ogni altro comando già scritto in questo backend,
+     nessun nuovo varco da apri.
+
+135. **L'hash del report copre il contenuto delle sezioni assemblate, non il documento
+     finale che lo contiene.** Includere l'hash nel testo che viene hashato è
+     circolare (l'hash cambierebbe il testo che dovrebbe riassumere); si calcola su
+     `corpo` (le sezioni HTML già composte) prima di inserirlo nel piè di pagina del
+     documento finale — SHA-256 via Web Crypto (`crypto.subtle.digest`, disponibile nel
+     contesto della webview come in ogni browser), troncato ai primi 16 caratteri
+     esadecimali per restare leggibile a piè di pagina.

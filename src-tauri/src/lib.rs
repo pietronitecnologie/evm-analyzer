@@ -722,6 +722,15 @@ fn marca_snapshot_finale(percorso: String, attore_id: Option<i64>, snapshot_id: 
     qualita::marca_snapshot_finale(&conn, pid, attore_id, snapshot_id, motivo_override.as_deref())
 }
 
+/// Versione dell'app (intestazione/piè di pagina del report, specifica Fase 6 §2.2).
+/// Comando proprio invece di `@tauri-apps/api/app`'s `getVersion()` per non dover
+/// concedere un permesso Tauri in più solo per questo: `env!` è una costante di
+/// compilazione, nessun I/O, nessuna capability da aprire.
+#[tauri::command]
+fn versione_app() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -796,6 +805,7 @@ pub fn run() {
             accetta_problema,
             riapri_problema,
             marca_snapshot_finale,
+            versione_app,
             risorse_elenco,
             crea_risorsa,
             imposta_tariffa,

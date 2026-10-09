@@ -153,6 +153,12 @@ const progettoCommands: Command[] = [
     run: () => useLayoutStore.getState().openScreen("qualita-dati", "Data quality"),
   },
   {
+    id: "file.esporta-report",
+    label: "Export PDF report…",
+    group: "File",
+    run: () => useLayoutStore.getState().openScreen("report", "Report"),
+  },
+  {
     id: "progetto.calendari",
     label: "Working calendars…",
     group: "Project",
@@ -183,7 +189,6 @@ const progettoCommands: Command[] = [
 const placeholderCommands: Command[] = [
   placeholder("file.progetti-recenti", "Recent projects", "File"),
   placeholder("file.importa-pacchetto", "Import package…", "File"),
-  placeholder("file.esporta-report", "Export PDF report…", "File"),
   placeholder("file.esporta-pacchetto-lavoro", "Export work package…", "File"),
   placeholder("file.esporta-pacchetto-avanzamento", "Export progress package…", "File"),
   placeholder("file.esporta-csv", "Export CSV of current view", "File"),
