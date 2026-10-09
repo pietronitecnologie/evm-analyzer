@@ -83,7 +83,7 @@ export function vistaMonitoraggio(d: DatiMonitoraggio): VistaMonitoraggio {
 }
 
 /** `codice` è `radice` stessa o un suo discendente (`"1.2"` sotto `"1"`). */
-function sottoalbero(codice: string | null, radice: string): boolean {
+export function sottoalbero(codice: string | null, radice: string): boolean {
   return codice !== null && (codice === radice || codice.startsWith(`${radice}.`));
 }
 

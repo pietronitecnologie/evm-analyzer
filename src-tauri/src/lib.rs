@@ -188,9 +188,9 @@ fn crea_wbs(percorso: String, codice: String, nome: String) -> Result<(), String
 }
 
 #[tauri::command]
-fn gantt_elenco(percorso: String) -> Result<Vec<schermate::RigaGantt>, String> {
+fn gantt_elenco(percorso: String, baseline_id: Option<i64>) -> Result<Vec<schermate::RigaGantt>, String> {
     let (conn, id) = apri_con_id(&percorso)?;
-    schermate::gantt(&conn, id)
+    schermate::gantt(&conn, id, baseline_id)
 }
 
 #[tauri::command]

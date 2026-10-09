@@ -1,15 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
-// Modello del Gantt di sola lettura: scala, giorni con fine settimana e festivi dal calendario
-// di progetto, posizione delle barre e delle frecce di precedenza. Nessuna modifica dei dati.
+// Modello del Gantt di sola lettura: scala (con zoom), giorni con fine settimana e
+// festivi dal calendario di progetto, posizione delle barre attuali/baseline e delle
+// frecce di precedenza. Nessuna modifica dei dati.
 
 import { daysToIso, isoToDays } from "@evm-analyzer/engine";
 
 import type { Calendario, RigaGantt } from "@/lib/api";
 
-/** Larghezza di un giorno in pixel. */
-export const GIORNO_PX = 18;
+/** Livelli di zoom (specifica Fase 5 §3.4): giorno/settimana/mese/trimestre, selezionabili o con Ctrl+rotella. */
+export const LIVELLI_ZOOM = [
+  { id: "giorno", etichetta: "Day", pxPerGiorno: 18 },
+  { id: "settimana", etichetta: "Week", pxPerGiorno: 6 },
+  { id: "mese", etichetta: "Month", pxPerGiorno: 2.2 },
+  { id: "trimestre", etichetta: "Quarter", pxPerGiorno: 0.8 },
+] as const;
+
+export type LivelloZoom = (typeof LIVELLI_ZOOM)[number]["id"];
+
+/** Larghezza di un giorno in pixel al livello di zoom predefinito ("giorno"). */
+export const GIORNO_PX: number = LIVELLI_ZOOM[0].pxPerGiorno;
 /** Altezza di una riga. */
 export const RIGA_PX = 28;
 /** Giorni di margine prima e dopo il progetto. */
@@ -37,6 +48,8 @@ export interface BarraGantt {
   /** Estremi in pixel usati dalle frecce di precedenza. */
   xInizio: number;
   xFine: number;
+  /** Barra sottile della baseline sotto la barra attuale; `null` se il task non ha date di baseline. */
+  baseline: { x: number; larghezza: number } | null;
 }
 
 export interface FrecciaGantt {
@@ -65,16 +78,23 @@ function lavorativo(maschera: number, settimana: number): boolean {
   return (maschera & (1 << settimana)) !== 0;
 }
 
-/** Modello completo del Gantt. Le righe senza date restano in elenco senza barra. */
-export function modelloGantt(righe: RigaGantt[], calendario: Calendario | null): ModelloGantt {
+/** Modello completo del Gantt. Le righe senza date restano in elenco senza barra. `pxPerGiorno` è il livello di zoom corrente. */
+export function modelloGantt(righe: RigaGantt[], calendario: Calendario | null, pxPerGiorno: number = GIORNO_PX): ModelloGantt {
   const datate = righe.filter((r) => r.inizio && r.fine);
   const maschera = calendario?.maschera ?? 0b0011111;
   const festivi = new Set((calendario?.festivi ?? []).map((iso) => isoToDays(iso)));
   if (datate.length === 0) {
     return { giorni: [], larghezzaPx: 0, barre: [], frecce: [], conDate: 0, inizio: null, fine: null };
   }
-  const primo = Math.min(...datate.map((r) => isoToDays(r.inizio!))) - MARGINE_GIORNI;
-  const ultimo = Math.max(...datate.map((r) => isoToDays(r.fine!))) + MARGINE_GIORNI;
+  const baselineDatate = righe.filter((r) => r.inizioBaseline && r.fineBaseline);
+  const estremi = [
+    ...datate.map((r) => isoToDays(r.inizio!)),
+    ...datate.map((r) => isoToDays(r.fine!)),
+    ...baselineDatate.map((r) => isoToDays(r.inizioBaseline!)),
+    ...baselineDatate.map((r) => isoToDays(r.fineBaseline!)),
+  ];
+  const primo = Math.min(...estremi) - MARGINE_GIORNI;
+  const ultimo = Math.max(...estremi) + MARGINE_GIORNI;
 
   const giorni: GiornoGantt[] = [];
   for (let g = primo; g <= ultimo; g++) {
@@ -88,25 +108,32 @@ export function modelloGantt(righe: RigaGantt[], calendario: Calendario | null):
     });
   }
 
-  const xDi = (g: number) => (g - primo) * GIORNO_PX;
+  const xDi = (g: number) => (g - primo) * pxPerGiorno;
   const barre: BarraGantt[] = [];
   const posizioni = new Map<number, BarraGantt>();
   for (const r of datate) {
     const gi = isoToDays(r.inizio!);
     const gf = isoToDays(r.fine!);
     const xInizio = xDi(gi);
-    const xFine = xDi(gf) + GIORNO_PX;
+    const xFine = xDi(gf) + pxPerGiorno;
     const milestone = r.milestone;
+    let baseline: BarraGantt["baseline"] = null;
+    if (r.inizioBaseline && r.fineBaseline) {
+      const xbInizio = xDi(isoToDays(r.inizioBaseline));
+      const xbFine = xDi(isoToDays(r.fineBaseline)) + pxPerGiorno;
+      baseline = { x: xbInizio, larghezza: Math.max(xbFine - xbInizio, pxPerGiorno / 2) };
+    }
     const barra: BarraGantt = {
       id: r.id,
-      x: milestone ? xInizio + GIORNO_PX / 2 : xInizio,
-      larghezza: milestone ? 0 : Math.max(xFine - xInizio, GIORNO_PX / 2),
+      x: milestone ? xInizio + pxPerGiorno / 2 : xInizio,
+      larghezza: milestone ? 0 : Math.max(xFine - xInizio, pxPerGiorno / 2),
       pct: r.pct,
       critico: r.critico,
       riepilogo: r.riepilogo,
       milestone,
       xInizio,
-      xFine: milestone ? xInizio + GIORNO_PX / 2 : xFine,
+      xFine: milestone ? xInizio + pxPerGiorno / 2 : xFine,
+      baseline,
     };
     barre.push(barra);
     posizioni.set(r.id, barra);
@@ -135,7 +162,7 @@ export function modelloGantt(righe: RigaGantt[], calendario: Calendario | null):
 
   return {
     giorni,
-    larghezzaPx: giorni.length * GIORNO_PX,
+    larghezzaPx: giorni.length * pxPerGiorno,
     barre,
     frecce,
     conDate: datate.length,

@@ -36,8 +36,11 @@ export interface RigaGantt {
   id: number;
   uid: string;
   nome: string;
+  wbs: string | null;
   inizio: string | null;
   fine: string | null;
+  inizioBaseline: string | null;
+  fineBaseline: string | null;
   durataGiorni: number | null;
   critico: boolean;
   riepilogo: boolean;

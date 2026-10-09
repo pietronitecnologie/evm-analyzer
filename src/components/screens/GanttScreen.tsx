@@ -1,24 +1,37 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Pietroni Tecnologie
 
-// Gantt di sola lettura: attività a sinistra (fisse durante lo scorrimento), timeline a destra
-// con griglia giornaliera, fine settimana e festivi del calendario di progetto evidenziati, frecce
-// di precedenza. Scorrimento orizzontale e verticale. Nessuna modifica dei dati.
+// Gantt di sola lettura (specifica Fase 5 §3.4): due pannelli ridimensionabili —
+// tabella (WBS | Nome | Inizio | Fine | % reale) a sinistra, timeline a destra — con
+// scorrimento verticale sincronizzato (un solo useVirtualizer, stesso pattern di
+// DataTable.tsx) e virtualizzazione delle righe per le 20.000 righe del test di
+// specifica. Barra attuale blu con riempimento scuro = % reale, contorno rosso per i
+// task critici, baseline sottile grigia sotto, milestone a rombo, riepiloghi a
+// parentesi, linea della data di stato, frecce di precedenza disattivabili,
+// evidenza del perimetro. Nessuna modifica: niente trascinamento.
 
 import * as React from "react";
+import { Group, Panel, Separator } from "react-resizable-panels";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { isoToDays, pvLineareTask } from "@evm-analyzer/engine";
 
-import type { Calendario, RigaGantt } from "@/lib/api";
-import { GIORNO_PX, RIGA_PX, modelloGantt } from "@/lib/gantt";
-import { useDati, usePercorso } from "@/lib/schermate";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { Calendario, DatiMonitoraggio, Perimetro, RigaGantt } from "@/lib/api";
+import { num } from "@/lib/format";
+import { LIVELLI_ZOOM, RIGA_PX, modelloGantt, type LivelloZoom } from "@/lib/gantt";
+import { puntoTestata, sottoalbero, vistaMonitoraggio } from "@/lib/monitoraggio";
+import { useDati, useDatiCon, usePercorso } from "@/lib/schermate";
+import { useProjectContextStore } from "@/stores/project-context-store";
 import { Vuoto } from "./comuni";
 
-const LABEL_PX = 300;
+const LABEL_PX = 380;
 const HEADER_PX = 46;
 const BARRA_PX = 12;
 const MESI = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Segmenti dei mesi per l'intestazione superiore. */
-function segmentiMesi(giorni: { iso: string }[]) {
+function segmentiMesi(giorni: { iso: string }[], pxPerGiorno: number) {
   const segmenti: { etichetta: string; inizio: number; ampiezza: number }[] = [];
   giorni.forEach((g, i) => {
     const mese = Number(g.iso.slice(5, 7)) - 1;
@@ -30,26 +43,81 @@ function segmentiMesi(giorni: { iso: string }[]) {
       segmenti.push({ etichetta: `${MESI[mese]} ${anno}`, inizio: i, ampiezza: 1 });
     }
   });
-  return segmenti;
+  return segmenti.map((s) => ({ ...s, left: s.inizio * pxPerGiorno, width: s.ampiezza * pxPerGiorno }));
 }
 
 export function GanttScreen() {
   const percorso = usePercorso();
-  const [righe] = useDati<RigaGantt[]>("gantt_elenco", percorso);
+  const ctx = useProjectContextStore();
+  const [livelloZoom, setLivelloZoom] = React.useState<LivelloZoom>("giorno");
+  const [mostraFrecce, setMostraFrecce] = React.useState(true);
+  const pxPerGiorno = LIVELLI_ZOOM.find((l) => l.id === livelloZoom)!.pxPerGiorno;
+
+  const [righe] = useDatiCon<RigaGantt[]>("gantt_elenco", percorso, { baselineId: ctx.baselineId });
   const [calendari] = useDati<Calendario[]>("calendari_elenco", percorso);
+  const [datiMon] = useDati<DatiMonitoraggio>("dati_monitoraggio", percorso);
+  const [perimetri] = useDati<Perimetro[]>("perimetri_elenco", percorso);
 
   const calendario = React.useMemo(
     () => (calendari ? calendari.find((c) => c.predefinito) ?? calendari[0] ?? null : null),
     [calendari],
   );
-  const modello = React.useMemo(() => (righe ? modelloGantt(righe, calendario) : null), [righe, calendario]);
+  const modello = React.useMemo(() => (righe ? modelloGantt(righe, calendario, pxPerGiorno) : null), [righe, calendario, pxPerGiorno]);
+  const vista = React.useMemo(() => (datiMon ? vistaMonitoraggio(datiMon) : null), [datiMon]);
+  const testata = vista ? puntoTestata(vista, ctx) : undefined;
+  const codiceRadice = React.useMemo(
+    () => perimetri?.find((p) => p.id === ctx.scopeId)?.codiceWbs ?? null,
+    [perimetri, ctx.scopeId],
+  );
+
+  const leftRef = React.useRef<HTMLDivElement>(null);
+  const rightRef = React.useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: righe?.length ?? 0,
+    getScrollElement: () => leftRef.current,
+    estimateSize: () => RIGA_PX,
+    overscan: 12,
+  });
+
+  // Il pannello sinistro guida lo scorrimento verticale (è lui l'elemento del
+  // virtualizer): il destro lo segue qui. Scorrendo sopra il destro (onWheelRight)
+  // si muove invece il sinistro, che richiama questo stesso handler di riflesso —
+  // nessun ping-pong possibile: il destro non ha un proprio listener di scorrimento
+  // che retroagisca sul sinistro.
+  function onScrollLeft(e: React.UIEvent<HTMLDivElement>) {
+    if (rightRef.current) rightRef.current.scrollTop = e.currentTarget.scrollTop;
+  }
+
+  function onWheelRight(e: React.WheelEvent<HTMLDivElement>) {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const indice = LIVELLI_ZOOM.findIndex((l) => l.id === livelloZoom);
+      const prossimo = e.deltaY < 0 ? Math.max(0, indice - 1) : Math.min(LIVELLI_ZOOM.length - 1, indice + 1);
+      setLivelloZoom(LIVELLI_ZOOM[prossimo].id);
+      return;
+    }
+    if (leftRef.current && e.deltaY !== 0) {
+      e.preventDefault();
+      leftRef.current.scrollTop += e.deltaY;
+    }
+  }
 
   if (!percorso) return <Vuoto messaggio="Open or create a project to see the Gantt chart." />;
   if (!righe || !modello) return <Vuoto messaggio="Loading…" />;
   if (modello.giorni.length === 0) return <Vuoto messaggio="No task with planned dates to show." />;
 
-  const altezzaRighe = righe.length * RIGA_PX;
-  const mesi = segmentiMesi(modello.giorni);
+  const altezzaTotale = righe.length * RIGA_PX;
+  const mesi = segmentiMesi(modello.giorni, pxPerGiorno);
+  const items = virtualizer.getVirtualItems();
+  const primoIndice = items[0]?.index ?? 0;
+  const ultimoIndice = items[items.length - 1]?.index ?? primoIndice;
+
+  const primoGiorno = isoToDays(modello.giorni[0].iso);
+  const statusDateX = ctx.statusDate && ctx.statusDate !== "—" ? (isoToDays(ctx.statusDate) - primoGiorno) * pxPerGiorno : null;
+
+  const freccevisibili = mostraFrecce
+    ? modello.frecce.filter((f) => f.da >= primoIndice - 1 && f.da <= ultimoIndice + 1 && f.a >= primoIndice - 1 && f.a <= ultimoIndice + 1)
+    : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -57,125 +125,196 @@ export function GanttScreen() {
         <span>
           From <strong className="text-foreground">{modello.inizio}</strong> to{" "}
           <strong className="text-foreground">{modello.fine}</strong> · {modello.conDate} dated activities
-          {calendario ? ` · calendar "${calendario.nome}"` : ""}
+          {calendario ? ` · calendar "${calendario.nome}"` : ""} · baseline "{ctx.baseline}"
         </span>
         <span className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1 rounded-md border border-border-strong p-0.5">
+            {LIVELLI_ZOOM.map((l) => (
+              <Button key={l.id} size="sm" variant={l.id === livelloZoom ? "outline" : "ghost"} onClick={() => setLivelloZoom(l.id)}>
+                {l.etichetta}
+              </Button>
+            ))}
+          </span>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={mostraFrecce} onChange={(e) => setMostraFrecce(e.target.checked)} />
+            Dependencies
+          </label>
           <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-zona-accento" />task</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-rosso" />critical</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-foreground/50" />summary</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 rotate-45 bg-semaforo-rosso" />milestone</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-muted-foreground/25" />weekend</span>
-          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 bg-semaforo-giallo/60" />holiday</span>
-          <span>Read-only</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 border-2 border-semaforo-rosso bg-zona-accento" />critical</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-2 w-3 border-y-2 border-foreground/60" />summary</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 rotate-45 bg-zona-accento" />milestone</span>
+          <span className="inline-flex items-center gap-1"><i className="inline-block h-1.5 w-3 bg-muted-foreground/60" />baseline</span>
+          <span>Read-only: the plan can only be modified in the planning software.</span>
         </span>
       </div>
 
-      {/* Contenitore unico di scorrimento: intestazione e colonna attività restano fisse nei rispettivi assi. */}
-      <div className="relative min-h-0 flex-1 overflow-auto">
-        <div className="relative" style={{ width: LABEL_PX + modello.larghezzaPx, height: HEADER_PX + altezzaRighe }}>
-          {/* Intestazione: mesi e giorni */}
-          <div className="sticky top-0 z-20 flex border-b border-border-strong bg-card" style={{ height: HEADER_PX }}>
-            <div className="sticky left-0 z-30 flex shrink-0 items-end border-r border-border-strong bg-card px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground" style={{ width: LABEL_PX }}>
-              Activity
-            </div>
-            <div className="relative" style={{ width: modello.larghezzaPx }}>
-              {mesi.map((m) => (
-                <div key={`${m.etichetta}-${m.inizio}`} className="absolute top-0 truncate border-l border-border-strong px-1 text-[11px] font-semibold" style={{ left: m.inizio * GIORNO_PX, width: m.ampiezza * GIORNO_PX, height: 20 }}>
-                  {m.etichetta}
-                </div>
-              ))}
-              {modello.giorni.map((g, i) => (
-                <div
-                  key={g.iso}
-                  className={`absolute bottom-0 text-center text-[10px] tabular-num ${g.festivo ? "font-semibold text-semaforo-giallo" : g.weekend ? "text-muted-foreground" : ""}`}
-                  style={{ left: i * GIORNO_PX, width: GIORNO_PX, height: 22 }}
-                  title={`${g.iso}${g.festivo ? " · holiday" : g.weekend ? " · weekend" : ""}`}
-                >
-                  {Number(g.iso.slice(8, 10))}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Fondo della timeline: fine settimana e festivi a colonna intera, griglia giornaliera */}
-          <div className="absolute" style={{ left: LABEL_PX, top: HEADER_PX, width: modello.larghezzaPx, height: altezzaRighe, pointerEvents: "none" }}>
-            {modello.giorni.map((g, i) =>
-              g.weekend || g.festivo ? (
-                <div
-                  key={`bg-${g.iso}`}
-                  className={`absolute top-0 h-full ${g.festivo ? "bg-semaforo-giallo/25" : "bg-muted-foreground/10"}`}
-                  style={{ left: i * GIORNO_PX, width: GIORNO_PX }}
-                  title={g.festivo ? `${g.iso} · holiday` : g.iso}
-                />
-              ) : null,
-            )}
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: "linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)",
-                backgroundSize: `${GIORNO_PX}px 100%`,
-              }}
-            />
-          </div>
-
-          {/* Righe: etichetta fissa a sinistra, barra sulla timeline */}
-          {righe.map((r, indiceRiga) => {
-            const barra = modello.barre.find((b) => b.id === r.id);
-            return (
-              <div key={r.id} className="absolute left-0 flex w-full border-b border-border/60 text-sm" style={{ top: HEADER_PX + indiceRiga * RIGA_PX, height: RIGA_PX }}>
-                <div className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-border-strong bg-card px-3" style={{ width: LABEL_PX }} title={r.predecessori.join(", ")}>
-                  <span className="tabular-num w-10 shrink-0 text-xs text-muted-foreground">{r.uid}</span>
-                  <span className={`truncate ${r.riepilogo ? "font-semibold" : ""}`}>{r.nome}</span>
-                  {r.critico && <span className="text-xs font-semibold text-semaforo-rosso">C</span>}
-                </div>
-                <div className="relative" style={{ width: modello.larghezzaPx }}>
-                  {barra && barra.milestone && (
-                    <span
-                      className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-semaforo-rosso"
-                      style={{ left: barra.x }}
-                      title={`${r.nome}: milestone ${r.inizio}`}
-                      aria-label={`milestone ${r.nome}`}
-                    />
-                  )}
-                  {barra && !barra.milestone && (
-                    <div
-                      className={`absolute top-1/2 overflow-hidden rounded-sm ${barra.critico ? "bg-semaforo-rosso" : barra.riepilogo ? "bg-foreground/50" : "bg-zona-accento"}`}
-                      style={{ left: barra.x, width: barra.larghezza, height: BARRA_PX, transform: "translateY(-50%)" }}
-                      title={`${r.nome} · ${r.inizio} → ${r.fine} · ${Math.round(r.pct)} %`}
-                    >
-                      <div className="h-full bg-white/45" style={{ width: `${Math.min(Math.max(r.pct, 0), 100)}%` }} />
-                    </div>
-                  )}
-                </div>
+      <Group orientation="horizontal" style={{ height: "100%", flex: 1, minHeight: 0 }}>
+        <Panel id="gantt-tabella" defaultSize={32} minSize={20}>
+          <div ref={leftRef} onScroll={onScrollLeft} className="h-full overflow-auto">
+            <div style={{ width: LABEL_PX, height: HEADER_PX + altezzaTotale, position: "relative" }}>
+              <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-border-strong bg-card px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground" style={{ height: HEADER_PX }}>
+                <span className="w-14 shrink-0">WBS</span>
+                <span className="flex-1">Name</span>
+                <span className="w-20 shrink-0 text-right">Start</span>
+                <span className="w-20 shrink-0 text-right">Finish</span>
+                <span className="w-12 shrink-0 text-right">%</span>
               </div>
-            );
-          })}
+              {items.map((item) => {
+                const r = righe[item.index];
+                const dentro = codiceRadice === null || sottoalbero(r.wbs, codiceRadice);
+                return (
+                  <div
+                    key={r.id}
+                    className={`absolute left-0 flex w-full items-center gap-2 border-b border-border/60 px-3 text-sm ${dentro ? "" : "opacity-40"}`}
+                    style={{ top: HEADER_PX, height: item.size, transform: `translateY(${item.start}px)` }}
+                  >
+                    <span className="tabular-num w-14 shrink-0 text-xs text-muted-foreground">{r.wbs ?? "—"}</span>
+                    <span className={`flex-1 truncate ${r.riepilogo ? "font-semibold" : ""}`}>{r.nome}</span>
+                    <span className="tabular-num w-20 shrink-0 text-right text-xs">{r.inizio ?? "—"}</span>
+                    <span className="tabular-num w-20 shrink-0 text-right text-xs">{r.fine ?? "—"}</span>
+                    <span className="tabular-num w-12 shrink-0 text-right text-xs">{Math.round(r.pct)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Panel>
+        <Separator className="w-1.5 shrink-0 cursor-col-resize bg-border-strong hover:bg-accent" />
+        <Panel id="gantt-timeline" defaultSize={68} minSize={30}>
+          <div ref={rightRef} className="h-full overflow-auto" onWheel={onWheelRight}>
+            <div className="relative" style={{ width: modello.larghezzaPx, height: HEADER_PX + altezzaTotale }}>
+              <div className="sticky top-0 z-20 border-b border-border-strong bg-card" style={{ height: HEADER_PX }}>
+                {mesi.map((m) => (
+                  <div key={`${m.etichetta}-${m.inizio}`} className="absolute top-0 truncate border-l border-border-strong px-1 text-[11px] font-semibold" style={{ left: m.left, width: m.width, height: 20 }}>
+                    {m.etichetta}
+                  </div>
+                ))}
+                {pxPerGiorno >= 8 &&
+                  modello.giorni.map((g, i) => (
+                    <div
+                      key={g.iso}
+                      className={`absolute bottom-0 text-center text-[10px] tabular-num ${g.festivo ? "font-semibold text-semaforo-giallo" : g.weekend ? "text-muted-foreground" : ""}`}
+                      style={{ left: i * pxPerGiorno, width: pxPerGiorno, height: 22 }}
+                    >
+                      {Number(g.iso.slice(8, 10))}
+                    </div>
+                  ))}
+              </div>
 
-          {/* Frecce di precedenza, sopra la timeline */}
-          <svg className="pointer-events-none absolute" style={{ left: LABEL_PX, top: HEADER_PX, width: modello.larghezzaPx, height: altezzaRighe }} aria-hidden="true">
-            <defs>
-              <marker id="gantt-freccia" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-                <path d="M0,0 L8,4 L0,8 z" className="fill-muted-foreground" />
-              </marker>
-            </defs>
-            {modello.frecce.map((f, i) => {
-              const y1 = f.da * RIGA_PX + RIGA_PX / 2;
-              const y2 = f.a * RIGA_PX + RIGA_PX / 2;
-              const mid = f.xDa + GIORNO_PX / 2;
-              return (
-                <path
-                  key={i}
-                  d={`M${f.xDa},${y1} H${mid} V${y2} H${f.xA}`}
-                  fill="none"
-                  strokeWidth="1"
-                  className="stroke-muted-foreground"
-                  markerEnd="url(#gantt-freccia)"
-                />
-              );
-            })}
-          </svg>
-        </div>
-      </div>
+              <div className="absolute" style={{ left: 0, top: HEADER_PX, width: modello.larghezzaPx, height: altezzaTotale, pointerEvents: "none" }}>
+                {modello.giorni.map((g, i) =>
+                  g.weekend || g.festivo ? (
+                    <div
+                      key={`bg-${g.iso}`}
+                      className={`absolute top-0 h-full ${g.festivo ? "bg-semaforo-giallo/25" : "bg-muted-foreground/10"}`}
+                      style={{ left: i * pxPerGiorno, width: pxPerGiorno }}
+                    />
+                  ) : null,
+                )}
+                {pxPerGiorno >= 4 && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ backgroundImage: "linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)", backgroundSize: `${pxPerGiorno}px 100%` }}
+                  />
+                )}
+                {statusDateX !== null && statusDateX >= 0 && statusDateX <= modello.larghezzaPx && (
+                  <div className="absolute top-0 h-full w-px bg-semaforo-rosso" style={{ left: statusDateX }} title={`Status date: ${ctx.statusDate}`} />
+                )}
+              </div>
+
+              {items.map((item) => {
+                const r = righe[item.index];
+                const barra = modello.barre.find((b) => b.id === r.id);
+                const dentro = codiceRadice === null || sottoalbero(r.wbs, codiceRadice);
+                const voceEvm = testata?.perTask[r.uid];
+                const pctPianificata = r.inizio && r.fine && ctx.statusDate !== "—" ? pvLineareTask(1, r.inizio, r.fine, ctx.statusDate) * 100 : null;
+                const contenutoTooltip = (
+                  <div className="flex flex-col gap-0.5">
+                    <p className="font-semibold">{r.nome}</p>
+                    <p>Planned: {r.inizio ?? "—"} → {r.fine ?? "—"}</p>
+                    {r.inizioBaseline && r.fineBaseline && <p>Baseline: {r.inizioBaseline} → {r.fineBaseline}</p>}
+                    <p>Duration: {r.durataGiorni ?? "—"} d</p>
+                    <p>% planned vs actual: {pctPianificata === null ? "—" : num(pctPianificata)} / {num(r.pct)}</p>
+                    {voceEvm && <p>SPI: {voceEvm.spi === null ? "—" : num(voceEvm.spi)}</p>}
+                  </div>
+                );
+                if (!barra) return null;
+                return (
+                  <div
+                    key={r.id}
+                    className={`absolute left-0 ${dentro ? "" : "opacity-40"}`}
+                    style={{ top: HEADER_PX, height: item.size, transform: `translateY(${item.start}px)` }}
+                  >
+                    {barra.milestone ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 ${barra.critico ? "bg-semaforo-rosso" : "bg-zona-accento"}`}
+                            style={{ left: barra.x }}
+                            aria-label={`milestone ${r.nome}`}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{contenutoTooltip}</TooltipContent>
+                      </Tooltip>
+                    ) : r.riepilogo ? (
+                      <div className="absolute top-1/2 -translate-y-1/2" style={{ left: barra.xInizio, width: barra.larghezza, height: 8 }} aria-label={`summary ${r.nome}`}>
+                        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-foreground/70" />
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-foreground/70" />
+                        <div className="absolute right-0 top-0 h-full w-0.5 bg-foreground/70" />
+                      </div>
+                    ) : (
+                      <>
+                        {barra.baseline && (
+                          <div
+                            className="absolute top-1/2 bg-muted-foreground/60"
+                            style={{ left: barra.baseline.x, width: barra.baseline.larghezza, height: 4, transform: "translateY(-2px)" }}
+                          />
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={`absolute top-1/2 overflow-hidden rounded-sm bg-zona-accento/35 ${barra.critico ? "border-2 border-semaforo-rosso" : ""}`}
+                              style={{ left: barra.x, width: barra.larghezza, height: BARRA_PX, transform: "translateY(calc(-50% + 3px))" }}
+                            >
+                              <div className="h-full bg-zona-accento" style={{ width: `${Math.min(Math.max(r.pct, 0), 100)}%` }} />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">{contenutoTooltip}</TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+              {mostraFrecce && (
+                <svg className="pointer-events-none absolute" style={{ left: 0, top: HEADER_PX, width: modello.larghezzaPx, height: altezzaTotale }} aria-hidden="true">
+                  <defs>
+                    <marker id="gantt-freccia" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+                      <path d="M0,0 L8,4 L0,8 z" className="fill-muted-foreground" />
+                    </marker>
+                  </defs>
+                  {freccevisibili.map((f, i) => {
+                    const y1 = f.da * RIGA_PX + RIGA_PX / 2;
+                    const y2 = f.a * RIGA_PX + RIGA_PX / 2;
+                    const mid = f.xDa + pxPerGiorno / 2;
+                    return (
+                      <path
+                        key={i}
+                        d={`M${f.xDa},${y1} H${mid} V${y2} H${f.xA}`}
+                        fill="none"
+                        strokeWidth="1"
+                        className="stroke-muted-foreground"
+                        markerEnd="url(#gantt-freccia)"
+                      />
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+          </div>
+        </Panel>
+      </Group>
     </div>
   );
 }

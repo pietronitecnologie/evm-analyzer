@@ -286,8 +286,11 @@ pub struct RigaGantt {
     pub id: i64,
     pub uid: String,
     pub nome: String,
+    pub wbs: Option<String>,
     pub inizio: Option<String>,
     pub fine: Option<String>,
+    pub inizio_baseline: Option<String>,
+    pub fine_baseline: Option<String>,
     pub durata_giorni: Option<f64>,
     pub critico: bool,
     pub riepilogo: bool,
@@ -297,11 +300,31 @@ pub struct RigaGantt {
     pub predecessori: Vec<String>,
 }
 
-pub fn gantt(conn: &Connection, pid: i64) -> Esito<Vec<RigaGantt>> {
+/// `baseline_id`: `None` usa l'ultima baseline `kind = 'startup'` (stessa convenzione di
+/// `task.rs::elenco_evm`/`controllo.rs::dati_monitoraggio`), altrimenti la baseline scelta
+/// nella barra di contesto (specifica Fase 5 §3.4: "selettore baseline").
+pub fn gantt(conn: &Connection, pid: i64, baseline_id: Option<i64>) -> Esito<Vec<RigaGantt>> {
     let tasks = task_base(conn, pid)?;
     let vigente = avanzamento_vigente(conn, pid)?;
 
     let mut stmt = conn
+        .prepare(
+            "SELECT
+                (SELECT bt.start FROM baseline_task bt
+                 WHERE bt.task_id = t.id
+                   AND bt.baseline_id = COALESCE(?2, (SELECT id FROM baseline WHERE project_id = ?1 AND kind = 'startup' ORDER BY id DESC LIMIT 1))),
+                (SELECT bt.finish FROM baseline_task bt
+                 WHERE bt.task_id = t.id
+                   AND bt.baseline_id = COALESCE(?2, (SELECT id FROM baseline WHERE project_id = ?1 AND kind = 'startup' ORDER BY id DESC LIMIT 1)))
+             FROM task t WHERE t.id = ?3",
+        )
+        .map_err(errore)?;
+    let mut baseline_date = |task_id: i64| -> Esito<(Option<String>, Option<String>)> {
+        stmt.query_row(params![pid, baseline_id, task_id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .map_err(errore)
+    };
+
+    let mut stmt_dip = conn
         .prepare(
             "SELECT d.succ_id, p.uid_source, d.type, d.lag_minutes
              FROM dependency d JOIN task p ON p.id = d.pred_id
@@ -309,7 +332,7 @@ pub fn gantt(conn: &Connection, pid: i64) -> Esito<Vec<RigaGantt>> {
         )
         .map_err(errore)?;
     let mut preds: HashMap<i64, Vec<String>> = HashMap::new();
-    let legami = stmt
+    let legami = stmt_dip
         .query_map([pid], |r| {
             Ok((
                 r.get::<_, i64>(0)?,
@@ -330,22 +353,27 @@ pub fn gantt(conn: &Connection, pid: i64) -> Esito<Vec<RigaGantt>> {
         preds.entry(succ).or_default().push(voce);
     }
 
-    Ok(tasks
-        .into_iter()
-        .map(|t| RigaGantt {
+    let mut righe = Vec::with_capacity(tasks.len());
+    for t in tasks {
+        let (inizio_baseline, fine_baseline) = baseline_date(t.id)?;
+        righe.push(RigaGantt {
             pct: vigente.get(&t.id).map_or(0.0, |v| v.0 * 100.0),
             predecessori: preds.remove(&t.id).unwrap_or_default(),
             id: t.id,
             uid: t.uid,
             nome: t.nome,
+            wbs: t.wbs,
             inizio: t.inizio,
             fine: t.fine,
+            inizio_baseline,
+            fine_baseline,
             durata_giorni: t.durata,
             critico: t.critico,
             riepilogo: t.riepilogo,
             milestone: t.milestone,
-        })
-        .collect())
+        });
+    }
+    Ok(righe)
 }
 
 // -------------------------------------------------------------- Avanzamento
@@ -1077,5 +1105,39 @@ mod tests {
         assert_eq!(r.contingenza_allocata, 60.0);
         assert_eq!(r.contingency_pct, 10.0);
         assert!(aggiorna_parametri(&conn, pid, 150, 0, 0.0).is_err());
+    }
+
+    #[test]
+    fn gantt_porta_wbs_e_date_di_baseline_parametrizzate() {
+        let (_d, conn, pid) = progetto();
+        let task_scavo: i64 = conn.query_row("SELECT id FROM task WHERE uid_source = '2'", [], |r| r.get(0)).unwrap();
+
+        let righe = gantt(&conn, pid, None).unwrap();
+        let scavo = righe.iter().find(|r| r.uid == "2").unwrap();
+        assert_eq!(scavo.wbs.as_deref(), Some("1.1"));
+        // Nessun baseline_id esplicito: cade sull'ultima baseline 'startup' creata dall'import.
+        assert_eq!(scavo.inizio_baseline.as_deref(), Some("2026-01-05"));
+        assert_eq!(scavo.fine_baseline.as_deref(), Some("2026-01-09"));
+
+        // Una seconda baseline con date diverse per lo stesso task: con il suo id esplicito,
+        // il Gantt legge da quella, non più dalla 'startup' di default.
+        conn.execute(
+            "INSERT INTO baseline (project_id, name, kind, created_at, locked) VALUES (?1, 'Stima', 'stima', '2026-01-01T00:00:00Z', 1)",
+            [pid],
+        )
+        .unwrap();
+        let altra_baseline = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO baseline_task (baseline_id, task_id, start, finish) VALUES (?1, ?2, '2025-12-20', '2025-12-24')",
+            params![altra_baseline, task_scavo],
+        )
+        .unwrap();
+        let righe_stima = gantt(&conn, pid, Some(altra_baseline)).unwrap();
+        let scavo_stima = righe_stima.iter().find(|r| r.uid == "2").unwrap();
+        assert_eq!(scavo_stima.inizio_baseline.as_deref(), Some("2025-12-20"));
+        assert_eq!(scavo_stima.fine_baseline.as_deref(), Some("2025-12-24"));
+        // Il task "Posa" non è nella nuova baseline: nessuna riga di fallback indesiderata.
+        let posa_stima = righe_stima.iter().find(|r| r.uid == "3").unwrap();
+        assert_eq!(posa_stima.inizio_baseline, None);
     }
 }

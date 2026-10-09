@@ -4,14 +4,17 @@
 import { describe, expect, it } from "vitest";
 
 import type { Calendario, RigaGantt } from "@/lib/api";
-import { GIORNO_PX, modelloGantt } from "./gantt";
+import { GIORNO_PX, LIVELLI_ZOOM, modelloGantt } from "./gantt";
 
 const riga = (id: number, extra: Partial<RigaGantt>): RigaGantt => ({
   id,
   uid: String(id),
   nome: `Task ${id}`,
+  wbs: null,
   inizio: "2026-01-05",
   fine: "2026-01-09",
+  inizioBaseline: null,
+  fineBaseline: null,
   durataGiorni: 5,
   critico: false,
   riepilogo: false,
@@ -62,5 +65,27 @@ describe("modello del Gantt", () => {
     const m = modelloGantt([riga(1, { inizio: null, fine: null })], LUN_VEN);
     expect(m.giorni).toHaveLength(0);
     expect(m.conDate).toBe(0);
+  });
+
+  it("la barra della baseline si posiziona sulle date di baseline, non su quelle pianificate", () => {
+    const m = modelloGantt([riga(1, { inizioBaseline: "2026-01-02", fineBaseline: "2026-01-06" })], LUN_VEN);
+    const indiceBaseline = m.giorni.findIndex((g) => g.iso === "2026-01-02");
+    expect(m.barre[0].baseline).not.toBeNull();
+    expect(m.barre[0].baseline!.x).toBe(indiceBaseline * GIORNO_PX);
+    expect(m.barre[0].baseline!.larghezza).toBe(5 * GIORNO_PX);
+    // La barra attuale non si sposta.
+    expect(m.barre[0].xInizio).not.toBe(m.barre[0].baseline!.x);
+  });
+
+  it("un task senza date di baseline non ha barra di baseline", () => {
+    const m = modelloGantt([riga(1, {})], LUN_VEN);
+    expect(m.barre[0].baseline).toBeNull();
+  });
+
+  it("il livello di zoom scala la larghezza delle barre e della timeline", () => {
+    const pxSettimana = LIVELLI_ZOOM.find((l) => l.id === "settimana")!.pxPerGiorno;
+    const m = modelloGantt([riga(1, {})], LUN_VEN, pxSettimana);
+    expect(m.barre[0].larghezza).toBe(5 * pxSettimana);
+    expect(m.larghezzaPx).toBe(m.giorni.length * pxSettimana);
   });
 });

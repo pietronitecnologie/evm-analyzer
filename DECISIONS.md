@@ -964,3 +964,98 @@ non ancora richiamato da nessuna schermata).
      si combina con il peggiore dei due (rosso > giallo > verde > nd), così un
      filone in ritardo ma a costo non segnala "a posto" solo perché il CPI è
      verde.
+
+## Fase 5, incremento 9 — Gantt di sola lettura (docs/specifiche/SPEC_FASE_5_UI_ANALISI.md §3.4)
+
+Ambito: il Gantt esisteva già (decisione 65, Fase 4) ma a una specifica più semplice —
+un solo contenitore di scorrimento, nessuna virtualizzazione, zoom o baseline. Qui si
+riscrive `GanttScreen.tsx` per il §3.4 completo: due pannelli ridimensionabili,
+virtualizzazione, zoom, baseline, linea della data di stato, frecce disattivabili,
+evidenza del perimetro, tooltip con SPI. La matematica di scala/frecce di
+`src/lib/gantt.ts` (già testata) resta, solo parametrizzata invece che a costanti fisse.
+
+115. **SVG virtualizzato, non Canvas 2D.** Nessun `<canvas>` esiste nel codice: la
+     specifica permette entrambi ("Canvas 2D o SVG virtualizzato"). Si riusa invece
+     il pattern già in produzione in `DataTable.tsx` (`@tanstack/react-virtual`,
+     `useVirtualizer`): con la virtualizzazione il numero di nodi DOM a schermo è
+     limitato alla finestra visibile (~40-60 righe con l'overscan) indipendentemente
+     dal totale — lo stesso principio che già regge le tabelle con migliaia di righe
+     altrove nell'app — senza introdurre una tecnica di rendering (disegno manuale a
+     pixel, hit-testing per i tooltip) mai usata prima in questo codice.
+
+116. **Nessuna misura di frame time qui: è il test §5.4, non questo incremento.**
+     La specifica elenca "20.000 righe scorrevoli (misurare frame time)" tra i test
+     obbligatori del §5, non tra i requisiti della schermata — e quel punto è
+     esplicitamente nell'incremento 11 ("test visivi, accessibilità e
+     prestazioni"), non ancora raggiunto. Misurarlo onestamente richiede un
+     browser/harness visivo che questo progetto non ha ancora (decisione da
+     prendere nell'incremento 11, non qui): diversamente dalle decisioni 72/99
+     (Monte Carlo), dove un calcolo puro si poteva cronometrare con `tsx` in pochi
+     secondi, il costo di un rendering virtualizzato è una proprietà del DOM/
+     browser, non del codice TypeScript puro — non misurabile qui senza fabbricare
+     un numero.
+
+117. **`gantt()` ora parametrizzato per baseline, stessa convenzione delle altre
+     query baseline-aware.** `inizio_baseline`/`fine_baseline` (nuovi campi di
+     `RigaGantt`) vengono da `baseline_task` filtrato su
+     `COALESCE(?baseline_id, (SELECT id FROM baseline WHERE kind='startup' ORDER
+     BY id DESC LIMIT 1))` — stesso fallback già usato da `task.rs::elenco_evm`/
+     `controllo.rs::dati_monitoraggio`, ora reso esplicito invece che fisso.
+     Nessun nuovo selettore nella schermata: `GanttScreen` legge `ctx.baselineId`
+     dallo store di contesto e lo passa a `gantt_elenco` (via `useDatiCon`, non
+     `useDati`, perché ora il comando ha un parametro) — il selettore di baseline
+     della barra di contesto (decisione 73) è l'unico punto da cui si scelgono
+     "Startup/Stima/altra", non duplicato dentro il Gantt.
+
+118. **Scorrimento verticale sincronizzato a una sola direzione, non due listener
+     che si rimandano l'un l'altro.** Il pannello sinistro (tabella) è l'elemento
+     a cui è agganciato `useVirtualizer`: il suo `onScroll` copia `scrollTop` nel
+     pannello destro (timeline). Scorrere sopra il destro (rotella senza Ctrl)
+     muove invece `leftRef.current.scrollTop`, che a cascata richiama lo stesso
+     `onScroll` del sinistro — nessun ping-pong possibile perché il destro non ha
+     un proprio listener che retroagisca sul sinistro. Pannelli ridimensionabili
+     con `react-resizable-panels` (`Group`/`Panel`/`Separator`, l'API v4 già usata
+     da `AppShell.tsx`, qui con un vero `Separator` draggabile — finora solo un
+     singolo `Panel` al 100% era in uso, senza divisore).
+
+119. **Zoom a 4 livelli discreti (giorno/settimana/mese/trimestre), non continuo.**
+     Selezionabili da pulsanti (sempre raggiungibili da tastiera) o Ctrl+rotella
+     sul pannello timeline (che scorre la rotella senza Ctrl per lo scorrimento
+     verticale, decisione 118). Sotto una densità di 8px/giorno si nascondono i
+     numeri dei singoli giorni nell'intestazione (illeggibili a quella scala),
+     sotto 4px/giorno anche la griglia verticale — altrimenti migliaia di linee
+     /etichette a trimestre su un progetto pluriennale.
+
+120. **Corretta la resa visiva rispetto all'implementazione precedente (decisione
+     65), ora che ci sono le date di baseline per farlo.** Barra attuale sempre
+     blu (`bg-zona-accento`) con riempimento *scuro* (opacità piena) che cresce
+     con `% reale` sopra una base più chiara (`/35`) — l'inverso della vecchia
+     resa (sovrapposizione chiara su barra piena); i task critici aggiungono un
+     **contorno** rosso (`border-2 border-semaforo-rosso`) alla barra blu, non la
+     sostituiscono con una barra piena rossa; i riepiloghi sono ora una parentesi
+     (due tacche verticali unite da una linea sottile), non una barra attenuata;
+     sotto la barra attuale compare la barra sottile grigia della baseline quando
+     il task ne ha una (prima impossibile: `RigaGantt` non portava quelle date).
+
+121. **Le frecce di precedenza si filtrano sulla stessa finestra virtualizzata
+     delle righe (±1 di overscan), non su tutto il progetto.** Stesso principio
+     della decisione 115: con 20.000 righe anche il numero di dipendenze
+     potenziali è grande; disegnare solo gli archi i cui due estremi sono (quasi)
+     visibili limita i nodi SVG allo stesso modo in cui la virtualizzazione limita
+     i nodi DOM delle barre.
+
+122. **Tooltip ricco riusando il componente Radix già nell'app (nessun provider
+     nuovo: `TooltipProvider` avvolge già tutta l'app in `App.tsx`).** Data
+     pianificata/baseline, durata, % pianificata vs reale, SPI di task — senza
+     calcoli nuovi: "% pianificata" è `pvLineareTask(1, inizio, fine, statusDate)`
+     del motore (già usato per il PV dei task nel motore di monitoraggio, qui
+     con budget `1` per ottenere direttamente una frazione), e lo SPI viene dalla
+     stessa pipeline `dati_monitoraggio` → `vistaMonitoraggio` → `puntoTestata`
+     già usata da Task e risorse (decisione 81-82) — letta qui per il tooltip,
+     non duplicata.
+
+123. **L'evidenza del perimetro riusa `sottoalbero` di `lib/monitoraggio.ts`
+     (ora esportata), non una propria copia del controllo sul prefisso WBS.**
+     I task fuori dal perimetro scelto nella barra di contesto si attenuano
+     (`opacity-40`) invece di essere rimossi dalla vista — "gli altri attenuati",
+     non filtrati, come nella specifica — sia nella tabella che sulla timeline.
